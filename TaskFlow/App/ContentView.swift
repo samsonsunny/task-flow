@@ -7,15 +7,13 @@
 
 // ==========================================
 // MARK: - Content View
-// File: Views/ContentView.swift
+// File: App/ContentView.swift
 // ==========================================
 
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
     var body: some View {
         #if os(iOS)
         TaskListView()
@@ -30,11 +28,6 @@ struct ContentView: View {
         #endif
     }
 }
-let schema = Schema([
-    TaskItem.self,
-    Subtask.self,
-    DailyLogEntry.self
-])
 
 #Preview("Empty State") {
     ContentView()
@@ -42,13 +35,8 @@ let schema = Schema([
 }
 
 #Preview("With Tasks") {
-    let container = try! ModelContainer(
-        for: TaskItem.self, Subtask.self, DailyLogEntry.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-    
-    // Add sample data...
-    
+    let container = TaskPreviewData.container()
+    TaskPreviewData.seedTaskList(into: container)
     return ContentView()
         .modelContainer(container)
 }
