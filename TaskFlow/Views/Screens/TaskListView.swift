@@ -111,41 +111,8 @@ struct TaskListView: View {
 }
 
 #Preview("With Tasks") {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(
-        for: TaskItem.self, Subtask.self, DailyLogEntry.self,
-        configurations: config
-    )
-    
-    // Sample data
-    let task1 = TaskItem(
-        taskTitle: "Build iOS App",
-        taskDescription: "Create a task management app with SwiftData",
-        dueDate: Date().addingTimeInterval(86400 * 3)
-    )
-    
-    let task2 = TaskItem(
-        taskTitle: "Learn SwiftUI",
-        taskDescription: "Master SwiftUI fundamentals",
-        isCompleted: true,
-        dueDate: Date().addingTimeInterval(-86400)
-    )
-    task2.completionDate = Date()
-    
-    let task3 = TaskItem(
-        taskTitle: "Design App Icon",
-        taskDescription: "Create a modern app icon",
-        dueDate: Date()
-    )
-    
-    let subtask1 = Subtask(title: "Set up project")
-    let subtask2 = Subtask(title: "Create models", completed: true)
-    task1.subtasks = [subtask1, subtask2]
-    
-    container.mainContext.insert(task1)
-    container.mainContext.insert(task2)
-    container.mainContext.insert(task3)
-    
+    let container = TaskPreviewData.container()
+    TaskPreviewData.seedTaskList(into: container)
     return TaskListView()
         .modelContainer(container)
 }

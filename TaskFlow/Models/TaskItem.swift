@@ -1,12 +1,12 @@
 //
-//  Task.swift
+//  TaskItem.swift
 //  TaskFlow
 //
 //  Created by sam on 26-10-2025.
 //
 // ==========================================
 // MARK: - Updated Models for iCloud Sync
-// File: Models/Task.swift
+// File: Models/TaskItem.swift
 // ==========================================
 
 import SwiftData
@@ -94,76 +94,5 @@ final class TaskItem {
     
     var safeDailyLog: [DailyLogEntry] {
         dailyLog ?? []
-    }
-}
-
-// ==========================================
-// File: Models/Subtask.swift
-// ==========================================
-
-@Model
-final class Subtask {
-    var subtaskId: String?
-    var title: String?
-    var completed: Bool?
-    var createdAt: Date?
-    
-    var task: TaskItem?
-    
-    init(
-        subtaskId: String? = UUID().uuidString,
-        title: String? = "",
-        completed: Bool? = false,
-        createdAt: Date? = Date()
-    ) {
-        self.subtaskId = subtaskId
-        self.title = title
-        self.completed = completed
-        self.createdAt = createdAt
-    }
-    
-    // Safe accessors
-    var safeTitle: String {
-        title ?? "Untitled Subtask"
-    }
-    
-    var safeCompleted: Bool {
-        completed ?? false
-    }
-    
-    var safeCreatedAt: Date {
-        createdAt ?? Date()
-    }
-}
-
-// ==========================================
-// File: Models/DailyLogEntry.swift
-// ==========================================
-
-@Model
-final class DailyLogEntry {
-    var entryId: String?
-    var timestamp: Date?
-    var note: String?
-    
-    var task: TaskItem?
-    
-    init(
-        entryId: String? = UUID().uuidString,
-        timestamp: Date? = Date(),
-        note: String? = ""
-    ) {
-        self.entryId = entryId
-        self.timestamp = timestamp
-        self.note = note
-    }
-    
-    // Safe accessors
-    var safeTimestamp: Date {
-        timestamp ?? Date()
-    }
-    
-    var safeNote: String {
-        note ?? ""
     }
 }

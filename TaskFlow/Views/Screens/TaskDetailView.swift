@@ -315,33 +315,8 @@ struct TaskDetailView: View {
 }
 
 #Preview {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(
-        for: TaskItem.self, Subtask.self, DailyLogEntry.self,
-        configurations: config
-    )
-    
-    let task = TaskItem(
-        taskTitle: "Build iOS App",
-        taskDescription: "Create a comprehensive task management app with SwiftData and iCloud sync capabilities.",
-        dueDate: Date().addingTimeInterval(86400 * 5)
-    )
-    
-    let subtask1 = Subtask(title: "Design data models")
-    let subtask2 = Subtask(title: "Implement UI", completed: true)
-    let subtask3 = Subtask(title: "Add iCloud sync")
-    task.subtasks = [subtask1, subtask2, subtask3]
-    
-    let log1 = DailyLogEntry(
-        timestamp: Date().addingTimeInterval(-7200),
-        note: "Started working on the task detail view. Made good progress with the layout."
-    )
-    let log2 = DailyLogEntry(
-        timestamp: Date().addingTimeInterval(-3600),
-        note: "Added subtask functionality. Need to test edge cases tomorrow."
-    )
-    task.dailyLog = [log1, log2]
-    
+    let container = TaskPreviewData.container()
+    let task = TaskPreviewData.makeDetailTask()
     container.mainContext.insert(task)
     
     return NavigationStack {

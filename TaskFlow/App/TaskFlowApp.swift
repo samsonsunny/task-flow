@@ -54,10 +54,3 @@ struct TaskFlowApp: App {
         #endif
     }
 }
-
-extension Notification.Name {
-    static let createNewTask = Notification.Name("createNewTask")
-}
-
-// The AppTheme struct and Date extensions were removed from this file.
-// They are now located in Utilities/Theme.swift and Utilities/Extensions.swift respectively.
