@@ -15,17 +15,7 @@ import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        #if os(iOS)
         TaskListView()
-        #elseif os(macOS)
-        NavigationSplitView {
-            TaskListView()
-        } detail: {
-            Text("Select a task")
-                .font(.title)
-                .foregroundStyle(.secondary)
-        }
-        #endif
     }
 }
 

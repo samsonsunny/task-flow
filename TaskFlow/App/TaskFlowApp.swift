@@ -42,15 +42,5 @@ struct TaskFlowApp: App {
         }
         .modelContainer(sharedModelContainer)
         
-        #if os(macOS)
-        .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("New Task") {
-                    NotificationCenter.default.post(name: .createNewTask, object: nil)
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-        #endif
     }
 }

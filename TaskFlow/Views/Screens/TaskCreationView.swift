@@ -119,9 +119,7 @@ struct TaskCreationView: View {
                 }
             }
             .navigationTitle("Create Task")
-            #if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
