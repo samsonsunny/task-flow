@@ -30,6 +30,49 @@ struct TaskListView: View {
     private var hasAnyTasks: Bool {
         !tasks.isEmpty
     }
+
+    private enum TaskSection: String, CaseIterable {
+        case today = "Today"
+        case upcoming = "Upcoming"
+        case later = "Later"
+    }
+    
+    private var overdueTasks: [TaskItem] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        return incompleteTasks.filter { $0.safeDueDate < todayStart }
+    }
+    
+    private var sectionedTasks: [(TaskSection, [TaskItem])] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        let upcomingLimit = calendar.date(byAdding: .day, value: 7, to: todayStart) ?? todayStart
+        
+        var buckets: [TaskSection: [TaskItem]] = [
+            .today: [],
+            .upcoming: [],
+            .later: []
+        ]
+        
+        for task in incompleteTasks {
+            let due = task.safeDueDate
+            if due < todayStart {
+                // Overdue handled separately
+                continue
+            } else if calendar.isDateInToday(due) {
+                buckets[.today, default: []].append(task)
+            } else if due <= upcomingLimit {
+                buckets[.upcoming, default: []].append(task)
+            } else {
+                buckets[.later, default: []].append(task)
+            }
+        }
+        
+        return TaskSection.allCases.compactMap { section in
+            guard let items = buckets[section], !items.isEmpty else { return nil }
+            return (section, items)
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -39,15 +82,24 @@ struct TaskListView: View {
                 
                 VStack(spacing: 0) {
                     ScrollView {
-                        LazyVStack(spacing: AppTheme.Spacing.sm) {
+                        LazyVStack(spacing: AppTheme.Spacing.md) {
                             if incompleteTasks.isEmpty {
                                 emptyState
                             } else {
-                                ForEach(incompleteTasks) { task in
-                                    NavigationLink(value: task) {
-                                        TaskRowView(task: task)
+                                if !overdueTasks.isEmpty {
+                                    overdueTasksLink
+                                }
+                                
+                                ForEach(sectionedTasks, id: \.0) { section, items in
+                                    Text(section.rawValue)
+                                        .font(AppTheme.Typography.caption)
+                                        .foregroundStyle(AppTheme.Colors.secondaryText)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.top, AppTheme.Spacing.sm)
+                                    
+                                    ForEach(items) { task in
+                                        taskRow(task)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                                 
                                 if hasCompletedTasks {
@@ -96,13 +148,41 @@ struct TaskListView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(AppTheme.Spacing.lg)
     }
+
+    private var overdueTasksLink: some View {
+        NavigationLink {
+            OverdueTasksView()
+        } label: {
+            HStack {
+                Text("Overdue")
+                    .font(AppTheme.Typography.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.Colors.text)
+                Spacer()
+                Text("\(overdueTasks.count)")
+                    .font(AppTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.Colors.background)
+                    .clipShape(Capsule())
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.Colors.secondaryText)
+            }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
+            .background(AppTheme.Colors.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
     
     private var completedTasksLink: some View {
         NavigationLink {
             CompletedTasksView()
         } label: {
             HStack {
-                Text("Completed Tasks")
+                Text("Completed")
                     .font(AppTheme.Typography.body.weight(.semibold))
                     .foregroundStyle(AppTheme.Colors.text)
                 Spacer()
@@ -121,6 +201,13 @@ struct TaskListView: View {
             .padding(.vertical, AppTheme.Spacing.sm)
             .background(AppTheme.Colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func taskRow(_ task: TaskItem) -> some View {
+        NavigationLink(value: task) {
+            TaskRowView(task: task)
         }
         .buttonStyle(.plain)
     }
@@ -211,6 +298,72 @@ private struct CompletedTasksView: View {
             }
         }
         .navigationTitle("Completed")
+    }
+}
+
+private struct OverdueTasksView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<TaskItem> { $0.isCompleted == false }, sort: \TaskItem.dueDate) private var activeTasks: [TaskItem]
+    
+    private var overdueTasks: [TaskItem] {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        return activeTasks.filter { $0.safeDueDate < todayStart }
+    }
+    
+    var body: some View {
+        ZStack {
+            AppTheme.Colors.background
+                .ignoresSafeArea()
+            
+            if overdueTasks.isEmpty {
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 64))
+                        .foregroundStyle(AppTheme.Colors.secondaryText.opacity(0.5))
+                    
+                    Text("No Overdue Tasks")
+                        .font(AppTheme.Typography.title)
+                        .foregroundStyle(AppTheme.Colors.text)
+                    
+                    Text("Overdue tasks will appear here.")
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(AppTheme.Colors.secondaryText)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(AppTheme.Spacing.lg)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: AppTheme.Spacing.md) {
+                        ForEach(overdueTasks) { task in
+                            NavigationLink {
+                                TaskDetailView(task: task)
+                            } label: {
+                                TaskRowView(task: task)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Move to Today") { reschedule(task, daysFromToday: 0) }
+                                Button("Move to Tomorrow") { reschedule(task, daysFromToday: 1) }
+                                Button("Move to Next Week") { reschedule(task, daysFromToday: 7) }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.top, AppTheme.Spacing.sm)
+                    .padding(.bottom, AppTheme.Spacing.lg)
+                }
+            }
+        }
+        .navigationTitle("Overdue")
+    }
+    
+    private func reschedule(_ task: TaskItem, daysFromToday: Int) {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        let newDate = calendar.date(byAdding: .day, value: daysFromToday, to: todayStart) ?? todayStart
+        task.dueDate = newDate
+        modelContext.insert(task)
     }
 }
 

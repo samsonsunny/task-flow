@@ -49,7 +49,8 @@ final class TaskItem {
     // Computed properties with safe unwrapping
     var isOverdue: Bool {
         guard let isCompleted = isCompleted, let dueDate = dueDate else { return false }
-        return !isCompleted && dueDate < Date()
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        return !isCompleted && dueDate < todayStart
     }
     
     var daysUntilDue: Int {
