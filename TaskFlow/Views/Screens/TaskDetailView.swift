@@ -31,9 +31,7 @@ struct TaskDetailView: View {
             }
         }
         .navigationTitle("Task Details")
-        #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(isEditing ? "Done" : "Edit") {
