@@ -29,8 +29,12 @@ struct TaskRowView: View {
                 }
                 
                 Spacer()
-                
-                TaskStatusBadge(task: task)
+                VStack(alignment: .trailing, spacing: 6) {
+                    TaskStatusBadge(task: task)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary.opacity(0.6))
+                }
             }
             
             HStack {
@@ -63,4 +67,3 @@ struct TaskRowView: View {
         .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
     }
 }
-
