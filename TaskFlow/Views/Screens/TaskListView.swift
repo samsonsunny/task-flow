@@ -8,12 +8,12 @@
 
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct TaskListView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
     
-    @State private var showingCreateTask = false
+    @FocusState private var addTaskFocused: Bool
     
     private var incompleteTasks: [TaskItem] {
         tasks.filter { !$0.safeIsCompleted }
@@ -80,53 +80,52 @@ struct TaskListView: View {
                 AppTheme.Colors.background
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    ScrollView {
-                        LazyVStack(spacing: AppTheme.Spacing.md) {
-                            if incompleteTasks.isEmpty {
-                                emptyState
-                            } else {
-                                if !overdueTasks.isEmpty {
-                                    overdueTasksLink
-                                }
+                ScrollView {
+                    LazyVStack(spacing: AppTheme.Spacing.md) {
+                        if incompleteTasks.isEmpty {
+                            emptyState
+                        } else {
+                            if !overdueTasks.isEmpty {
+                                overdueTasksLink
+                            }
+                            
+                            ForEach(sectionedTasks, id: \.0) { section, items in
+                                Text(section.rawValue)
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, AppTheme.Spacing.sm)
                                 
-                                ForEach(sectionedTasks, id: \.0) { section, items in
-                                    Text(section.rawValue)
-                                        .font(AppTheme.Typography.caption)
-                                        .foregroundStyle(AppTheme.Colors.secondaryText)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.top, AppTheme.Spacing.sm)
-                                    
-                                    ForEach(items) { task in
-                                        taskRow(task)
-                                    }
-                                }
-                                
-                                if hasCompletedTasks {
-                                    completedTasksLink
+                                ForEach(items) { task in
+                                    taskRow(task)
                                 }
                             }
+                            
+                            if hasCompletedTasks {
+                                completedTasksLink
+                            }
                         }
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.top, AppTheme.Spacing.sm)
-                        .padding(.bottom, AppTheme.Spacing.lg)
                     }
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.top, AppTheme.Spacing.sm)
+                    .padding(.bottom, AppTheme.Spacing.lg)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        addTaskFocused = false
+                    }
+                )
                 .animation(.easeInOut, value: incompleteTasks.count)
                 .animation(.easeInOut, value: completedTasksCount)
-                
-                addTaskButton
             }
             .navigationTitle("Tasks")
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
             }
-            .sheet(isPresented: $showingCreateTask) {
-                TaskCreationView()
+            .safeAreaInset(edge: .bottom) {
+                InlineAddTaskRow(isFocused: $addTaskFocused, onCreate: createInlineTask)
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in
-            showingCreateTask = true
         }
     }
     
@@ -212,47 +211,14 @@ struct TaskListView: View {
         .buttonStyle(.plain)
     }
     
-    private var addTaskButton: some View {
-        VStack {
-            Spacer()
-            HStack {
-                Spacer()
-                Button {
-                    triggerHaptic()
-                    showingCreateTask = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 64, height: 64)
-                        .background(AppTheme.Colors.primary)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.22), radius: 12, y: 8)
-                }
-                .buttonStyle(FloatingActionButtonStyle())
-                .accessibilityLabel("Add Task")
-                .padding(.trailing, AppTheme.Spacing.lg)
-                .padding(.bottom, AppTheme.Spacing.lg + 6)
-            }
-        }
-        .ignoresSafeArea(.keyboard)
+    private func createInlineTask(title: String, dueDate: Date?) {
+        let task = TaskItem(
+            taskTitle: title,
+            dueDate: dueDate
+        )
+        modelContext.insert(task)
     }
     
-    private func triggerHaptic() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.prepare()
-        generator.impactOccurred()
-    }
-    
-}
-
-private struct FloatingActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
 }
 
 private struct CompletedTasksView: View {
