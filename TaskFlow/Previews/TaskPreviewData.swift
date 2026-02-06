@@ -12,7 +12,7 @@ enum TaskPreviewData {
     static func container() -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(
-            for: TaskItem.self, Subtask.self, DailyLogEntry.self,
+            for: TaskItem.self, DailyLogEntry.self,
             configurations: config
         )
     }
@@ -39,10 +39,6 @@ enum TaskPreviewData {
             dueDate: Date()
         )
 
-        let subtask1 = Subtask(title: "Set up project")
-        let subtask2 = Subtask(title: "Create models", completed: true)
-        task1.subtasks = [subtask1, subtask2]
-
         let tasks = [task1, task2, task3]
         tasks.forEach { container.mainContext.insert($0) }
         return tasks
@@ -55,18 +51,13 @@ enum TaskPreviewData {
             dueDate: Date().addingTimeInterval(86400 * 5)
         )
 
-        let subtask1 = Subtask(title: "Design data models")
-        let subtask2 = Subtask(title: "Implement UI", completed: true)
-        let subtask3 = Subtask(title: "Add iCloud sync")
-        task.subtasks = [subtask1, subtask2, subtask3]
-
         let log1 = DailyLogEntry(
             timestamp: Date().addingTimeInterval(-7200),
             note: "Started working on the task detail view. Made good progress with the layout."
         )
         let log2 = DailyLogEntry(
             timestamp: Date().addingTimeInterval(-3600),
-            note: "Added subtask functionality. Need to test edge cases tomorrow."
+            note: "Finished layout polish. Need to test edge cases tomorrow."
         )
         task.dailyLog = [log1, log2]
 

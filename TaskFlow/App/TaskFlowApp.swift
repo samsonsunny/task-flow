@@ -18,7 +18,6 @@ struct TaskFlowApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             TaskItem.self,
-            Subtask.self,
             DailyLogEntry.self
         ])
         
