@@ -26,11 +26,10 @@ struct TaskStatusBadge: View {
             return "Done"
         } else if task.isOverdue {
             return "Overdue"
-//        } else if task.safeDueDate.isToday {
-//            return "Today"
-//        } else if task.safeDueDate.isTomorrow {
-//            return "Tomorrow"
         } else {
+            if task.reminderReferenceDate == nil {
+                return "No date"
+            }
             let days = task.daysUntilDue
             return days > 0 ? "\(days)d left" : "Due"
         }

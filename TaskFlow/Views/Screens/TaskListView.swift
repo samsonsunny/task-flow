@@ -14,6 +14,17 @@ struct TaskListView: View {
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
     
     @FocusState private var addTaskFocused: Bool
+    @AppStorage("dailyReviewEnabled") private var dailyReviewEnabled = true
+    @AppStorage("taskflow.notifications.enabled") private var notificationsEnabled = false
+    @AppStorage("taskflow.notifications.denied") private var notificationsDenied = false
+    @State private var isRequestingReminderPermission = false
+    @State private var reminderPromptHighlighted = false
+
+    let shouldFocusOnAppear: Bool
+
+    init(shouldFocusOnAppear: Bool = false) {
+        self.shouldFocusOnAppear = shouldFocusOnAppear
+    }
     
     private var incompleteTasks: [TaskItem] {
         tasks.filter { !$0.safeIsCompleted }
@@ -31,6 +42,10 @@ struct TaskListView: View {
         !tasks.isEmpty
     }
 
+    private var shouldShowReminderPrompt: Bool {
+        !notificationsEnabled && !notificationsDenied
+    }
+
     private enum TaskSection: String, CaseIterable {
         case today = "Today"
         case upcoming = "Upcoming"
@@ -40,7 +55,10 @@ struct TaskListView: View {
     private var overdueTasks: [TaskItem] {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
-        return incompleteTasks.filter { $0.safeDueDate < todayStart }
+        return incompleteTasks.filter {
+            guard let referenceDate = $0.reminderReferenceDate else { return false }
+            return referenceDate < todayStart
+        }
     }
     
     private var sectionedTasks: [(TaskSection, [TaskItem])] {
@@ -55,7 +73,10 @@ struct TaskListView: View {
         ]
         
         for task in incompleteTasks {
-            let due = task.safeDueDate
+            guard let due = task.reminderReferenceDate else {
+                buckets[.later, default: []].append(task)
+                continue
+            }
             if due < todayStart {
                 // Overdue handled separately
                 continue
@@ -82,6 +103,9 @@ struct TaskListView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: AppTheme.Spacing.md) {
+                        if shouldShowReminderPrompt {
+                            reminderPrompt
+                        }
                         if incompleteTasks.isEmpty {
                             emptyState
                         } else {
@@ -105,8 +129,12 @@ struct TaskListView: View {
                                 completedTasksLink
                             }
                         }
-                    }
-                    .padding(.horizontal, AppTheme.Spacing.md)
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(reminderPromptHighlighted ? AppTheme.Colors.primary : .clear, lineWidth: 1.5)
+        )
                     .padding(.top, AppTheme.Spacing.sm)
                     .padding(.bottom, AppTheme.Spacing.lg)
                 }
@@ -120,6 +148,13 @@ struct TaskListView: View {
                 .animation(.easeInOut, value: completedTasksCount)
             }
             .navigationTitle("Tasks")
+            .onAppear {
+                if shouldFocusOnAppear {
+                    DispatchQueue.main.async {
+                        addTaskFocused = true
+                    }
+                }
+            }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
             }
@@ -203,6 +238,32 @@ struct TaskListView: View {
         }
         .buttonStyle(.plain)
     }
+
+    private var reminderPrompt: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Enable gentle reminders")
+                    .font(AppTheme.Typography.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.Colors.text)
+                Text("TaskFlow can nudge you when things are due.")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundStyle(AppTheme.Colors.secondaryText)
+            }
+            Spacer()
+            Button {
+                requestReminderPermission()
+            } label: {
+                Text("Enable")
+                    .frame(minWidth: 90)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isRequestingReminderPermission)
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, AppTheme.Spacing.md)
+    }
     
     private func taskRow(_ task: TaskItem) -> some View {
         NavigationLink(value: task) {
@@ -211,12 +272,42 @@ struct TaskListView: View {
         .buttonStyle(.plain)
     }
     
+    private func requestReminderPermission() {
+        guard !isRequestingReminderPermission else { return }
+        isRequestingReminderPermission = true
+        Task {
+            let granted = await NotificationManager.shared.requestAuthorization()
+            await MainActor.run {
+                notificationsEnabled = granted
+                notificationsDenied = !granted
+                if granted && dailyReviewEnabled {
+                    NotificationManager.shared.scheduleDailyReview()
+                }
+                isRequestingReminderPermission = false
+            }
+        }
+    }
+
+    private func pulseReminderPrompt() {
+        reminderPromptHighlighted = true
+        Task {
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            await MainActor.run {
+                reminderPromptHighlighted = false
+            }
+        }
+    }
+
     private func createInlineTask(title: String, dueDate: Date?) {
         let task = TaskItem(
             taskTitle: title,
             dueDate: dueDate
         )
         modelContext.insert(task)
+        NotificationManager.shared.scheduleReminder(for: task)
+        if !notificationsEnabled && !notificationsDenied {
+            pulseReminderPrompt()
+        }
     }
     
 }
@@ -252,7 +343,7 @@ private struct CompletedTasksView: View {
                             NavigationLink {
                                 TaskDetailView(task: task)
                             } label: {
-                                TaskRowView(task: task)
+                                TaskRowView(task: task, statusStyle: .completedMetadata)
                             }
                             .buttonStyle(.plain)
                         }
@@ -274,7 +365,10 @@ private struct OverdueTasksView: View {
     private var overdueTasks: [TaskItem] {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
-        return activeTasks.filter { $0.safeDueDate < todayStart }
+        return activeTasks.filter {
+            guard let referenceDate = $0.reminderReferenceDate else { return false }
+            return referenceDate < todayStart
+        }
     }
     
     var body: some View {
@@ -308,7 +402,24 @@ private struct OverdueTasksView: View {
                                 TaskRowView(task: task)
                             }
                             .buttonStyle(.plain)
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    reschedule(task, daysFromToday: 0)
+                                } label: {
+                                    Label("Move to Today", systemImage: "calendar")
+                                }
+                                .tint(AppTheme.Colors.primary)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button {
+                                    markDone(task)
+                                } label: {
+                                    Label("Done", systemImage: "checkmark")
+                                }
+                                .tint(AppTheme.Colors.success)
+                            }
                             .contextMenu {
+                                Button("Mark Done") { markDone(task) }
                                 Button("Move to Today") { reschedule(task, daysFromToday: 0) }
                                 Button("Move to Tomorrow") { reschedule(task, daysFromToday: 1) }
                                 Button("Move to Next Week") { reschedule(task, daysFromToday: 7) }
@@ -330,6 +441,14 @@ private struct OverdueTasksView: View {
         let newDate = calendar.date(byAdding: .day, value: daysFromToday, to: todayStart) ?? todayStart
         task.dueDate = newDate
         modelContext.insert(task)
+        NotificationManager.shared.scheduleReminder(for: task)
+    }
+
+    private func markDone(_ task: TaskItem) {
+        task.isCompleted = true
+        task.completionDate = Date()
+        modelContext.insert(task)
+        NotificationManager.shared.cancelReminder(for: task)
     }
 }
 
@@ -342,5 +461,5 @@ private struct OverdueTasksView: View {
 
 #Preview("Empty State") {
     TaskListView()
-        .modelContainer(for: [TaskItem.self, Subtask.self, DailyLogEntry.self], inMemory: true)
+        .modelContainer(for: [TaskItem.self, DailyLogEntry.self], inMemory: true)
 }

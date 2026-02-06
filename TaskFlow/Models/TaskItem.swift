@@ -20,10 +20,8 @@ final class TaskItem {
     var isCompleted: Bool?
     var completionDate: Date?
     var dueDate: Date?
+    var remindAt: Date?
     var createdAt: Date?
-    
-    @Relationship(deleteRule: .cascade, inverse: \Subtask.task)
-    var subtasks: [Subtask]?
     
     @Relationship(deleteRule: .cascade, inverse: \DailyLogEntry.task)
     var dailyLog: [DailyLogEntry]?
@@ -33,7 +31,8 @@ final class TaskItem {
         taskTitle: String? = "",
         taskDescription: String? = "",
         isCompleted: Bool? = false,
-        dueDate: Date? = Date(),
+        dueDate: Date? = nil,
+        remindAt: Date? = nil,
         createdAt: Date? = Date()
     ) {
         self.taskId = taskId
@@ -41,31 +40,24 @@ final class TaskItem {
         self.taskDescription = taskDescription
         self.isCompleted = isCompleted
         self.dueDate = dueDate
+        self.remindAt = remindAt
         self.createdAt = createdAt
-        self.subtasks = []
         self.dailyLog = []
     }
     
     // Computed properties with safe unwrapping
     var isOverdue: Bool {
-        guard let isCompleted = isCompleted, let dueDate = dueDate else { return false }
+        guard let isCompleted = isCompleted, let referenceDate = reminderReferenceDate else { return false }
         let todayStart = Calendar.current.startOfDay(for: Date())
-        return !isCompleted && dueDate < todayStart
+        return !isCompleted && referenceDate < todayStart
     }
     
     var daysUntilDue: Int {
-        guard let dueDate = dueDate else { return 0 }
-        return Calendar.current.dateComponents([.day], from: Date(), to: dueDate).day ?? 0
-    }
-    
-    var completedSubtasksCount: Int {
-        guard let subtasks = subtasks else { return 0 }
-        return subtasks.filter { $0.completed ?? false }.count
-    }
-    
-    var subtaskProgress: Double {
-        guard let subtasks = subtasks, !subtasks.isEmpty else { return 0 }
-        return Double(completedSubtasksCount) / Double(subtasks.count)
+        guard let referenceDate = reminderReferenceDate else { return 0 }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        let referenceStart = calendar.startOfDay(for: referenceDate)
+        return calendar.dateComponents([.day], from: todayStart, to: referenceStart).day ?? 0
     }
     
     // Safe accessors for UI
@@ -80,6 +72,10 @@ final class TaskItem {
     var safeDueDate: Date {
         dueDate ?? Date()
     }
+
+    var reminderReferenceDate: Date? {
+        remindAt ?? dueDate
+    }
     
     var safeCreatedAt: Date {
         createdAt ?? Date()
@@ -87,10 +83,6 @@ final class TaskItem {
     
     var safeIsCompleted: Bool {
         isCompleted ?? false
-    }
-    
-    var safeSubtasks: [Subtask] {
-        subtasks ?? []
     }
     
     var safeDailyLog: [DailyLogEntry] {

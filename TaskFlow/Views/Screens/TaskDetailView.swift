@@ -10,9 +10,18 @@ struct TaskDetailView: View {
     @State private var isEditing = false
     @State private var editedTitle = ""
     @State private var editedDescription = ""
-    @State private var newSubtaskTitle = ""
-    @State private var newLogNote = ""
     @State private var showingDeleteAlert = false
+    @FocusState private var focusedField: FocusField?
+    
+    @State private var dueDateEnabled = false
+    @State private var dueDateDraft = Date()
+    @State private var reminderEnabled = false
+    @State private var reminderDraft = Date()
+    
+    private enum FocusField {
+        case title
+        case description
+    }
     
     var body: some View {
         ZStack {
@@ -22,10 +31,8 @@ struct TaskDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     headerCard
+                    scheduleCard
                     descriptionCard
-                    subtasksCard
-                    dailyLogCard
-                    deleteButton
                 }
                 .padding(AppTheme.Spacing.md)
             }
@@ -33,11 +40,31 @@ struct TaskDetailView: View {
         .navigationTitle("Task Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(isEditing ? "Done" : "Edit") {
-                    if isEditing { saveEdits() } else { startEditing() }
+            ToolbarItem(placement: .cancellationAction) {
+                if isEditing {
+                    Button("Cancel") {
+                        cancelEditing()
+                    }
                 }
-                .fontWeight(.semibold)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                if isEditing {
+                    Button("Done") {
+                        saveEdits()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(role: .destructive, action: { showingDeleteAlert = true }) {
+                        Label("Delete Task", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(AppTheme.Colors.primary)
+                }
+                .accessibilityLabel("More actions")
             }
         }
         .alert("Delete Task", isPresented: $showingDeleteAlert) {
@@ -46,56 +73,121 @@ struct TaskDetailView: View {
         } message: {
             Text("Are you sure you want to delete this task? This action cannot be undone.")
         }
+        .onAppear(perform: syncScheduleState)
     }
     
     // MARK: - Header Card
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            if isEditing {
-                TextField("Task Title", text: $editedTitle)
-                    .font(AppTheme.Typography.title)
-                    .textFieldStyle(.plain)
-                    .padding(AppTheme.Spacing.sm)
-                    .background(AppTheme.Colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
-                Text(task.safeTitle)
-                    .font(AppTheme.Typography.title)
-                    .foregroundStyle(AppTheme.Colors.text)
-            }
-            
-            HStack {
-                TaskStatusBadge(task: task)
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                if isEditing {
+                    TextField("Task Title", text: $editedTitle)
+                        .font(AppTheme.Typography.title)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .focused($focusedField, equals: .title)
+                } else {
+                    Text(task.safeTitle)
+                        .font(AppTheme.Typography.title)
+                        .foregroundStyle(AppTheme.Colors.text)
+                        .lineLimit(2)
+                }
+                
                 Spacer()
                 
+                TaskStatusBadge(task: task)
+            }
+            
+            HStack(spacing: AppTheme.Spacing.sm) {
                 Button(action: toggleCompletion) {
-                    HStack {
+                    HStack(spacing: AppTheme.Spacing.xs) {
                         Image(systemName: task.safeIsCompleted ? "checkmark.circle.fill" : "circle")
                         Text(task.safeIsCompleted ? "Completed" : "Mark Complete")
                     }
-                    .font(AppTheme.Typography.body)
+                    .font(AppTheme.Typography.body.weight(.semibold))
                     .foregroundStyle(task.safeIsCompleted ? AppTheme.Colors.success : AppTheme.Colors.primary)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .background(AppTheme.Colors.background)
+                    .clipShape(Capsule())
                 }
-            }
-            
-            Divider()
-            
-            // Metadata
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                Label("Due: \(task.safeDueDate.formatted(date: .long, time: .omitted))", systemImage: "calendar")
-                Label("Created: \(task.safeCreatedAt.formatted(date: .abbreviated, time: .shortened))", systemImage: "clock")
                 
-                if let completionDate = task.completionDate {
-                    Label("Completed: \(completionDate.formatted(date: .abbreviated, time: .shortened))", systemImage: "checkmark.circle")
-                        .foregroundStyle(AppTheme.Colors.success)
+                Spacer()
+                
+                if let dueDate = task.dueDate {
+                    Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(dueDateColor)
+                } else {
+                    Label("No due date", systemImage: "calendar")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Colors.secondaryText)
                 }
             }
-            .font(AppTheme.Typography.caption)
-            .foregroundStyle(AppTheme.Colors.secondaryText)
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+    
+    // MARK: - Schedule Card
+    private var scheduleCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Schedule")
+                .font(AppTheme.Typography.headline)
+                .foregroundStyle(AppTheme.Colors.text)
+            
+            Toggle("Due date", isOn: $dueDateEnabled)
+                .onChange(of: dueDateEnabled) { _, isEnabled in
+                    if isEnabled {
+                        task.dueDate = dueDateDraft
+                    } else {
+                        task.dueDate = nil
+                    }
+                    refreshReminder()
+                }
+            
+            if dueDateEnabled {
+                DatePicker(
+                    "Due",
+                    selection: $dueDateDraft,
+                    displayedComponents: [.date]
+                )
+                .datePickerStyle(.compact)
+                .onChange(of: dueDateDraft) { _, newValue in
+                    task.dueDate = newValue
+                    refreshReminder()
+                }
+            }
+            
+            Toggle("Reminder time", isOn: $reminderEnabled)
+                .onChange(of: reminderEnabled) { _, isEnabled in
+                    if isEnabled {
+                        task.remindAt = reminderDraft
+                    } else {
+                        task.remindAt = nil
+                    }
+                    refreshReminder()
+                }
+            
+            if reminderEnabled {
+                DatePicker(
+                    "Remind me",
+                    selection: $reminderDraft,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .datePickerStyle(.compact)
+                .onChange(of: reminderDraft) { _, newValue in
+                    task.remindAt = newValue
+                    refreshReminder()
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
     
     // MARK: - Description Card
@@ -106,148 +198,50 @@ struct TaskDetailView: View {
                 .foregroundStyle(AppTheme.Colors.text)
             
             if isEditing {
-                TextEditor(text: $editedDescription)
-                    .font(AppTheme.Typography.body)
-                    .frame(minHeight: 100)
-                    .padding(AppTheme.Spacing.sm)
-                    .background(AppTheme.Colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .scrollContentBackground(.hidden)
+                textEditorWithPlaceholder(
+                    text: $editedDescription,
+                    placeholder: "Add a short description, goals, or context.",
+                    minHeight: 110
+                )
+                .focused($focusedField, equals: .description)
             } else {
-                Text(task.safeDescription.isEmpty ? "No description" : task.safeDescription)
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(task.safeDescription.isEmpty ? AppTheme.Colors.secondaryText : AppTheme.Colors.text)
-            }
-        }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    
-    // MARK: - Subtasks Card
-    private var subtasksCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack {
-                Text("Subtasks")
-                    .font(AppTheme.Typography.headline)
-                    .foregroundStyle(AppTheme.Colors.text)
-                
-                Spacer()
-                
-                if !task.safeSubtasks.isEmpty {
-                    Text("\(task.completedSubtasksCount)/\(task.safeSubtasks.count)")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
-                }
-            }
-            
-            if task.safeSubtasks.isEmpty {
-                Text("No subtasks")
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
-            } else {
-                ForEach(task.safeSubtasks.sorted(by: { $0.safeCreatedAt < $1.safeCreatedAt })) { subtask in
-                    SubtaskRow(subtask: subtask, onDelete: {
-                        deleteSubtask(subtask)
-                    })
-                }
-            }
-            
-            // Add subtask input
-            HStack {
-                TextField("Add subtask", text: $newSubtaskTitle)
-                    .font(AppTheme.Typography.body)
-                    .textFieldStyle(.plain)
-                    .onSubmit(addSubtask)
-                
-                Button(action: addSubtask) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(AppTheme.Colors.primary)
-                }
-                .disabled(newSubtaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            .padding(AppTheme.Spacing.md)
-            .background(AppTheme.Colors.background)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    
-    // MARK: - Daily Log Card
-    private var dailyLogCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("Daily Log")
-                .font(AppTheme.Typography.headline)
-                .foregroundStyle(AppTheme.Colors.text)
-            
-            if task.safeDailyLog.isEmpty {
-                Text("No log entries")
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
-            } else {
-                ForEach(task.safeDailyLog.sorted(by: { $0.safeTimestamp > $1.safeTimestamp })) { entry in
-                    DailyLogCard(entry: entry, onDelete: {
-                        deleteLogEntry(entry)
-                    })
-                }
-            }
-            
-            // Add log entry
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                TextEditor(text: $newLogNote)
-                    .font(AppTheme.Typography.body)
-                    .frame(minHeight: 80)
-                    .padding(AppTheme.Spacing.sm)
-                    .background(AppTheme.Colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .scrollContentBackground(.hidden)
-                
-                Button(action: addLogEntry) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add Log Entry")
+                Button {
+                    startEditing(focus: .description)
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: "square.and.pencil")
+                        Text(task.safeDescription.isEmpty ? "Add a note" : "Edit note")
                     }
                     .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(AppTheme.Colors.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(AppTheme.Spacing.md)
-                    .background(AppTheme.Colors.primary)
+                    .background(AppTheme.Colors.background)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .disabled(newLogNote.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(.plain)
+                
             }
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    
-    // MARK: - Delete Button
-    private var deleteButton: some View {
-        Button(role: .destructive) {
-            showingDeleteAlert = true
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text("Delete Task")
-            }
-            .font(AppTheme.Typography.body.weight(.semibold))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(AppTheme.Spacing.md)
-            .background(AppTheme.Colors.danger)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
     }
     
     // MARK: - Actions
-    private func startEditing() {
+    private func startEditing(focus: FocusField = .title) {
         editedTitle = task.safeTitle
         editedDescription = task.safeDescription
         isEditing = true
+        focusedField = focus
+    }
+    
+    private func cancelEditing() {
+        editedTitle = task.safeTitle
+        editedDescription = task.safeDescription
+        isEditing = false
+        focusedField = nil
     }
     
     private func saveEdits() {
@@ -257,6 +251,7 @@ struct TaskDetailView: View {
             task.taskDescription = editedDescription.trimmingCharacters(in: .whitespaces)
         }
         isEditing = false
+        focusedField = nil
     }
     
     private func toggleCompletion() {
@@ -264,51 +259,76 @@ struct TaskDetailView: View {
             task.isCompleted = !task.safeIsCompleted
             task.completionDate = task.safeIsCompleted ? Date() : nil
         }
-    }
-    
-    private func addSubtask() {
-        let trimmed = newSubtaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        
-        let subtask = Subtask(title: trimmed)
-        
-        if task.subtasks == nil {
-            task.subtasks = []
-        }
-        task.subtasks?.append(subtask)
-        
-        newSubtaskTitle = ""
-    }
-    
-    private func deleteSubtask(_ subtask: Subtask) {
-        withAnimation {
-            modelContext.delete(subtask)
-        }
-    }
-    
-    private func addLogEntry() {
-        let trimmed = newLogNote.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        
-        let entry = DailyLogEntry(note: trimmed)
-        
-        if task.dailyLog == nil {
-            task.dailyLog = []
-        }
-        task.dailyLog?.append(entry)
-        
-        newLogNote = ""
-    }
-    
-    private func deleteLogEntry(_ entry: DailyLogEntry) {
-        withAnimation {
-            modelContext.delete(entry)
+        if task.safeIsCompleted {
+            NotificationManager.shared.cancelReminder(for: task)
+        } else {
+            NotificationManager.shared.scheduleReminder(for: task)
         }
     }
     
     private func deleteTask() {
+        NotificationManager.shared.cancelReminder(for: task)
         modelContext.delete(task)
         dismiss()
+    }
+    
+    private var dueDateColor: Color {
+        if task.safeIsCompleted {
+            return AppTheme.Colors.success
+        }
+        if task.isOverdue {
+            return AppTheme.Colors.danger
+        }
+        return AppTheme.Colors.secondaryText
+    }
+    
+    private func textEditorWithPlaceholder(
+        text: Binding<String>,
+        placeholder: String,
+        minHeight: CGFloat
+    ) -> some View {
+        ZStack(alignment: .topLeading) {
+            TextEditor(text: text)
+                .font(AppTheme.Typography.body)
+                .frame(minHeight: minHeight)
+                .padding(AppTheme.Spacing.sm)
+                .background(AppTheme.Colors.background)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .scrollContentBackground(.hidden)
+            
+            if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(placeholder)
+                    .font(AppTheme.Typography.body)
+                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .padding(.horizontal, AppTheme.Spacing.sm + 2)
+                    .padding(.vertical, AppTheme.Spacing.sm + 6)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+    
+    private func refreshReminder() {
+        NotificationManager.shared.scheduleReminder(for: task)
+    }
+    
+    private func syncScheduleState() {
+        dueDateEnabled = task.dueDate != nil
+        dueDateDraft = task.dueDate ?? Date()
+        reminderEnabled = task.remindAt != nil
+        reminderDraft = task.remindAt ?? defaultReminderDraft()
+    }
+    
+    private func defaultReminderDraft() -> Date {
+        if let dueDate = task.dueDate {
+            let calendar = Calendar.current
+            return calendar.date(
+                bySettingHour: 9,
+                minute: 0,
+                second: 0,
+                of: dueDate
+            ) ?? dueDate
+        }
+        return Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
     }
 }
 

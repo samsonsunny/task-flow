@@ -10,6 +10,13 @@ import SwiftUI
 
 struct TaskRowView: View {
     let task: TaskItem
+    var statusStyle: StatusStyle = .standard
+
+    enum StatusStyle {
+        case standard
+        case completedMetadata
+        case none
+    }
     
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -25,33 +32,31 @@ struct TaskRowView: View {
                 }
                 
                 HStack(spacing: 8) {
-                    Label(
-                        task.safeDueDate.formatted(date: .abbreviated, time: .omitted),
-                        systemImage: "calendar"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    if let remindAt = task.remindAt {
+                        Label(
+                            remindAt.formatted(date: .abbreviated, time: .shortened),
+                            systemImage: "bell"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    } else if let dueDate = task.dueDate {
+                        Label(
+                            dueDate.formatted(date: .abbreviated, time: .omitted),
+                            systemImage: "calendar"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    } else {
+                        Label("No date", systemImage: "calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
 
                     if let status = statusText {
                         Text("· \(status)")
                             .font(.caption)
                             .foregroundStyle(statusColor)
                     }
-                    
-                    if !task.safeSubtasks.isEmpty {
-                        Spacer()
-                        Label(
-                            "\(task.completedSubtasksCount)/\(task.safeSubtasks.count)",
-                            systemImage: "checklist"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-                
-                if !task.safeSubtasks.isEmpty {
-                    ProgressView(value: task.subtaskProgress)
-                        .tint(task.safeIsCompleted ? .green : .accentColor)
                 }
             }
             
@@ -68,14 +73,36 @@ struct TaskRowView: View {
     }
 
     private var statusText: String? {
-        if task.safeIsCompleted { return "Done" }
-        if task.isOverdue { return "Overdue" }
-        return nil
+        switch statusStyle {
+        case .none:
+            return nil
+        case .standard:
+            if task.safeIsCompleted { return "Done" }
+            if task.isOverdue { return "Overdue" }
+            return nil
+        case .completedMetadata:
+            if task.safeIsCompleted {
+                if let completionDate = task.completionDate {
+                    let dateText = completionDate.formatted(date: .abbreviated, time: .omitted)
+                    return "Completed · \(dateText)"
+                }
+                return "Completed"
+            }
+            if task.isOverdue { return "Overdue" }
+            return nil
+        }
     }
     
     private var statusColor: Color {
-        if task.safeIsCompleted { return .secondary }
-        if task.isOverdue { return AppTheme.Colors.danger.opacity(0.85) }
-        return .secondary
+        switch statusStyle {
+        case .completedMetadata:
+            if task.safeIsCompleted { return AppTheme.Colors.success.opacity(0.85) }
+            if task.isOverdue { return AppTheme.Colors.danger.opacity(0.85) }
+            return .secondary
+        case .standard, .none:
+            if task.safeIsCompleted { return .secondary }
+            if task.isOverdue { return AppTheme.Colors.danger.opacity(0.85) }
+            return .secondary
+        }
     }
 }
