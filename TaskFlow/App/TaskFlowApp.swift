@@ -17,8 +17,7 @@ import SwiftData
 struct TaskFlowApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            TaskItem.self,
-            DailyLogEntry.self
+            TaskItem.self
         ])
         
         // Enable iCloud sync with automatic CloudKit database

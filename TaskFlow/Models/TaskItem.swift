@@ -23,8 +23,7 @@ final class TaskItem {
     var remindAt: Date?
     var createdAt: Date?
     
-    @Relationship(deleteRule: .cascade, inverse: \DailyLogEntry.task)
-    var dailyLog: [DailyLogEntry]?
+
     
     init(
         taskId: String? = UUID().uuidString,
@@ -42,7 +41,7 @@ final class TaskItem {
         self.dueDate = dueDate
         self.remindAt = remindAt
         self.createdAt = createdAt
-        self.dailyLog = []
+
     }
     
     // Computed properties with safe unwrapping
@@ -85,7 +84,5 @@ final class TaskItem {
         isCompleted ?? false
     }
     
-    var safeDailyLog: [DailyLogEntry] {
-        dailyLog ?? []
-    }
+
 }

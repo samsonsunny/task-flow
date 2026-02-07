@@ -12,7 +12,7 @@ enum TaskPreviewData {
     static func container() -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(
-            for: TaskItem.self, DailyLogEntry.self,
+            for: TaskItem.self,
             configurations: config
         )
     }
@@ -51,15 +51,9 @@ enum TaskPreviewData {
             dueDate: Date().addingTimeInterval(86400 * 5)
         )
 
-        let log1 = DailyLogEntry(
-            timestamp: Date().addingTimeInterval(-7200),
-            note: "Started working on the task detail view. Made good progress with the layout."
-        )
-        let log2 = DailyLogEntry(
-            timestamp: Date().addingTimeInterval(-3600),
-            note: "Finished layout polish. Need to test edge cases tomorrow."
-        )
-        task.dailyLog = [log1, log2]
+
+
+
 
         return task
     }

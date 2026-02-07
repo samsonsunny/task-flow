@@ -46,10 +46,6 @@ struct TaskRowView: View {
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    } else {
-                        Label("No date", systemImage: "calendar")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
 
                     if let status = statusText {

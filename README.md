@@ -5,18 +5,18 @@ TaskFlow is a SwiftUI task manager for iOS. It focuses on clean task capture, du
 
 ## Product Overview
 
-TaskFlow helps you plan, execute, and review work in a single place. Create tasks with due dates, break them into subtasks, and keep a running daily log of progress or notes. The UI is designed to be fast and calm, with just enough structure to keep you moving.
+TaskFlow helps you plan, execute, and review work in a single place. Create tasks with due dates. The UI is designed to be fast and calm, with just enough structure to keep you moving.
 
 ## Key Features
 
 - Task list with due-date sorting and swipe-to-delete
 - Search by task title or description
 - Filter to show or hide completed tasks
-- Task creation with title, description, due date, and optional subtasks
+- Task creation with title, description, due date
 - Task details view with edit-in-place
 - Completion tracking with completion date
-- Subtask checklist with progress indicator
-- Daily log entries per task with timestamps
+
+
 - Status badges for Done, Overdue, and time-to-due
 - iCloud sync via SwiftData + CloudKit, with pull-to-refresh to re-sync
 
@@ -31,7 +31,7 @@ TaskFlow uses SwiftData as the local persistence layer and enables iCloud sync v
 ## Project Structure
 
 - `TaskFlow/App`: App entry point and top-level views
-- `TaskFlow/Models`: SwiftData models for tasks, subtasks, and daily logs
+- `TaskFlow/Models`: SwiftData models for tasks
 - `TaskFlow/Views`: Screens and reusable UI components
 - `TaskFlow/Theme`: App styling and typography
 - `TaskFlow/Extensions`: Utilities and shared helpers

@@ -9,9 +9,16 @@
 
 import SwiftUI
 
+enum EmptyStateType {
+    case noTasks
+    case allDone
+    case noCompleted
+    case noOverdue
+    case noSearchResults(searchText: String)
+}
+
 struct EmptyStateView: View {
-    let searchText: String
-    let showCompleted: Bool
+    let type: EmptyStateType
     
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
@@ -27,51 +34,74 @@ struct EmptyStateView: View {
                 .font(AppTheme.Typography.body)
                 .foregroundStyle(AppTheme.Colors.secondaryText)
                 .multilineTextAlignment(.center)
-//                .padding(.horizontal, AppTheme.Spacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var emptyStateIcon: String {
-        if !searchText.isEmpty {
-            return "magnifyingglass"
-        } else if !showCompleted {
-            return "checkmark.circle"
-        } else {
+        switch type {
+        case .noTasks:
             return "tray"
+        case .allDone:
+            return "checkmark.circle"
+        case .noCompleted:
+            return "checkmark.circle"
+        case .noOverdue:
+            return "clock"
+        case .noSearchResults:
+            return "magnifyingglass"
         }
     }
     
     private var emptyStateTitle: String {
-        if !searchText.isEmpty {
-            return "No Results"
-        } else if !showCompleted {
-            return "All Done!"
-        } else {
+        switch type {
+        case .noTasks:
             return "No Tasks"
+        case .allDone:
+            return "All Done!"
+        case .noCompleted:
+            return "No Completed Tasks"
+        case .noOverdue:
+            return "No Overdue Tasks"
+        case .noSearchResults:
+            return "No Results"
         }
     }
     
     private var emptyStateMessage: String {
-        if !searchText.isEmpty {
-            return "Try searching with different keywords"
-        } else if !showCompleted {
-            return "All active tasks are completed.\nShow completed tasks to see them."
-        } else {
-            return "Create your first task to get started"
+        switch type {
+        case .noTasks:
+            return "Create your first task to get started."
+        case .allDone:
+            return "You have no active tasks."
+        case .noCompleted:
+            return "Completed tasks will appear here."
+        case .noOverdue:
+            return "Overdue tasks will appear here."
+        case let .noSearchResults(searchText):
+            return "No tasks matching \"\(searchText)\". Try searching with different keywords."
         }
     }
 }
 
 #Preview("No Tasks") {
-    EmptyStateView(searchText: "", showCompleted: true)
+    EmptyStateView(type: .noTasks)
+}
+
+#Preview("All Done") {
+    EmptyStateView(type: .allDone)
+}
+
+#Preview("No Completed Tasks") {
+    EmptyStateView(type: .noCompleted)
+}
+
+#Preview("No Overdue Tasks") {
+    EmptyStateView(type: .noOverdue)
 }
 
 #Preview("No Search Results") {
-    EmptyStateView(searchText: "meeting", showCompleted: true)
+    EmptyStateView(type: .noSearchResults(searchText: "meeting"))
 }
 
-#Preview("All Completed") {
-    EmptyStateView(searchText: "", showCompleted: false)
-}
  

@@ -17,12 +17,20 @@ struct TaskDetailView: View {
     @State private var dueDateDraft = Date()
     @State private var reminderEnabled = false
     @State private var reminderDraft = Date()
+    @State private var saveStatus: SaveStatus = .idle
+    @State private var saveStatusTask: Task<Void, Never>?
     
     private enum FocusField {
         case title
         case description
     }
-    
+
+    private enum SaveStatus {
+        case idle
+        case saving
+        case saved
+    }
+
     var body: some View {
         ZStack {
             AppTheme.Colors.background
@@ -30,6 +38,7 @@ struct TaskDetailView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    saveIndicator
                     headerCard
                     scheduleCard
                     descriptionCard
@@ -74,6 +83,13 @@ struct TaskDetailView: View {
             Text("Are you sure you want to delete this task? This action cannot be undone.")
         }
         .onAppear(perform: syncScheduleState)
+        .onDisappear {
+            if isEditing {
+                saveEdits()
+            }
+            saveStatusTask?.cancel()
+            saveStatusTask = nil
+        }
     }
     
     // MARK: - Header Card
@@ -221,12 +237,49 @@ struct TaskDetailView: View {
                 }
                 .buttonStyle(.plain)
                 
+                if !task.safeDescription.isEmpty {
+                    Text(task.safeDescription)
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(AppTheme.Colors.secondaryText)
+                        .padding(.top, AppTheme.Spacing.sm)
+                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    private var saveIndicator: some View {
+        switch saveStatus {
+        case .idle:
+            EmptyView()
+        case .saving:
+            saveIndicatorLabel(text: "Saving…", icon: "hourglass")
+        case .saved:
+            saveIndicatorLabel(text: "Saved", icon: "checkmark.circle")
+        }
+    }
+
+    private func saveIndicatorLabel(text: String, icon: String) -> some View {
+        Label(text, systemImage: icon)
+            .font(AppTheme.Typography.caption)
+            .foregroundStyle(AppTheme.Colors.secondaryText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(AppTheme.Colors.background.opacity(0.9))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(AppTheme.Colors.secondaryText.opacity(0.2), lineWidth: 1)
+            )
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            .animation(.easeInOut(duration: 0.25), value: saveStatus)
     }
     
     // MARK: - Actions
@@ -252,6 +305,7 @@ struct TaskDetailView: View {
         }
         isEditing = false
         focusedField = nil
+        queueSaveStatus()
     }
     
     private func toggleCompletion() {
@@ -329,6 +383,24 @@ struct TaskDetailView: View {
             ) ?? dueDate
         }
         return Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
+    }
+
+    private func queueSaveStatus() {
+        saveStatusTask?.cancel()
+        saveStatus = .saving
+        let statusTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                saveStatus = .saved
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                saveStatus = .idle
+            }
+        }
+        saveStatusTask = statusTask
     }
 }
 

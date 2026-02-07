@@ -9,6 +9,11 @@
 import SwiftUI
 import SwiftData
 
+enum AppScreen: Hashable {
+    case overdue
+    case completed
+}
+
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
@@ -46,10 +51,13 @@ struct TaskListView: View {
         !notificationsEnabled && !notificationsDenied
     }
 
-    private enum TaskSection: String, CaseIterable {
+    private enum TaskSection: String, CaseIterable, Identifiable {
         case today = "Today"
         case upcoming = "Upcoming"
         case later = "Later"
+        case noDueDate = "Someday"
+
+        var id: String { self.rawValue }
     }
     
     private var overdueTasks: [TaskItem] {
@@ -74,7 +82,7 @@ struct TaskListView: View {
         
         for task in incompleteTasks {
             guard let due = task.reminderReferenceDate else {
-                buckets[.later, default: []].append(task)
+                buckets[.noDueDate, default: []].append(task)
                 continue
             }
             if due < todayStart {
@@ -89,7 +97,7 @@ struct TaskListView: View {
             }
         }
         
-        return TaskSection.allCases.compactMap { section in
+        return ([.today, .upcoming, .later, .noDueDate]).compactMap { section in
             guard let items = buckets[section], !items.isEmpty else { return nil }
             return (section, items)
         }
@@ -107,7 +115,7 @@ struct TaskListView: View {
                             reminderPrompt
                         }
                         if incompleteTasks.isEmpty {
-                            emptyState
+                            EmptyStateView(type: hasAnyTasks ? .allDone : .noTasks)
                         } else {
                             if !overdueTasks.isEmpty {
                                 overdueTasksLink
@@ -158,35 +166,24 @@ struct TaskListView: View {
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
             }
+            .navigationDestination(for: AppScreen.self) { screen in
+                switch screen {
+                case .overdue:
+                    OverdueTasksView()
+                case .completed:
+                    CompletedTasksView()
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 InlineAddTaskRow(isFocused: $addTaskFocused, onCreate: createInlineTask)
             }
         }
     }
     
-    private var emptyState: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
-            Image(systemName: hasAnyTasks ? "checkmark.circle" : "tray")
-                .font(.system(size: 64))
-                .foregroundStyle(AppTheme.Colors.secondaryText.opacity(0.5))
-            
-            Text(hasAnyTasks ? "All Done!" : "No Tasks")
-                .font(AppTheme.Typography.title)
-                .foregroundStyle(AppTheme.Colors.text)
-            
-            Text(hasAnyTasks ? "You have no active tasks." : "Create your first task to get started.")
-                .font(AppTheme.Typography.body)
-                .foregroundStyle(AppTheme.Colors.secondaryText)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(AppTheme.Spacing.lg)
-    }
+
 
     private var overdueTasksLink: some View {
-        NavigationLink {
-            OverdueTasksView()
-        } label: {
+        NavigationLink(value: AppScreen.overdue) {
             HStack {
                 Text("Overdue")
                     .font(AppTheme.Typography.body.weight(.semibold))
@@ -212,9 +209,7 @@ struct TaskListView: View {
     }
     
     private var completedTasksLink: some View {
-        NavigationLink {
-            CompletedTasksView()
-        } label: {
+        NavigationLink(value: AppScreen.completed) {
             HStack {
                 Text("Completed")
                     .font(AppTheme.Typography.body.weight(.semibold))
@@ -321,28 +316,12 @@ private struct CompletedTasksView: View {
                 .ignoresSafeArea()
             
             if completedTasks.isEmpty {
-                VStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 64))
-                        .foregroundStyle(AppTheme.Colors.secondaryText.opacity(0.5))
-                    
-                    Text("No Completed Tasks")
-                        .font(AppTheme.Typography.title)
-                        .foregroundStyle(AppTheme.Colors.text)
-                    
-                    Text("Completed tasks will appear here.")
-                        .font(AppTheme.Typography.body)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(AppTheme.Spacing.lg)
+            EmptyStateView(type: .noCompleted)
             } else {
                 ScrollView {
                     LazyVStack(spacing: AppTheme.Spacing.sm) {
                         ForEach(completedTasks) { task in
-                            NavigationLink {
-                                TaskDetailView(task: task)
-                            } label: {
+                            NavigationLink(value: task) {
                                 TaskRowView(task: task, statusStyle: .completedMetadata)
                             }
                             .buttonStyle(.plain)
@@ -377,28 +356,12 @@ private struct OverdueTasksView: View {
                 .ignoresSafeArea()
             
             if overdueTasks.isEmpty {
-                VStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 64))
-                        .foregroundStyle(AppTheme.Colors.secondaryText.opacity(0.5))
-                    
-                    Text("No Overdue Tasks")
-                        .font(AppTheme.Typography.title)
-                        .foregroundStyle(AppTheme.Colors.text)
-                    
-                    Text("Overdue tasks will appear here.")
-                        .font(AppTheme.Typography.body)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(AppTheme.Spacing.lg)
+            EmptyStateView(type: .noOverdue)
             } else {
                 ScrollView {
                     LazyVStack(spacing: AppTheme.Spacing.md) {
                         ForEach(overdueTasks) { task in
-                            NavigationLink {
-                                TaskDetailView(task: task)
-                            } label: {
+                            NavigationLink(value: task) {
                                 TaskRowView(task: task)
                             }
                             .buttonStyle(.plain)
@@ -461,5 +424,5 @@ private struct OverdueTasksView: View {
 
 #Preview("Empty State") {
     TaskListView()
-        .modelContainer(for: [TaskItem.self, DailyLogEntry.self], inMemory: true)
+        .modelContainer(for: [TaskItem.self], inMemory: true)
 }

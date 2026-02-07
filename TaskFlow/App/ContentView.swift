@@ -59,7 +59,7 @@ struct ContentView: View {
 
 #Preview("Empty State") {
     ContentView()
-        .modelContainer(for: [TaskItem.self, DailyLogEntry.self], inMemory: true)
+        .modelContainer(for: [TaskItem.self], inMemory: true)
 }
 
 #Preview("With Tasks") {
