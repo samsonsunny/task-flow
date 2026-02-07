@@ -77,7 +77,8 @@ struct TaskListView: View {
         var buckets: [TaskSection: [TaskItem]] = [
             .today: [],
             .upcoming: [],
-            .later: []
+            .later: [],
+            .noDueDate: []
         ]
         
         for task in incompleteTasks {
@@ -97,7 +98,7 @@ struct TaskListView: View {
             }
         }
         
-        return ([.today, .upcoming, .later, .noDueDate]).compactMap { section in
+        return ([TaskSection.today, TaskSection.upcoming, TaskSection.later, TaskSection.noDueDate]).compactMap { section in
             guard let items = buckets[section], !items.isEmpty else { return nil }
             return (section, items)
         }
