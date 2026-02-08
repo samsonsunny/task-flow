@@ -8,7 +8,7 @@ struct OverdueTasksView: View {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
         return #Predicate<TaskItem> { task in
-            task.isCompleted == false && task.reminderReferenceDate != nil && task.reminderReferenceDate! < todayStart
+            task.isCompleted == false && task.storedReminderReferenceDate != nil && task.storedReminderReferenceDate! < todayStart
         }
     }
     

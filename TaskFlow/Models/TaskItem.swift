@@ -19,10 +19,18 @@ final class TaskItem {
     var taskDescription: String?
     var isCompleted: Bool?
     var completionDate: Date?
-    var dueDate: Date?
-    var remindAt: Date?
+    var dueDate: Date? {
+        didSet {
+            storedReminderReferenceDate = remindAt ?? dueDate
+        }
+    }
+    var remindAt: Date? {
+        didSet {
+            storedReminderReferenceDate = remindAt ?? dueDate
+        }
+    }
     var createdAt: Date?
-    
+    var storedReminderReferenceDate: Date? // New stored property for predicate
 
     
     init(
@@ -41,7 +49,7 @@ final class TaskItem {
         self.dueDate = dueDate
         self.remindAt = remindAt
         self.createdAt = createdAt
-
+        self.storedReminderReferenceDate = remindAt ?? dueDate
     }
     
     // Computed properties with safe unwrapping
@@ -73,7 +81,7 @@ final class TaskItem {
     }
 
     var reminderReferenceDate: Date? {
-        remindAt ?? dueDate
+        storedReminderReferenceDate
     }
     
     var safeCreatedAt: Date {
