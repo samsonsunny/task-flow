@@ -1,0 +1,30 @@
+import SwiftUI
+
+struct CardView<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(AppTheme.spacing.md)
+            .background(AppTheme.colors.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+            .appShadow(AppTheme.shadows.elevation2)
+    }
+}
+
+#Preview {
+    CardView {
+        VStack {
+            Text("Card Title")
+                .font(AppTheme.fonts.title2)
+            Text("This is some content inside a card.")
+                .font(AppTheme.fonts.body)
+        }
+        .padding()
+    }
+    .padding()
+}

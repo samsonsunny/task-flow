@@ -43,7 +43,7 @@ struct TaskDetailView: View {
                     scheduleCard
                     descriptionCard
                 }
-                .padding(AppTheme.spacing.md)
+                .padding(AppTheme.spacing.lg)
             }
         }
         .navigationTitle("Task Details")
@@ -94,163 +94,157 @@ struct TaskDetailView: View {
     
     // MARK: - Header Card
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
-            HStack(alignment: .top, spacing: AppTheme.spacing.sm) {
-                if isEditing {
-                    TextField("Task Title", text: $editedTitle)
-                        .font(AppTheme.fonts.title)
-                        .textFieldStyle(.plain)
-                        .padding(.vertical, AppTheme.spacing.xs)
-                        .focused($focusedField, equals: .title)
-                } else {
-                    Text(task.safeTitle)
-                        .font(AppTheme.fonts.title)
-                        .foregroundStyle(AppTheme.colors.text)
-                        .lineLimit(2)
-                }
-                
-                Spacer()
-                
-                TaskStatusBadge(task: task)
-            }
-            
-            HStack(spacing: AppTheme.spacing.sm) {
-                Button(action: toggleCompletion) {
-                    HStack(spacing: AppTheme.spacing.xs) {
-                        Image(systemName: task.safeIsCompleted ? "checkmark.circle.fill" : "circle")
-                        Text(task.safeIsCompleted ? "Completed" : "Mark Complete")
+        CardView {
+            VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
+                HStack(alignment: .top, spacing: AppTheme.spacing.sm) {
+                    if isEditing {
+                        TextField("Task Title", text: $editedTitle)
+                            .font(AppTheme.fonts.title)
+                            .textFieldStyle(.plain)
+                            .padding(.vertical, AppTheme.spacing.xs)
+                            .focused($focusedField, equals: .title)
+                    } else {
+                        Text(task.safeTitle)
+                            .font(AppTheme.fonts.title)
+                            .foregroundStyle(AppTheme.colors.text)
+                            .lineLimit(2)
                     }
-                    .font(AppTheme.fonts.body.weight(.semibold))
-                    .foregroundStyle(task.safeIsCompleted ? AppTheme.colors.success : AppTheme.colors.primary)
-                    .padding(.vertical, AppTheme.spacing.sm)
-                    .padding(.horizontal, AppTheme.spacing.md)
-                    .background(AppTheme.colors.background)
-                    .clipShape(Capsule())
+                    
+                    Spacer()
+                    
+                    TaskStatusBadge(task: task)
                 }
                 
-                Spacer()
-                
-                if let dueDate = task.dueDate {
-                    Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                        .font(AppTheme.fonts.caption)
-                        .foregroundStyle(dueDateColor)
-                } else {
-                    Label("No due date", systemImage: "calendar")
-                        .font(AppTheme.fonts.caption)
-                        .foregroundStyle(AppTheme.colors.secondaryText)
+                HStack(spacing: AppTheme.spacing.sm) {
+                    Button(action: toggleCompletion) {
+                        HStack(spacing: AppTheme.spacing.xs) {
+                            Image(systemName: task.safeIsCompleted ? "checkmark.circle.fill" : "circle")
+                            Text(task.safeIsCompleted ? "Completed" : "Mark Complete")
+                        }
+                        .font(AppTheme.fonts.body.weight(.semibold))
+                        .foregroundStyle(task.safeIsCompleted ? AppTheme.colors.success : AppTheme.colors.primary)
+                        .padding(.vertical, AppTheme.spacing.sm)
+                        .padding(.horizontal, AppTheme.spacing.md)
+                        .background(AppTheme.colors.background)
+                        .clipShape(Capsule())
+                    }
+                    
+                    Spacer()
+                    
+                    if let dueDate = task.dueDate {
+                        Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                            .font(AppTheme.fonts.caption)
+                            .foregroundStyle(dueDateColor)
+                    } else {
+                        Label("No due date", systemImage: "calendar")
+                            .font(AppTheme.fonts.caption)
+                            .foregroundStyle(AppTheme.colors.secondaryText)
+                    }
                 }
             }
         }
-        .padding(AppTheme.spacing.md)
-        .background(AppTheme.colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
-        .appShadow(AppTheme.shadows.elevation2)
     }
     
     // MARK: - Schedule Card
-    private var scheduleCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
-            Text("Schedule")
-                .font(AppTheme.fonts.headline)
-                .foregroundStyle(AppTheme.colors.text)
-            
-            Toggle("Due date", isOn: $dueDateEnabled)
-                .onChange(of: dueDateEnabled) { _, isEnabled in
-                    if isEnabled {
-                        task.dueDate = dueDateDraft
-                    } else {
-                        task.dueDate = nil
+        private var scheduleCard: some View {
+            CardView {
+                VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
+                    Text("Schedule")
+                        .font(AppTheme.fonts.headline)
+                        .foregroundStyle(AppTheme.colors.text)
+                    
+                    Toggle("Due date", isOn: $dueDateEnabled)
+                        .onChange(of: dueDateEnabled) { _, isEnabled in
+                            if isEnabled {
+                                task.dueDate = dueDateDraft
+                            } else {
+                                task.dueDate = nil
+                            }
+                            refreshReminder()
+                        }
+                    
+                    if dueDateEnabled {
+                        DatePicker(
+                            "Due",
+                            selection: $dueDateDraft,
+                            displayedComponents: [.date]
+                        )
+                        .datePickerStyle(.compact)
+                        .onChange(of: dueDateDraft) { _, newValue in
+                            task.dueDate = newValue
+                            refreshReminder()
+                        }
                     }
-                    refreshReminder()
-                }
-            
-            if dueDateEnabled {
-                DatePicker(
-                    "Due",
-                    selection: $dueDateDraft,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.compact)
-                .onChange(of: dueDateDraft) { _, newValue in
-                    task.dueDate = newValue
-                    refreshReminder()
-                }
-            }
-            
-            Toggle("Reminder time", isOn: $reminderEnabled)
-                .onChange(of: reminderEnabled) { _, isEnabled in
-                    if isEnabled {
-                        task.remindAt = reminderDraft
-                    } else {
-                        task.remindAt = nil
+                    
+                    Toggle("Reminder time", isOn: $reminderEnabled)
+                        .onChange(of: reminderEnabled) { _, isEnabled in
+                            if isEnabled {
+                                task.remindAt = reminderDraft
+                            } else {
+                                task.remindAt = nil
+                            }
+                            refreshReminder()
+                        }
+                    
+                    if reminderEnabled {
+                        DatePicker(
+                            "Remind me",
+                            selection: $reminderDraft,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(.compact)
+                        .onChange(of: reminderDraft) { _, newValue in
+                            task.remindAt = newValue
+                            refreshReminder()
+                        }
                     }
-                    refreshReminder()
-                }
-            
-            if reminderEnabled {
-                DatePicker(
-                    "Remind me",
-                    selection: $reminderDraft,
-                    displayedComponents: [.date, .hourAndMinute]
-                )
-                .datePickerStyle(.compact)
-                .onChange(of: reminderDraft) { _, newValue in
-                    task.remindAt = newValue
-                    refreshReminder()
                 }
             }
         }
-        .padding(AppTheme.spacing.md)
-        .background(AppTheme.colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
-        .appShadow(AppTheme.shadows.elevation2)
-    }
     
     // MARK: - Description Card
     private var descriptionCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
-            Text("Description")
-                .font(AppTheme.fonts.headline)
-                .foregroundStyle(AppTheme.colors.text)
-            
-            if isEditing {
-                textEditorWithPlaceholder(
-                    text: $editedDescription,
-                    placeholder: "Add a short description, goals, or context.",
-                    minHeight: 110
-                )
-                .focused($focusedField, equals: .description)
-            } else {
-                Button {
-                    startEditing(focus: .description)
-                } label: {
-                    HStack(spacing: AppTheme.spacing.sm) {
-                        Image(systemName: "square.and.pencil")
-                        Text(task.safeDescription.isEmpty ? "Add a note" : "Edit note")
-                    }
-                    .font(AppTheme.fonts.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(AppTheme.spacing.md)
-                    .background(AppTheme.colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-                }
-                .buttonStyle(.plain)
+        CardView {
+            VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
+                Text("Description")
+                    .font(AppTheme.fonts.headline)
+                    .foregroundStyle(AppTheme.colors.text)
                 
-                if !task.safeDescription.isEmpty {
-                    Text(task.safeDescription)
-                        .font(AppTheme.fonts.body)
-                        .foregroundStyle(AppTheme.colors.secondaryText)
-                        .padding(.top, AppTheme.spacing.sm)
-                        .padding(.horizontal, AppTheme.spacing.md)
+                if isEditing {
+                    textEditorWithPlaceholder(
+                        text: $editedDescription,
+                        placeholder: "Add a short description, goals, or context.",
+                        minHeight: 110
+                    )
+                    .focused($focusedField, equals: .description)
+                } else {
+                    Button {
+                        startEditing(focus: .description)
+                    } label: {
+                        HStack(spacing: AppTheme.spacing.sm) {
+                            Image(systemName: "square.and.pencil")
+                            Text(task.safeDescription.isEmpty ? "Add a note" : "Edit note")
+                        }
+                        .font(AppTheme.fonts.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.colors.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(AppTheme.spacing.md)
+                        .background(AppTheme.colors.background)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if !task.safeDescription.isEmpty {
+                        Text(task.safeDescription)
+                            .font(AppTheme.fonts.body)
+                            .foregroundStyle(AppTheme.colors.secondaryText)
+                            .padding(.top, AppTheme.spacing.sm)
+                            .padding(.horizontal, AppTheme.spacing.md)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
         }
-        .padding(AppTheme.spacing.md)
-        .background(AppTheme.colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
-        .appShadow(AppTheme.shadows.elevation2)
     }
 
     @ViewBuilder

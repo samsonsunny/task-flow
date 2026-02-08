@@ -124,7 +124,7 @@ struct TaskListView: View {
                             
                             ForEach(sectionedTasks, id: \.0) { section, items in
                                 Text(section.rawValue)
-                                    .font(AppTheme.fonts.caption)
+                                    .font(AppTheme.fonts.subheadline.weight(.semibold))
                                     .foregroundStyle(AppTheme.colors.secondaryText)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.top, AppTheme.spacing.sm)
@@ -139,12 +139,12 @@ struct TaskListView: View {
                             }
                         }
         }
-        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.horizontal, AppTheme.spacing.lg)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous)
                 .stroke(reminderPromptHighlighted ? AppTheme.colors.primary : .clear, lineWidth: 1.5)
         )
-                    .padding(.top, AppTheme.spacing.sm)
+                    .padding(.top, AppTheme.spacing.md)
                     .padding(.bottom, AppTheme.spacing.lg)
                 }
                 .scrollDismissesKeyboard(.interactively)
@@ -258,7 +258,6 @@ struct TaskListView: View {
         .padding(AppTheme.spacing.md)
         .background(AppTheme.colors.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous))
-        .padding(.horizontal, AppTheme.spacing.md)
     }
     
     private func taskRow(_ task: TaskItem) -> some View {
