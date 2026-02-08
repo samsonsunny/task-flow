@@ -21,18 +21,18 @@ struct EmptyStateView: View {
     let type: EmptyStateType
     
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
+        VStack(spacing: AppTheme.spacing.lg) {
             Image(systemName: emptyStateIcon)
-                .font(.system(size: 80))
-                .foregroundStyle(AppTheme.Colors.secondaryText.opacity(0.5))
+                .font(AppTheme.fonts.extraLargeIcon)
+                .foregroundStyle(AppTheme.colors.secondaryText.opacity(0.5))
             
             Text(emptyStateTitle)
-                .font(AppTheme.Typography.title)
-                .foregroundStyle(AppTheme.Colors.text)
+                .font(AppTheme.fonts.title)
+                .foregroundStyle(AppTheme.colors.text)
             
             Text(emptyStateMessage)
-                .font(AppTheme.Typography.body)
-                .foregroundStyle(AppTheme.Colors.secondaryText)
+                .font(AppTheme.fonts.body)
+                .foregroundStyle(AppTheme.colors.secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -33,17 +33,17 @@ struct TaskDetailView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.Colors.background
+            AppTheme.colors.background
                 .ignoresSafeArea()
             
             ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
                     saveIndicator
                     headerCard
                     scheduleCard
                     descriptionCard
                 }
-                .padding(AppTheme.Spacing.md)
+                .padding(AppTheme.spacing.md)
             }
         }
         .navigationTitle("Task Details")
@@ -71,7 +71,7 @@ struct TaskDetailView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(AppTheme.Colors.primary)
+                        .foregroundStyle(AppTheme.colors.primary)
                 }
                 .accessibilityLabel("More actions")
             }
@@ -94,18 +94,18 @@ struct TaskDetailView: View {
     
     // MARK: - Header Card
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-            HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
+            HStack(alignment: .top, spacing: AppTheme.spacing.sm) {
                 if isEditing {
                     TextField("Task Title", text: $editedTitle)
-                        .font(AppTheme.Typography.title)
+                        .font(AppTheme.fonts.title)
                         .textFieldStyle(.plain)
-                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .padding(.vertical, AppTheme.spacing.xs)
                         .focused($focusedField, equals: .title)
                 } else {
                     Text(task.safeTitle)
-                        .font(AppTheme.Typography.title)
-                        .foregroundStyle(AppTheme.Colors.text)
+                        .font(AppTheme.fonts.title)
+                        .foregroundStyle(AppTheme.colors.text)
                         .lineLimit(2)
                 }
                 
@@ -114,17 +114,17 @@ struct TaskDetailView: View {
                 TaskStatusBadge(task: task)
             }
             
-            HStack(spacing: AppTheme.Spacing.sm) {
+            HStack(spacing: AppTheme.spacing.sm) {
                 Button(action: toggleCompletion) {
-                    HStack(spacing: AppTheme.Spacing.xs) {
+                    HStack(spacing: AppTheme.spacing.xs) {
                         Image(systemName: task.safeIsCompleted ? "checkmark.circle.fill" : "circle")
                         Text(task.safeIsCompleted ? "Completed" : "Mark Complete")
                     }
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(task.safeIsCompleted ? AppTheme.Colors.success : AppTheme.Colors.primary)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .background(AppTheme.Colors.background)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(task.safeIsCompleted ? AppTheme.colors.success : AppTheme.colors.primary)
+                    .padding(.vertical, AppTheme.spacing.sm)
+                    .padding(.horizontal, AppTheme.spacing.md)
+                    .background(AppTheme.colors.background)
                     .clipShape(Capsule())
                 }
                 
@@ -132,27 +132,27 @@ struct TaskDetailView: View {
                 
                 if let dueDate = task.dueDate {
                     Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                        .font(AppTheme.Typography.caption)
+                        .font(AppTheme.fonts.caption)
                         .foregroundStyle(dueDateColor)
                 } else {
                     Label("No due date", systemImage: "calendar")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
+                        .font(AppTheme.fonts.caption)
+                        .foregroundStyle(AppTheme.colors.secondaryText)
                 }
             }
         }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .padding(AppTheme.spacing.md)
+        .background(AppTheme.colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+        .appShadow(AppTheme.shadows.elevation2)
     }
     
     // MARK: - Schedule Card
     private var scheduleCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
             Text("Schedule")
-                .font(AppTheme.Typography.headline)
-                .foregroundStyle(AppTheme.Colors.text)
+                .font(AppTheme.fonts.headline)
+                .foregroundStyle(AppTheme.colors.text)
             
             Toggle("Due date", isOn: $dueDateEnabled)
                 .onChange(of: dueDateEnabled) { _, isEnabled in
@@ -200,18 +200,18 @@ struct TaskDetailView: View {
                 }
             }
         }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .padding(AppTheme.spacing.md)
+        .background(AppTheme.colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+        .appShadow(AppTheme.shadows.elevation2)
     }
     
     // MARK: - Description Card
     private var descriptionCard: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
             Text("Description")
-                .font(AppTheme.Typography.headline)
-                .foregroundStyle(AppTheme.Colors.text)
+                .font(AppTheme.fonts.headline)
+                .foregroundStyle(AppTheme.colors.text)
             
             if isEditing {
                 textEditorWithPlaceholder(
@@ -224,33 +224,33 @@ struct TaskDetailView: View {
                 Button {
                     startEditing(focus: .description)
                 } label: {
-                    HStack(spacing: AppTheme.Spacing.sm) {
+                    HStack(spacing: AppTheme.spacing.sm) {
                         Image(systemName: "square.and.pencil")
                         Text(task.safeDescription.isEmpty ? "Add a note" : "Edit note")
                     }
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.primary)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(AppTheme.Spacing.md)
-                    .background(AppTheme.Colors.background)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(AppTheme.spacing.md)
+                    .background(AppTheme.colors.background)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
                 }
                 .buttonStyle(.plain)
                 
                 if !task.safeDescription.isEmpty {
                     Text(task.safeDescription)
-                        .font(AppTheme.Typography.body)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
-                        .padding(.top, AppTheme.Spacing.sm)
-                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .font(AppTheme.fonts.body)
+                        .foregroundStyle(AppTheme.colors.secondaryText)
+                        .padding(.top, AppTheme.spacing.sm)
+                        .padding(.horizontal, AppTheme.spacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .padding(AppTheme.spacing.md)
+        .background(AppTheme.colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+        .appShadow(AppTheme.shadows.elevation2)
     }
 
     @ViewBuilder
@@ -267,15 +267,15 @@ struct TaskDetailView: View {
 
     private func saveIndicatorLabel(text: String, icon: String) -> some View {
         Label(text, systemImage: icon)
-            .font(AppTheme.Typography.caption)
-            .foregroundStyle(AppTheme.Colors.secondaryText)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(AppTheme.Colors.background.opacity(0.9))
+            .font(AppTheme.fonts.caption)
+            .foregroundStyle(AppTheme.colors.secondaryText)
+            .padding(.horizontal, AppTheme.spacing.sm)
+            .padding(.vertical, AppTheme.spacing.xs)
+            .background(AppTheme.colors.background.opacity(0.9))
             .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(AppTheme.Colors.secondaryText.opacity(0.2), lineWidth: 1)
+                    .stroke(AppTheme.colors.secondaryText.opacity(0.2), lineWidth: 1)
             )
             .frame(maxWidth: .infinity, alignment: .trailing)
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -328,12 +328,12 @@ struct TaskDetailView: View {
     
     private var dueDateColor: Color {
         if task.safeIsCompleted {
-            return AppTheme.Colors.success
+            return AppTheme.colors.success
         }
         if task.isOverdue {
-            return AppTheme.Colors.danger
+            return AppTheme.colors.danger
         }
-        return AppTheme.Colors.secondaryText
+        return AppTheme.colors.secondaryText
     }
     
     private func textEditorWithPlaceholder(
@@ -343,19 +343,19 @@ struct TaskDetailView: View {
     ) -> some View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: text)
-                .font(AppTheme.Typography.body)
+                .font(AppTheme.fonts.body)
                 .frame(minHeight: minHeight)
-                .padding(AppTheme.Spacing.sm)
-                .background(AppTheme.Colors.background)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(AppTheme.spacing.sm)
+                .background(AppTheme.colors.background)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
                 .scrollContentBackground(.hidden)
             
             if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(placeholder)
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
-                    .padding(.horizontal, AppTheme.Spacing.sm + 2)
-                    .padding(.vertical, AppTheme.Spacing.sm + 6)
+                    .font(AppTheme.fonts.body)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
+                    .padding(.horizontal, AppTheme.spacing.sm)
+                    .padding(.vertical, AppTheme.spacing.md)
                     .allowsHitTesting(false)
             }
         }

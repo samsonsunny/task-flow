@@ -13,11 +13,11 @@ struct TaskStatusBadge: View {
     
     var badgeColor: Color {
         if task.safeIsCompleted {
-            return AppTheme.Colors.success
+            return AppTheme.colors.success
         } else if task.isOverdue {
-            return AppTheme.Colors.danger
+            return AppTheme.colors.danger
         } else {
-            return AppTheme.Colors.primary
+            return AppTheme.colors.primary
         }
     }
     
@@ -37,11 +37,11 @@ struct TaskStatusBadge: View {
     
     var body: some View {
         Text(badgeText)
-            .font(AppTheme.Typography.caption)
+            .font(AppTheme.fonts.caption)
             .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .foregroundStyle(AppTheme.colors.text)
+            .padding(.horizontal, AppTheme.spacing.sm)
+            .padding(.vertical, AppTheme.spacing.xs)
             .background(badgeColor)
             .clipShape(Capsule())
     }

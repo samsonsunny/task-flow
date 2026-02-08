@@ -51,7 +51,7 @@ struct OnboardingView: View {
             background
                 .ignoresSafeArea()
 
-            VStack(spacing: AppTheme.Spacing.lg) {
+            VStack(spacing: AppTheme.spacing.lg) {
                 header
 
                 Spacer()
@@ -81,8 +81,8 @@ struct OnboardingView: View {
 
                 actionArea
             }
-            .padding(.horizontal, AppTheme.Spacing.lg)
-            .padding(.bottom, AppTheme.Spacing.xl)
+            .padding(.horizontal, AppTheme.spacing.lg)
+            .padding(.bottom, AppTheme.spacing.xl)
         }
     }
 
@@ -112,40 +112,40 @@ struct OnboardingView: View {
         HStack {
             Spacer()
         }
-        .padding(.top, AppTheme.Spacing.sm)
+        .padding(.top, AppTheme.spacing.sm)
     }
 
     private var pageIndicator: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
+        HStack(spacing: AppTheme.spacing.sm) {
             ForEach(pages.indices, id: \.self) { index in
                 Capsule()
-                    .fill(index == selection ? AppTheme.Colors.text : AppTheme.Colors.secondaryText.opacity(0.3))
+                    .fill(index == selection ? AppTheme.colors.text : AppTheme.colors.secondaryText.opacity(0.3))
                     .frame(width: index == selection ? 22 : 8, height: 6)
                     .animation(.easeInOut(duration: 0.2), value: selection)
             }
         }
-        .padding(.top, AppTheme.Spacing.sm)
+        .padding(.top, AppTheme.spacing.sm)
     }
 
     private var stepLabel: some View {
         Text("Step \(selection + 1) of \(pages.count)")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(AppTheme.Colors.secondaryText)
+            .font(AppTheme.fonts.captionSemibold)
+            .foregroundStyle(AppTheme.colors.secondaryText)
     }
 
     private var actionArea: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
+        VStack(spacing: AppTheme.spacing.sm) {
             Group {
                 if selection == 2 {
                     Button("Not Now") {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         goForward()
                     }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.subheadlineSemibold)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
                 } else {
                     Text("Not Now")
-                        .font(.subheadline.weight(.semibold))
+                        .font(AppTheme.fonts.subheadlineSemibold)
                         .opacity(0)
                 }
             }
@@ -212,24 +212,24 @@ private struct OnboardingPageView: View {
     let isActive: Bool
 
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
+        VStack(spacing: AppTheme.spacing.lg) {
             hero
                 .frame(height: 240)
 
-            VStack(spacing: AppTheme.Spacing.sm) {
+            VStack(spacing: AppTheme.spacing.sm) {
                 Text(page.title)
-                    .font(.largeTitle.weight(.semibold))
+                    .font(AppTheme.fonts.largeTitleSemibold)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .foregroundStyle(AppTheme.colors.text)
 
                 Text(page.subtitle)
-                    .font(AppTheme.Typography.body)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.body)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
                     .multilineTextAlignment(.center)
                 if index == 2 {
                     Text("We only use notifications for your tasks.")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.Colors.secondaryText)
+                        .font(AppTheme.fonts.caption)
+                        .foregroundStyle(AppTheme.colors.secondaryText)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -237,7 +237,7 @@ private struct OnboardingPageView: View {
             .scaleEffect(isActive ? 1 : 0.96)
             .animation(.easeInOut(duration: 0.32), value: isActive)
         }
-        .padding(.top, AppTheme.Spacing.md)
+        .padding(.top, AppTheme.spacing.md)
     }
 
     private var hero: some View {
@@ -265,7 +265,7 @@ private struct OnboardingPageView: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        .stroke(AppTheme.colors.text.opacity(0.15), lineWidth: 1)
                 )
                 .frame(width: 280, height: 170)
                 .overlay(cardContent)
@@ -274,68 +274,68 @@ private struct OnboardingPageView: View {
     }
 
     private var cardContent: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: AppTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
+            HStack(spacing: AppTheme.spacing.sm) {
                 Image(systemName: page.symbol)
                     .font(.title2)
                     .foregroundStyle(LinearGradient(colors: page.accent, startPoint: .topLeading, endPoint: .bottomTrailing))
 
                 Text("TaskFlow")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.headlineSemibold)
+                    .foregroundStyle(AppTheme.colors.text)
 
                 Spacer()
             }
 
             if index == 1 {
-                HStack(spacing: AppTheme.Spacing.xs) {
+                HStack(spacing: AppTheme.spacing.xs) {
                     pill("Today")
                     pill("Upcoming")
                     pill("Later")
                 }
-                HStack(spacing: AppTheme.Spacing.sm) {
+                HStack(spacing: AppTheme.spacing.sm) {
                     Capsule()
-                        .fill(AppTheme.Colors.secondaryText.opacity(0.15))
+                        .fill(AppTheme.colors.secondaryText.opacity(0.15))
                         .frame(height: 12)
                     Circle()
-                        .fill(AppTheme.Colors.primary)
+                        .fill(AppTheme.colors.primary)
                         .frame(width: 8, height: 8)
                 }
                 Text("Plan the week")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.subheadlineSemibold)
+                    .foregroundStyle(AppTheme.colors.text)
             } else if index == 2 {
                 HStack {
                     Image(systemName: "bell.fill")
-                        .foregroundStyle(AppTheme.Colors.primary)
+                        .foregroundStyle(AppTheme.colors.primary)
                     Text("Reminder at 5:00 PM")
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.Colors.text)
+                        .font(AppTheme.fonts.subheadline)
+                        .foregroundStyle(AppTheme.colors.text)
                 }
             } else if index == 3 {
                 Text("Your day, clarified.")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.subheadlineSemibold)
+                    .foregroundStyle(AppTheme.colors.text)
             } else {
                 Text("Keep your focus gentle and steady.")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.subheadline)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
             }
 
             Spacer()
         }
-        .padding(AppTheme.Spacing.md)
+        .padding(AppTheme.spacing.md)
     }
 
     private func pill(_ title: String) -> some View {
         Text(title)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(AppTheme.Colors.text)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .font(AppTheme.fonts.captionSemibold)
+            .foregroundStyle(AppTheme.colors.text)
+            .padding(.horizontal, AppTheme.spacing.sm)
+            .padding(.vertical, AppTheme.spacing.xxs)
             .background(
                 Capsule()
-                    .fill(AppTheme.Colors.secondaryBackground)
+                    .fill(AppTheme.colors.secondaryBackground)
             )
     }
 }

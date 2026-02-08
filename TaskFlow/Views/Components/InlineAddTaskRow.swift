@@ -27,16 +27,16 @@ struct InlineAddTaskRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: AppTheme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
+            HStack(spacing: AppTheme.spacing.sm) {
                 if !isFocused {
                     Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(AppTheme.Colors.primary)
+                        .font(AppTheme.fonts.title3)
+                        .foregroundStyle(AppTheme.colors.primary)
                 }
                 
                 TextField("Add a task...", text: $title, axis: .vertical)
-                    .font(.headline)
+                    .font(AppTheme.fonts.headline)
                     .textFieldStyle(.plain)
                     .focused($isFocused)
                     .submitLabel(.done)
@@ -66,27 +66,27 @@ struct InlineAddTaskRow: View {
                         clearDraft()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(AppTheme.Colors.secondaryText)
+                            .font(AppTheme.fonts.title3)
+                            .foregroundStyle(AppTheme.colors.secondaryText)
                     }
                     .buttonStyle(.plain)
                     
                     Button("Add") {
                         createTask()
                     }
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.primary)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.primary)
                     .buttonStyle(.plain)
                 }
             }
-            .padding(AppTheme.Spacing.md)
-            .background(AppTheme.Colors.background)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(AppTheme.spacing.md)
+            .background(AppTheme.colors.background)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(AppTheme.Colors.primary.opacity(isFocused ? 0.12 : 0), lineWidth: 1)
+                RoundedRectangle(cornerRadius: AppTheme.radius.large)
+                    .stroke(AppTheme.colors.primary.opacity(isFocused ? 0.12 : 0), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+            .appShadow(AppTheme.shadows.elevationInlineAddTask)
             
             if isFocused && !title.trimmingCharacters(in: .whitespaces).isEmpty && !dueDateEnabled {
                 Button {
@@ -96,74 +96,74 @@ struct InlineAddTaskRow: View {
                         applySuggestion(.today)
                     }
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppTheme.spacing.xs) {
                         Image(systemName: "calendar")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.Colors.secondaryText)
+                            .font(AppTheme.fonts.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.colors.secondaryText)
                         Text("Add due date")
-                            .font(AppTheme.Typography.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.Colors.secondaryText)
+                            .font(AppTheme.fonts.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.colors.secondaryText)
                     }
-                    .padding(.vertical, 6)
+                    .padding(.vertical, AppTheme.spacing.xs)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
             }
             
             if dueDateEnabled {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: AppTheme.Spacing.sm) {
+                        HStack(spacing: AppTheme.spacing.sm) {
                             ForEach(DueSuggestion.allCases) { suggestion in
                                 Button(suggestion.rawValue) {
                                     applySuggestion(suggestion)
                                 }
-                                .font(AppTheme.Typography.caption.weight(.medium))
-                                .foregroundStyle(selectedSuggestion == suggestion ? .white : AppTheme.Colors.primary)
-                                .padding(.horizontal, AppTheme.Spacing.md)
-                                .padding(.vertical, 8)
+                                .font(AppTheme.fonts.caption.weight(.medium))
+                                .foregroundStyle(selectedSuggestion == suggestion ? AppTheme.colors.text : AppTheme.colors.primary)
+                                .padding(.horizontal, AppTheme.spacing.md)
+                                .padding(.vertical, AppTheme.spacing.xs)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(selectedSuggestion == suggestion ? AppTheme.Colors.primary : AppTheme.Colors.background)
+                                    RoundedRectangle(cornerRadius: AppTheme.radius.large)
+                                        .fill(selectedSuggestion == suggestion ? AppTheme.colors.primary : AppTheme.colors.background)
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(AppTheme.Colors.primary.opacity(0.2), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: AppTheme.radius.large)
+                                        .stroke(AppTheme.colors.primary.opacity(0.2), lineWidth: 1)
                                 )
                                 .frame(height: 34)
                             }
                         }
                     }
                     
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        HStack(spacing: 6) {
+                    HStack(spacing: AppTheme.spacing.sm) {
+                        HStack(spacing: AppTheme.spacing.xs) {
                             Image(systemName: "calendar")
-                                .font(.caption.weight(.semibold))
+                                .font(AppTheme.fonts.caption.weight(.semibold))
                             Text("Due: \(dueDate.formatted(date: .abbreviated, time: .omitted))")
-                                .font(AppTheme.Typography.caption.weight(.semibold))
+                                .font(AppTheme.fonts.caption.weight(.semibold))
                         }
-                        .foregroundStyle(AppTheme.Colors.text)
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.vertical, 8)
-                        .background(AppTheme.Colors.secondaryBackground)
+                        .foregroundStyle(AppTheme.colors.text)
+                        .padding(.horizontal, AppTheme.spacing.md)
+                        .padding(.vertical, AppTheme.spacing.xs)
+                        .background(AppTheme.colors.secondaryBackground)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(AppTheme.Colors.secondaryText.opacity(0.12), lineWidth: 1)
+                                .stroke(AppTheme.colors.secondaryText.opacity(0.12), lineWidth: 1)
                         )
                         
                         Button {
                             showDatePicker.toggle()
                         } label: {
                             Image(systemName: "calendar.badge.plus")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(AppTheme.Colors.primary)
+                                .font(AppTheme.fonts.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.colors.primary)
                                 .frame(width: 32, height: 32)
-                                .background(AppTheme.Colors.secondaryBackground)
+                                .background(AppTheme.colors.secondaryBackground)
                                 .clipShape(Circle())
                                 .overlay(
                                     Circle()
-                                        .stroke(AppTheme.Colors.primary.opacity(0.2), lineWidth: 1)
+                                        .stroke(AppTheme.colors.primary.opacity(0.2), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -174,14 +174,14 @@ struct InlineAddTaskRow: View {
                             showDatePicker = false
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(AppTheme.Colors.secondaryText)
+                                .font(AppTheme.fonts.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.colors.secondaryText)
                                 .frame(width: 28, height: 28)
-                                .background(AppTheme.Colors.secondaryBackground)
+                                .background(AppTheme.colors.secondaryBackground)
                                 .clipShape(Circle())
                                 .overlay(
                                     Circle()
-                                        .stroke(AppTheme.Colors.secondaryText.opacity(0.12), lineWidth: 1)
+                                        .stroke(AppTheme.colors.secondaryText.opacity(0.12), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -195,21 +195,21 @@ struct InlineAddTaskRow: View {
                             displayedComponents: [.date]
                         )
                         .datePickerStyle(.compact)
-                        .padding(AppTheme.Spacing.sm)
-                        .background(AppTheme.Colors.secondaryBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(AppTheme.spacing.sm)
+                        .background(AppTheme.colors.secondaryBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
                     }
                 }
-                .padding(AppTheme.Spacing.md)
-                .background(AppTheme.Colors.secondaryBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+                .padding(AppTheme.spacing.md)
+                .background(AppTheme.colors.secondaryBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+                .appShadow(AppTheme.shadows.elevationInlineAddTask)
             }
         }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.top, AppTheme.Spacing.sm)
-        .padding(.bottom, AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground.ignoresSafeArea())
+        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.top, AppTheme.spacing.sm)
+        .padding(.bottom, AppTheme.spacing.md)
+        .background(AppTheme.colors.secondaryBackground.ignoresSafeArea())
     }
     
     private func handleSubmit() {

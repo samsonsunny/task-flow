@@ -107,11 +107,11 @@ struct TaskListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.Colors.background
+                AppTheme.colors.background
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.Spacing.md) {
+                    LazyVStack(spacing: AppTheme.spacing.md) {
                         if shouldShowReminderPrompt {
                             reminderPrompt
                         }
@@ -124,10 +124,10 @@ struct TaskListView: View {
                             
                             ForEach(sectionedTasks, id: \.0) { section, items in
                                 Text(section.rawValue)
-                                    .font(AppTheme.Typography.caption)
-                                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                                    .font(AppTheme.fonts.caption)
+                                    .foregroundStyle(AppTheme.colors.secondaryText)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.top, AppTheme.Spacing.sm)
+                                    .padding(.top, AppTheme.spacing.sm)
                                 
                                 ForEach(items) { task in
                                     taskRow(task)
@@ -139,13 +139,13 @@ struct TaskListView: View {
                             }
                         }
         }
-        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(.horizontal, AppTheme.spacing.md)
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(reminderPromptHighlighted ? AppTheme.Colors.primary : .clear, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous)
+                .stroke(reminderPromptHighlighted ? AppTheme.colors.primary : .clear, lineWidth: 1.5)
         )
-                    .padding(.top, AppTheme.Spacing.sm)
-                    .padding(.bottom, AppTheme.Spacing.lg)
+                    .padding(.top, AppTheme.spacing.sm)
+                    .padding(.bottom, AppTheme.spacing.lg)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(
@@ -187,24 +187,24 @@ struct TaskListView: View {
         NavigationLink(value: AppScreen.overdue) {
             HStack {
                 Text("Overdue")
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.text)
                 Spacer()
                 Text("\(overdueTasks.count)")
-                    .font(AppTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.Colors.background)
+                    .font(AppTheme.fonts.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.secondaryText)
+                    .padding(.horizontal, AppTheme.spacing.xs)
+                    .padding(.vertical, AppTheme.spacing.xxs)
+                    .background(AppTheme.colors.background)
                     .clipShape(Capsule())
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.caption2)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
             }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .background(AppTheme.Colors.secondaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, AppTheme.spacing.md)
+            .padding(.vertical, AppTheme.spacing.sm)
+            .background(AppTheme.colors.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
         }
         .buttonStyle(.plain)
     }
@@ -213,37 +213,37 @@ struct TaskListView: View {
         NavigationLink(value: AppScreen.completed) {
             HStack {
                 Text("Completed")
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.text)
                 Spacer()
                 Text("\(completedTasksCount)")
-                    .font(AppTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.Colors.background)
+                    .font(AppTheme.fonts.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.secondaryText)
+                    .padding(.horizontal, AppTheme.spacing.xs)
+                    .padding(.vertical, AppTheme.spacing.xxs)
+                    .background(AppTheme.colors.background)
                     .clipShape(Capsule())
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.caption2)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
             }
-            .padding(.horizontal, AppTheme.Spacing.md)
-            .padding(.vertical, AppTheme.Spacing.sm)
-            .background(AppTheme.Colors.secondaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, AppTheme.spacing.md)
+            .padding(.vertical, AppTheme.spacing.sm)
+            .background(AppTheme.colors.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
         }
         .buttonStyle(.plain)
     }
 
     private var reminderPrompt: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: AppTheme.spacing.md) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
                 Text("Enable gentle reminders")
-                    .font(AppTheme.Typography.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.Colors.text)
+                    .font(AppTheme.fonts.body.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.text)
                 Text("TaskFlow can nudge you when things are due.")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundStyle(AppTheme.Colors.secondaryText)
+                    .font(AppTheme.fonts.caption)
+                    .foregroundStyle(AppTheme.colors.secondaryText)
             }
             Spacer()
             Button {
@@ -255,10 +255,10 @@ struct TaskListView: View {
             .buttonStyle(.borderedProminent)
             .disabled(isRequestingReminderPermission)
         }
-        .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .padding(.horizontal, AppTheme.Spacing.md)
+        .padding(AppTheme.spacing.md)
+        .background(AppTheme.colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous))
+        .padding(.horizontal, AppTheme.spacing.md)
     }
     
     private func taskRow(_ task: TaskItem) -> some View {
@@ -313,14 +313,14 @@ private struct CompletedTasksView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.background
+            AppTheme.colors.background
                 .ignoresSafeArea()
             
             if completedTasks.isEmpty {
             EmptyStateView(type: .noCompleted)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.Spacing.sm) {
+                    LazyVStack(spacing: AppTheme.spacing.sm) {
                         ForEach(completedTasks) { task in
                             NavigationLink(value: task) {
                                 TaskRowView(task: task, statusStyle: .completedMetadata)
@@ -328,9 +328,9 @@ private struct CompletedTasksView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .padding(.top, AppTheme.Spacing.sm)
-                    .padding(.bottom, AppTheme.Spacing.lg)
+                    .padding(.horizontal, AppTheme.spacing.md)
+                    .padding(.top, AppTheme.spacing.sm)
+                    .padding(.bottom, AppTheme.spacing.lg)
                 }
             }
         }
@@ -353,14 +353,14 @@ private struct OverdueTasksView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.background
+            AppTheme.colors.background
                 .ignoresSafeArea()
             
             if overdueTasks.isEmpty {
             EmptyStateView(type: .noOverdue)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.Spacing.md) {
+                    LazyVStack(spacing: AppTheme.spacing.md) {
                         ForEach(overdueTasks) { task in
                             NavigationLink(value: task) {
                                 TaskRowView(task: task)
@@ -372,7 +372,7 @@ private struct OverdueTasksView: View {
                                 } label: {
                                     Label("Move to Today", systemImage: "calendar")
                                 }
-                                .tint(AppTheme.Colors.primary)
+                                .tint(AppTheme.colors.primary)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button {
@@ -380,7 +380,7 @@ private struct OverdueTasksView: View {
                                 } label: {
                                     Label("Done", systemImage: "checkmark")
                                 }
-                                .tint(AppTheme.Colors.success)
+                                .tint(AppTheme.colors.success)
                             }
                             .contextMenu {
                                 Button("Mark Done") { markDone(task) }
@@ -390,9 +390,9 @@ private struct OverdueTasksView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, AppTheme.Spacing.md)
-                    .padding(.top, AppTheme.Spacing.sm)
-                    .padding(.bottom, AppTheme.Spacing.lg)
+                    .padding(.horizontal, AppTheme.spacing.md)
+                    .padding(.top, AppTheme.spacing.sm)
+                    .padding(.bottom, AppTheme.spacing.lg)
                 }
             }
         }

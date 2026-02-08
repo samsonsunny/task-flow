@@ -19,53 +19,53 @@ struct TaskRowView: View {
     }
     
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: AppTheme.spacing.sm) {
+            VStack(alignment: .leading, spacing: AppTheme.spacing.xs) {
+                VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
                     Text(task.safeTitle)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
+                        .font(AppTheme.fonts.headline)
+                        .foregroundStyle(AppTheme.colors.text)
                         .strikethrough(task.safeIsCompleted)
                         .fixedSize(horizontal: false, vertical: true)
                     
                     // Description hidden in list for minimal metadata
                 }
                 
-                HStack(spacing: 8) {
+                HStack(spacing: AppTheme.spacing.xs) {
                     if let remindAt = task.remindAt {
                         Label(
                             remindAt.formatted(date: .abbreviated, time: .shortened),
                             systemImage: "bell"
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.fonts.caption)
+                        .foregroundStyle(AppTheme.colors.secondaryText)
                     } else if let dueDate = task.dueDate {
                         Label(
                             dueDate.formatted(date: .abbreviated, time: .omitted),
                             systemImage: "calendar"
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.fonts.caption)
+                        .foregroundStyle(AppTheme.colors.secondaryText)
                     }
 
                     if let status = statusText {
                         Text("· \(status)")
-                            .font(.caption)
+                            .font(AppTheme.fonts.caption)
                             .foregroundStyle(statusColor)
                     }
                 }
             }
             
-            Spacer(minLength: 10)
+            Spacer(minLength: AppTheme.spacing.xs)
             
             Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(.secondary.opacity(0.5))
+                .font(AppTheme.fonts.caption2)
+                .foregroundStyle(AppTheme.colors.secondaryText.opacity(0.5))
         }
-        .padding(10)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+        .padding(AppTheme.spacing.xs)
+        .background(AppTheme.colors.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
+        .appShadow(AppTheme.shadows.elevation2)
         .contentShape(Rectangle())
     }
 
@@ -93,13 +93,13 @@ struct TaskRowView: View {
     private var statusColor: Color {
         switch statusStyle {
         case .completedMetadata:
-            if task.safeIsCompleted { return AppTheme.Colors.success.opacity(0.85) }
-            if task.isOverdue { return AppTheme.Colors.danger.opacity(0.85) }
-            return .secondary
+            if task.safeIsCompleted { return AppTheme.colors.success.opacity(0.85) }
+            if task.isOverdue { return AppTheme.colors.danger.opacity(0.85) }
+            return AppTheme.colors.secondaryText
         case .standard, .none:
-            if task.safeIsCompleted { return .secondary }
-            if task.isOverdue { return AppTheme.Colors.danger.opacity(0.85) }
-            return .secondary
+            if task.safeIsCompleted { return AppTheme.colors.secondaryText }
+            if task.isOverdue { return AppTheme.colors.danger.opacity(0.85) }
+            return AppTheme.colors.secondaryText
         }
     }
 }
