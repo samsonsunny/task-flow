@@ -7,8 +7,8 @@ struct OverdueTasksView: View {
     private var overduePredicate: Predicate<TaskItem> {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
-        return #Predicate<TaskItem> {
-            $0.isCompleted == false && ($0.reminderReferenceDate ?? .distantFuture) < todayStart
+        return #Predicate<TaskItem> { task in
+            task.isCompleted == false && task.reminderReferenceDate != nil && task.reminderReferenceDate! < todayStart
         }
     }
     
@@ -63,3 +63,4 @@ struct OverdueTasksView: View {
         NotificationManager.shared.cancelReminder(for: task)
     }
 }
+

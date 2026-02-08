@@ -8,10 +8,16 @@ struct TaskDetailView: View {
     @Bindable var task: TaskItem
     
     @State private var isEditing = false
-    @State private var editedTitle = ""
-    @State private var editedDescription = ""
+    @State private var editedTitle: String
+    @State private var editedDescription: String
     @State private var showingDeleteAlert = false
     @FocusState private var focusedField: FocusField?
+    
+    init(task: TaskItem) {
+        self.task = task
+        _editedTitle = State(initialValue: task.safeTitle)
+        _editedDescription = State(initialValue: task.safeDescription)
+    }
     
     @State private var dueDateEnabled = false
     @State private var dueDateDraft = Date()
@@ -49,13 +55,7 @@ struct TaskDetailView: View {
         .navigationTitle("Task Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                if isEditing {
-                    Button("Cancel") {
-                        cancelEditing()
-                    }
-                }
-            }
+
             ToolbarItem(placement: .primaryAction) {
                 if isEditing {
                     Button("Done") {
@@ -119,7 +119,7 @@ struct TaskDetailView: View {
                     Button(action: toggleCompletion) {
                         HStack(spacing: AppTheme.spacing.xs) {
                             Image(systemName: task.safeIsCompleted ? "checkmark.circle.fill" : "circle")
-                            Text(task.safeIsCompleted ? "Completed" : "Mark Complete")
+                            Text(task.safeIsCompleted ? "Completed" : "Complete")
                         }
                         .font(AppTheme.fonts.body.weight(.semibold))
                         .foregroundStyle(task.safeIsCompleted ? AppTheme.colors.success : AppTheme.colors.primary)
@@ -205,43 +205,18 @@ struct TaskDetailView: View {
     // MARK: - Description Card
     private var descriptionCard: some View {
         CardView {
-            VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
-                Text("Description")
-                    .font(AppTheme.fonts.headline)
-                    .foregroundStyle(AppTheme.colors.text)
-                
-                if isEditing {
-                    textEditorWithPlaceholder(
-                        text: $editedDescription,
-                        placeholder: "Add a short description, goals, or context.",
-                        minHeight: 110
-                    )
-                    .focused($focusedField, equals: .description)
-                } else {
-                    Button {
-                        startEditing(focus: .description)
-                    } label: {
-                        HStack(spacing: AppTheme.spacing.sm) {
-                            Image(systemName: "square.and.pencil")
-                            Text(task.safeDescription.isEmpty ? "Add a note" : "Edit note")
-                        }
-                        .font(AppTheme.fonts.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.colors.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(AppTheme.spacing.md)
-                        .background(AppTheme.colors.background)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-                    }
-                    .buttonStyle(.plain)
-                    
-                    if !task.safeDescription.isEmpty {
-                        Text(task.safeDescription)
-                            .font(AppTheme.fonts.body)
-                            .foregroundStyle(AppTheme.colors.secondaryText)
-                            .padding(.top, AppTheme.spacing.sm)
-                            .padding(.horizontal, AppTheme.spacing.md)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+            textEditorWithPlaceholder(
+                text: $editedDescription,
+                placeholder: "Add a short description, goals, or context.",
+                minHeight: 110
+            )
+            .focused($focusedField, equals: .description)
+            .disabled(!isEditing)
+            .scrollDisabled(!isEditing)
+            .contentShape(Rectangle()) // Makes the whole TextEditor tappable when disabled
+            .onTapGesture {
+                if !isEditing {
+                    startEditing(focus: .description)
                 }
             }
         }
@@ -349,7 +324,7 @@ struct TaskDetailView: View {
                     .font(AppTheme.fonts.body)
                     .foregroundStyle(AppTheme.colors.secondaryText)
                     .padding(.horizontal, AppTheme.spacing.sm)
-                    .padding(.vertical, AppTheme.spacing.md)
+                    .padding(.vertical, AppTheme.spacing.sm)
                     .allowsHitTesting(false)
             }
         }

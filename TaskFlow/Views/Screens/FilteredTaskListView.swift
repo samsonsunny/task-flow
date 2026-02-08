@@ -6,12 +6,12 @@ struct FilteredTaskListView<RowContent: View>: View {
 
     let title: String
     let predicate: Predicate<TaskItem>
-    let emptyStateType: EmptyStateView.EmptyStateType
+    let emptyStateType: EmptyStateType
     let rowContent: (TaskItem) -> RowContent
 
     @Query var tasks: [TaskItem]
 
-    init(title: String, predicate: Predicate<TaskItem>, emptyStateType: EmptyStateView.EmptyStateType, @ViewBuilder rowContent: @escaping (TaskItem) -> RowContent) {
+    init(title: String, predicate: Predicate<TaskItem>, emptyStateType: EmptyStateType, @ViewBuilder rowContent: @escaping (TaskItem) -> RowContent) {
         self.title = title
         self.predicate = predicate
         self.emptyStateType = emptyStateType
@@ -42,3 +42,4 @@ struct FilteredTaskListView<RowContent: View>: View {
         .navigationTitle(title)
     }
 }
+
