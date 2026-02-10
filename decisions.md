@@ -92,6 +92,17 @@
 - Completed-task empty states were removed.
 - README feature list was updated.
 
+## Decision: Remove Save Status Indicator
+
+**Date:** 2026-02-10
+
+**Decision:** The “Saving / Saved” status indicator has been removed from the task detail screen.
+
+**Rationale:** The indicator adds async state management without changing behavior. Removing it simplifies the UI and code while keeping auto-save intact.
+
+**Impact:**
+- Save status state and UI were removed from `TaskDetailView.swift`.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

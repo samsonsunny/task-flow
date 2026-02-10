@@ -19,17 +19,9 @@ struct TaskDetailView: View {
     
     @State private var dueDateEnabled = false
     @State private var dueDateDraft = Date()
-    @State private var saveStatus: SaveStatus = .idle
-    @State private var saveStatusTask: Task<Void, Never>?
     
     private enum FocusField {
         case title
-    }
-
-    private enum SaveStatus {
-        case idle
-        case saving
-        case saved
     }
 
     var body: some View {
@@ -39,7 +31,6 @@ struct TaskDetailView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
-                    saveIndicator
                     headerCard
                     scheduleCard
                 }
@@ -81,8 +72,6 @@ struct TaskDetailView: View {
             if isEditing {
                 saveEdits()
             }
-            saveStatusTask?.cancel()
-            saveStatusTask = nil
         }
     }
     
@@ -169,35 +158,6 @@ struct TaskDetailView: View {
             }
         }
     
-    @ViewBuilder
-    private var saveIndicator: some View {
-        switch saveStatus {
-        case .idle:
-            EmptyView()
-        case .saving:
-            saveIndicatorLabel(text: "Saving…", icon: "hourglass")
-        case .saved:
-            saveIndicatorLabel(text: "Saved", icon: "checkmark.circle")
-        }
-    }
-
-    private func saveIndicatorLabel(text: String, icon: String) -> some View {
-        Label(text, systemImage: icon)
-            .font(AppTheme.fonts.caption)
-            .foregroundStyle(AppTheme.colors.secondaryText)
-            .padding(.horizontal, AppTheme.spacing.sm)
-            .padding(.vertical, AppTheme.spacing.xs)
-            .background(AppTheme.colors.background.opacity(0.9))
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(AppTheme.colors.secondaryText.opacity(0.2), lineWidth: 1)
-            )
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            .animation(.easeInOut(duration: 0.25), value: saveStatus)
-    }
-    
     // MARK: - Actions
     private func startEditing(focus: FocusField = .title) {
         editedTitle = task.safeTitle
@@ -218,7 +178,6 @@ struct TaskDetailView: View {
         }
         isEditing = false
         focusedField = nil
-        queueSaveStatus()
     }
     
     private func toggleCompletion() {
@@ -247,23 +206,6 @@ struct TaskDetailView: View {
         dueDateDraft = task.dueDate ?? Date()
     }
 
-    private func queueSaveStatus() {
-        saveStatusTask?.cancel()
-        saveStatus = .saving
-        let statusTask = Task {
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                saveStatus = .saved
-            }
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                saveStatus = .idle
-            }
-        }
-        saveStatusTask = statusTask
-    }
 }
 
 #Preview {
