@@ -27,6 +27,18 @@
 - iCloud entitlements were removed from `TaskFlow.entitlements`.
 - Documentation and preview copy were updated to reflect local-only storage.
 
+## Decision: Remove Search
+
+**Date:** 2026-02-10
+
+**Decision:** The search feature has been removed from TaskFlow.
+
+**Rationale:** Search adds UI and empty states that are not essential to the core capture → schedule → complete flow. Removing it keeps the interface minimal.
+
+**Impact:**
+- Search-related empty state case and preview were removed from `EmptyStateView.swift`.
+- README feature list was updated.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

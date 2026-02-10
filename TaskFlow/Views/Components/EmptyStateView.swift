@@ -14,7 +14,6 @@ enum EmptyStateType {
     case allDone
     case noCompleted
     case noOverdue
-    case noSearchResults(searchText: String)
 }
 
 struct EmptyStateView: View {
@@ -48,8 +47,6 @@ struct EmptyStateView: View {
             return "checkmark.circle"
         case .noOverdue:
             return "clock"
-        case .noSearchResults:
-            return "magnifyingglass"
         }
     }
     
@@ -63,8 +60,6 @@ struct EmptyStateView: View {
             return "No Completed Tasks"
         case .noOverdue:
             return "No Overdue Tasks"
-        case .noSearchResults:
-            return "No Results"
         }
     }
     
@@ -78,8 +73,6 @@ struct EmptyStateView: View {
             return "Completed tasks will appear here."
         case .noOverdue:
             return "Overdue tasks will appear here."
-        case let .noSearchResults(searchText):
-            return "No tasks matching \"\(searchText)\". Try searching with different keywords."
         }
     }
 }
@@ -99,9 +92,3 @@ struct EmptyStateView: View {
 #Preview("No Overdue Tasks") {
     EmptyStateView(type: .noOverdue)
 }
-
-#Preview("No Search Results") {
-    EmptyStateView(type: .noSearchResults(searchText: "meeting"))
-}
-
- 

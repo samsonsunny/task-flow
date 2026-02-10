@@ -10,7 +10,6 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 ## Key Features
 
 - Task list with due-date sorting and swipe-to-delete
-- Search by task title or description
 - Filter to show or hide completed tasks
 - Task creation with title, description, due date
 - Task details view with edit-in-place
