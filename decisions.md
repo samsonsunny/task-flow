@@ -25,6 +25,18 @@
 - The `CompletedTasksView.swift` file will be deleted.
 - The `completedTasksLink` and related properties (`completedTasksCount`, `hasCompletedTasks`) will be removed from `TaskListView.swift`.
 
+## Decision: Remove Overdue Tasks View and Associated Cleanup
+
+**Date:** 2026-02-10
+
+**Decision:** The dedicated 'Overdue Tasks View' (`OverdueTasksView.swift`) will be removed from the application, and all related references will be cleaned up.
+
+**Rationale:** Similar to the removal of the 'Completed Tasks View', the dedicated 'Overdue Tasks View' will be removed to simplify the application's navigation and codebase. The main `TaskListView` provides a prominent link to overdue tasks, and removing the separate view streamlines the user flow. The references in `TaskListView.swift` (enum cases, navigation destinations, and computed properties) have also been removed, ensuring the codebase is clean.
+
+**Impact:**
+- The `OverdueTasksView.swift` file has been deleted.
+- References in `TaskListView.swift` have been removed, including the `AppScreen.overdue` case, navigation destination, and related variables/properties. The app now focuses on a single, consolidated task list.
+
 ## Decision: Remove Overdue Tasks View
 
 **Date:** 2026-02-10
