@@ -27,7 +27,7 @@ struct TaskStatusBadge: View {
         } else if task.isOverdue {
             return "Overdue"
         } else {
-            if task.reminderReferenceDate == nil {
+            if task.dueDate == nil {
                 return "No date"
             }
             let days = task.daysUntilDue

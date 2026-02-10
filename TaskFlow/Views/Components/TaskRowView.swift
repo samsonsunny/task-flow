@@ -32,14 +32,7 @@ struct TaskRowView: View {
                 }
                 
                 HStack(spacing: AppTheme.spacing.xs) {
-                    if let remindAt = task.remindAt {
-                        Label(
-                            remindAt.formatted(date: .abbreviated, time: .shortened),
-                            systemImage: "bell"
-                        )
-                        .font(AppTheme.fonts.caption)
-                        .foregroundStyle(AppTheme.colors.secondaryText)
-                    } else if let dueDate = task.dueDate {
+                    if let dueDate = task.dueDate {
                         Label(
                             dueDate.formatted(date: .abbreviated, time: .omitted),
                             systemImage: "calendar"

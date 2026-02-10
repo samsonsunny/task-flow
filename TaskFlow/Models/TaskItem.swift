@@ -19,19 +19,8 @@ final class TaskItem {
     var taskDescription: String?
     var isCompleted: Bool?
     var completionDate: Date?
-    var dueDate: Date? {
-        didSet {
-            storedReminderReferenceDate = remindAt ?? dueDate
-        }
-    }
-    var remindAt: Date? {
-        didSet {
-            storedReminderReferenceDate = remindAt ?? dueDate
-        }
-    }
+    var dueDate: Date?
     var createdAt: Date?
-    var storedReminderReferenceDate: Date? // New stored property for predicate
-
     
     init(
         taskId: String? = UUID().uuidString,
@@ -39,7 +28,6 @@ final class TaskItem {
         taskDescription: String? = "",
         isCompleted: Bool? = false,
         dueDate: Date? = nil,
-        remindAt: Date? = nil,
         createdAt: Date? = Date()
     ) {
         self.taskId = taskId
@@ -47,20 +35,18 @@ final class TaskItem {
         self.taskDescription = taskDescription
         self.isCompleted = isCompleted
         self.dueDate = dueDate
-        self.remindAt = remindAt
         self.createdAt = createdAt
-        self.storedReminderReferenceDate = remindAt ?? dueDate
     }
     
     // Computed properties with safe unwrapping
     var isOverdue: Bool {
-        guard let isCompleted = isCompleted, let referenceDate = reminderReferenceDate else { return false }
+        guard let isCompleted = isCompleted, let referenceDate = dueDate else { return false }
         let todayStart = Calendar.current.startOfDay(for: Date())
         return !isCompleted && referenceDate < todayStart
     }
     
     var daysUntilDue: Int {
-        guard let referenceDate = reminderReferenceDate else { return 0 }
+        guard let referenceDate = dueDate else { return 0 }
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
         let referenceStart = calendar.startOfDay(for: referenceDate)
@@ -80,10 +66,6 @@ final class TaskItem {
         dueDate ?? Date()
     }
 
-    var reminderReferenceDate: Date? {
-        storedReminderReferenceDate
-    }
-    
     var safeCreatedAt: Date {
         createdAt ?? Date()
     }

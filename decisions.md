@@ -1,5 +1,19 @@
 # Decisions
 
+## Decision: Remove Reminders & Notifications
+
+**Date:** 2026-02-10
+
+**Decision:** The reminders and notifications feature set (daily review prompts and per-task reminders) will be removed from TaskFlow.
+
+**Rationale:** Reminders add permission prompts, background scheduling, and extra state that complicate the core capture → schedule → complete flow. Removing them keeps the experience lightweight and reduces maintenance overhead.
+
+**Impact:**
+- `NotificationManager.swift` has been deleted.
+- Reminder UI and permission prompts have been removed from `TaskListView.swift`.
+- Reminder controls and scheduling logic have been removed from `TaskDetailView.swift`.
+- Task model fields tied to reminders (`remindAt`, `storedReminderReferenceDate`) have been removed.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

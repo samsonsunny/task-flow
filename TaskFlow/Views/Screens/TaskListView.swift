@@ -14,11 +14,6 @@ struct TaskListView: View {
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
     
     @FocusState private var addTaskFocused: Bool
-    @AppStorage("dailyReviewEnabled") private var dailyReviewEnabled = true
-    @AppStorage("taskflow.notifications.enabled") private var notificationsEnabled = false
-    @AppStorage("taskflow.notifications.denied") private var notificationsDenied = false
-    @State private var isRequestingReminderPermission = false
-    @State private var reminderPromptHighlighted = false
 
     let shouldFocusOnAppear: Bool
 
@@ -34,16 +29,8 @@ struct TaskListView: View {
         tasks.filter { $0.safeIsCompleted }.count
     }
     
-    private var hasCompletedTasks: Bool {
-        completedTasksCount > 0
-    }
-    
     private var hasAnyTasks: Bool {
         !tasks.isEmpty
-    }
-
-    private var shouldShowReminderPrompt: Bool {
-        !notificationsEnabled && !notificationsDenied
     }
 
     private enum TaskSection: String, CaseIterable, Identifiable {
@@ -53,15 +40,6 @@ struct TaskListView: View {
         case noDueDate = "Someday"
 
         var id: String { self.rawValue }
-    }
-    
-    private var overdueTasks: [TaskItem] {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
-        return incompleteTasks.filter {
-            guard let referenceDate = $0.reminderReferenceDate else { return false }
-            return referenceDate < todayStart
-        }
     }
     
     private var sectionedTasks: [(TaskSection, [TaskItem])] {
@@ -77,7 +55,7 @@ struct TaskListView: View {
         ]
         
         for task in incompleteTasks {
-            guard let due = task.reminderReferenceDate else {
+            guard let due = task.dueDate else {
                 buckets[.noDueDate, default: []].append(task)
                 continue
             }
@@ -107,9 +85,6 @@ struct TaskListView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: AppTheme.spacing.md) {
-                        if shouldShowReminderPrompt {
-                            reminderPrompt
-                        }
                         if incompleteTasks.isEmpty {
                             EmptyStateView(type: hasAnyTasks ? .allDone : .noTasks)
                         } else {
@@ -125,12 +100,8 @@ struct TaskListView: View {
                                 }
                             }
                         }
-        }
-        .padding(.horizontal, AppTheme.spacing.lg)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous)
-                .stroke(reminderPromptHighlighted ? AppTheme.colors.primary : .clear, lineWidth: 1.5)
-        )
+                    }
+                    .padding(.horizontal, AppTheme.spacing.lg)
                     .padding(.top, AppTheme.spacing.md)
                     .padding(.bottom, AppTheme.spacing.lg)
                 }
@@ -159,31 +130,6 @@ struct TaskListView: View {
             }
         }
     }
-
-    private var reminderPrompt: some View {
-        HStack(spacing: AppTheme.spacing.md) {
-            VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
-                Text("Enable gentle reminders")
-                    .font(AppTheme.fonts.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.text)
-                Text("TaskFlow can nudge you when things are due.")
-                    .font(AppTheme.fonts.caption)
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-            }
-            Spacer()
-            Button {
-                requestReminderPermission()
-            } label: {
-                Text("Enable")
-                    .frame(minWidth: 90)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isRequestingReminderPermission)
-        }
-        .padding(AppTheme.spacing.md)
-        .background(AppTheme.colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large, style: .continuous))
-    }
     
     private func taskRow(_ task: TaskItem) -> some View {
         NavigationLink(value: task) {
@@ -192,42 +138,12 @@ struct TaskListView: View {
         .buttonStyle(.plain)
     }
     
-    private func requestReminderPermission() {
-        guard !isRequestingReminderPermission else { return }
-        isRequestingReminderPermission = true
-        Task {
-            let granted = await NotificationManager.shared.requestAuthorization()
-            await MainActor.run {
-                notificationsEnabled = granted
-                notificationsDenied = !granted
-                if granted && dailyReviewEnabled {
-                    NotificationManager.shared.scheduleDailyReview()
-                }
-                isRequestingReminderPermission = false
-            }
-        }
-    }
-
-    private func pulseReminderPrompt() {
-        reminderPromptHighlighted = true
-        Task {
-            try? await Task.sleep(nanoseconds: 900_000_000)
-            await MainActor.run {
-                reminderPromptHighlighted = false
-            }
-        }
-    }
-
     private func createInlineTask(title: String, dueDate: Date?) {
         let task = TaskItem(
             taskTitle: title,
             dueDate: dueDate
         )
         modelContext.insert(task)
-        NotificationManager.shared.scheduleReminder(for: task)
-        if !notificationsEnabled && !notificationsDenied {
-            pulseReminderPrompt()
-        }
     }
     
 }

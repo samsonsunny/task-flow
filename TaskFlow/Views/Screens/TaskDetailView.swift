@@ -21,8 +21,6 @@ struct TaskDetailView: View {
     
     @State private var dueDateEnabled = false
     @State private var dueDateDraft = Date()
-    @State private var reminderEnabled = false
-    @State private var reminderDraft = Date()
     @State private var saveStatus: SaveStatus = .idle
     @State private var saveStatusTask: Task<Void, Never>?
     
@@ -160,7 +158,6 @@ struct TaskDetailView: View {
                             } else {
                                 task.dueDate = nil
                             }
-                            refreshReminder()
                         }
                     
                     if dueDateEnabled {
@@ -172,30 +169,6 @@ struct TaskDetailView: View {
                         .datePickerStyle(.compact)
                         .onChange(of: dueDateDraft) { _, newValue in
                             task.dueDate = newValue
-                            refreshReminder()
-                        }
-                    }
-                    
-                    Toggle("Reminder time", isOn: $reminderEnabled)
-                        .onChange(of: reminderEnabled) { _, isEnabled in
-                            if isEnabled {
-                                task.remindAt = reminderDraft
-                            } else {
-                                task.remindAt = nil
-                            }
-                            refreshReminder()
-                        }
-                    
-                    if reminderEnabled {
-                        DatePicker(
-                            "Remind me",
-                            selection: $reminderDraft,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .datePickerStyle(.compact)
-                        .onChange(of: reminderDraft) { _, newValue in
-                            task.remindAt = newValue
-                            refreshReminder()
                         }
                     }
                 }
@@ -282,15 +255,9 @@ struct TaskDetailView: View {
             task.isCompleted = !task.safeIsCompleted
             task.completionDate = task.safeIsCompleted ? Date() : nil
         }
-        if task.safeIsCompleted {
-            NotificationManager.shared.cancelReminder(for: task)
-        } else {
-            NotificationManager.shared.scheduleReminder(for: task)
-        }
     }
     
     private func deleteTask() {
-        NotificationManager.shared.cancelReminder(for: task)
         modelContext.delete(task)
         dismiss()
     }
@@ -330,28 +297,9 @@ struct TaskDetailView: View {
         }
     }
     
-    private func refreshReminder() {
-        NotificationManager.shared.scheduleReminder(for: task)
-    }
-    
     private func syncScheduleState() {
         dueDateEnabled = task.dueDate != nil
         dueDateDraft = task.dueDate ?? Date()
-        reminderEnabled = task.remindAt != nil
-        reminderDraft = task.remindAt ?? defaultReminderDraft()
-    }
-    
-    private func defaultReminderDraft() -> Date {
-        if let dueDate = task.dueDate {
-            let calendar = Calendar.current
-            return calendar.date(
-                bySettingHour: 9,
-                minute: 0,
-                second: 0,
-                of: dueDate
-            ) ?? dueDate
-        }
-        return Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
     }
 
     private func queueSaveStatus() {
