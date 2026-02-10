@@ -19,6 +19,7 @@ final class TaskItem {
     // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var taskDescription: String?
     var isCompleted: Bool?
+    // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var completionDate: Date?
     var dueDate: Date?
     var createdAt: Date?

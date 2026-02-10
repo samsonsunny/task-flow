@@ -29,7 +29,6 @@ enum TaskPreviewData {
             isCompleted: true,
             dueDate: Date().addingTimeInterval(-86400)
         )
-        task2.completionDate = Date()
 
         let task3 = TaskItem(
             taskTitle: "Design App Icon",

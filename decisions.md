@@ -65,6 +65,20 @@
 - Preview seed data was updated to remove descriptions.
 - README feature list was updated.
 
+## Decision: Remove Completion Dates From UI
+
+**Date:** 2026-02-10
+
+**Decision:** Completion dates are no longer set or displayed in the UI.
+
+**Rationale:** Completion timestamps are optional metadata that add UI and state complexity without improving the core capture → schedule → complete flow. Removing them keeps the app focused while preserving backward compatibility.
+
+**Impact:**
+- The completion date is no longer set in `TaskDetailView.swift`.
+- Completion date display was removed from `TaskRowView.swift`.
+- Preview seed data was updated.
+- README feature list was updated.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

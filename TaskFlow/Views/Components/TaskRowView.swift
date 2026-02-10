@@ -70,10 +70,6 @@ struct TaskRowView: View {
             return nil
         case .completedMetadata:
             if task.safeIsCompleted {
-                if let completionDate = task.completionDate {
-                    let dateText = completionDate.formatted(date: .abbreviated, time: .omitted)
-                    return "Completed · \(dateText)"
-                }
                 return "Completed"
             }
             if task.isOverdue { return "Overdue" }

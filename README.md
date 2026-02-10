@@ -13,7 +13,7 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 - Filter to show or hide completed tasks
 - Task creation with title and due date
 - Task details view with edit-in-place
-- Completion tracking with completion date
+- Completion tracking
 
 
 - Local storage via SwiftData

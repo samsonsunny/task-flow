@@ -224,7 +224,6 @@ struct TaskDetailView: View {
     private func toggleCompletion() {
         withAnimation {
             task.isCompleted = !task.safeIsCompleted
-            task.completionDate = task.safeIsCompleted ? Date() : nil
         }
     }
     
