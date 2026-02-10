@@ -185,3 +185,28 @@
 **Impact:**
 - The `OverdueTasksView.swift` file will be deleted.
 - References to `OverdueTasksView` in `TaskListView.swift` will be removed, including the `AppScreen.overdue` case, the `overdueTasksLink` variable, the `overdueTasks` computed property, the conditional display of the overdue tasks link in the body, and the `.overdue:` case in the `navigationDestination` switch statement.
+
+## Decision: Require Due Dates (Default Tomorrow)
+
+**Date:** 2026-02-10
+
+**Decision:** All tasks must have a due date. The default due date for new tasks is Tomorrow.
+
+**Rationale:** Strict due dates keep the product focused on the capture → schedule → do loop and eliminate ambiguity. A Tomorrow default keeps capture fast without forcing precise scheduling.
+
+**Impact:**
+- The inline add row now always shows due-date controls and defaults to Tomorrow.
+- The task detail schedule toggle was removed in favor of an always-on due date.
+- Tasks missing a due date are normalized to Today on list load.
+
+## Decision: Remove Task Detail Screen
+
+**Date:** 2026-02-10
+
+**Decision:** The task detail screen (`TaskDetailView.swift`) has been removed.
+
+**Rationale:** With due dates required and descriptions removed, the detail screen adds navigation and UI weight without increasing capability. Keeping everything on the list makes the app faster and calmer.
+
+**Impact:**
+- `TaskDetailView.swift` was deleted.
+- Task rows no longer navigate to a detail view.
