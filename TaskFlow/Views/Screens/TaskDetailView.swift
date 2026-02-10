@@ -130,10 +130,6 @@ struct TaskDetailView: View {
         private var scheduleCard: some View {
             CardView {
                 VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
-                    Text("Schedule")
-                        .font(AppTheme.fonts.headline)
-                        .foregroundStyle(AppTheme.colors.text)
-                    
                     Toggle("Due date", isOn: $dueDateEnabled)
                         .onChange(of: dueDateEnabled) { _, isEnabled in
                             if isEnabled {

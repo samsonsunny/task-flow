@@ -103,6 +103,17 @@
 **Impact:**
 - Save status state and UI were removed from `TaskDetailView.swift`.
 
+## Decision: Remove Schedule Card Header
+
+**Date:** 2026-02-10
+
+**Decision:** The “Schedule” header in the task detail view has been removed.
+
+**Rationale:** With only due-date controls remaining, the header adds visual weight without providing new information. Removing it keeps the detail view quieter.
+
+**Impact:**
+- The header text was removed from the schedule card in `TaskDetailView.swift`.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10
