@@ -25,10 +25,6 @@ struct TaskListView: View {
         tasks.filter { !$0.safeIsCompleted }
     }
     
-    private var completedTasksCount: Int {
-        tasks.filter { $0.safeIsCompleted }.count
-    }
-    
     private var hasAnyTasks: Bool {
         !tasks.isEmpty
     }
@@ -112,7 +108,6 @@ struct TaskListView: View {
                     }
                 )
                 .animation(.easeInOut, value: incompleteTasks.count)
-                .animation(.easeInOut, value: completedTasksCount)
             }
             .navigationTitle("Tasks")
             .onAppear {

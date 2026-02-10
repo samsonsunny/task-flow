@@ -79,6 +79,19 @@
 - Preview seed data was updated.
 - README feature list was updated.
 
+## Decision: Hide Completed Tasks In Main List
+
+**Date:** 2026-02-10
+
+**Decision:** Completed tasks are hidden from the main list by default with no filter toggle.
+
+**Rationale:** The primary list is for actionable work. Removing the filter reduces UI state and keeps the focus on active tasks. If users need history, a separate completed-tasks view can be introduced later.
+
+**Impact:**
+- The main list now only renders incomplete tasks.
+- Completed-task empty states were removed.
+- README feature list was updated.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

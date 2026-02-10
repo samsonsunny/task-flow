@@ -12,7 +12,6 @@ import SwiftUI
 enum EmptyStateType {
     case noTasks
     case allDone
-    case noCompleted
     case noOverdue
 }
 
@@ -43,8 +42,6 @@ struct EmptyStateView: View {
             return "tray"
         case .allDone:
             return "checkmark.circle"
-        case .noCompleted:
-            return "checkmark.circle"
         case .noOverdue:
             return "clock"
         }
@@ -56,8 +53,6 @@ struct EmptyStateView: View {
             return "No Tasks"
         case .allDone:
             return "All Done!"
-        case .noCompleted:
-            return "No Completed Tasks"
         case .noOverdue:
             return "No Overdue Tasks"
         }
@@ -69,8 +64,6 @@ struct EmptyStateView: View {
             return "Create your first task to get started."
         case .allDone:
             return "You have no active tasks."
-        case .noCompleted:
-            return "Completed tasks will appear here."
         case .noOverdue:
             return "Overdue tasks will appear here."
         }
@@ -83,10 +76,6 @@ struct EmptyStateView: View {
 
 #Preview("All Done") {
     EmptyStateView(type: .allDone)
-}
-
-#Preview("No Completed Tasks") {
-    EmptyStateView(type: .noCompleted)
 }
 
 #Preview("No Overdue Tasks") {
