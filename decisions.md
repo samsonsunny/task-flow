@@ -114,6 +114,18 @@
 **Impact:**
 - The header text was removed from the schedule card in `TaskDetailView.swift`.
 
+## Decision: Always-Editable Task Title
+
+**Date:** 2026-02-10
+
+**Decision:** The task title is now always editable; edit mode and the Done button were removed.
+
+**Rationale:** Edit modes add friction and state. Always-editable titles speed up common edits and simplify the toolbar.
+
+**Impact:**
+- Edit mode state and toolbar actions were removed from `TaskDetailView.swift`.
+- Title input is now always active and saves on dismiss.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

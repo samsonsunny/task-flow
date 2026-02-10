@@ -7,7 +7,6 @@ struct TaskDetailView: View {
     
     @Bindable var task: TaskItem
     
-    @State private var isEditing = false
     @State private var editedTitle: String
     @State private var showingDeleteAlert = false
     @FocusState private var focusedField: FocusField?
@@ -40,15 +39,6 @@ struct TaskDetailView: View {
         .navigationTitle("Task Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-
-            ToolbarItem(placement: .primaryAction) {
-                if isEditing {
-                    Button("Done") {
-                        saveEdits()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button(role: .destructive, action: { showingDeleteAlert = true }) {
@@ -68,11 +58,7 @@ struct TaskDetailView: View {
             Text("Are you sure you want to delete this task? This action cannot be undone.")
         }
         .onAppear(perform: syncScheduleState)
-        .onDisappear {
-            if isEditing {
-                saveEdits()
-            }
-        }
+        .onDisappear(perform: saveEdits)
     }
     
     // MARK: - Header Card
@@ -80,18 +66,11 @@ struct TaskDetailView: View {
         CardView {
             VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
                 HStack(alignment: .top, spacing: AppTheme.spacing.sm) {
-                    if isEditing {
-                        TextField("Task Title", text: $editedTitle)
-                            .font(AppTheme.fonts.title)
-                            .textFieldStyle(.plain)
-                            .padding(.vertical, AppTheme.spacing.xs)
-                            .focused($focusedField, equals: .title)
-                    } else {
-                        Text(task.safeTitle)
-                            .font(AppTheme.fonts.title)
-                            .foregroundStyle(AppTheme.colors.text)
-                            .lineLimit(2)
-                    }
+                    TextField("Task Title", text: $editedTitle)
+                        .font(AppTheme.fonts.title)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, AppTheme.spacing.xs)
+                        .focused($focusedField, equals: .title)
                     
                     Spacer()
                 }
@@ -155,24 +134,9 @@ struct TaskDetailView: View {
         }
     
     // MARK: - Actions
-    private func startEditing(focus: FocusField = .title) {
-        editedTitle = task.safeTitle
-        isEditing = true
-        focusedField = focus
-    }
-    
-    private func cancelEditing() {
-        editedTitle = task.safeTitle
-        isEditing = false
-        focusedField = nil
-    }
-    
     private func saveEdits() {
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespaces)
-        if !trimmedTitle.isEmpty {
-            task.taskTitle = trimmedTitle
-        }
-        isEditing = false
+        task.taskTitle = trimmedTitle.isEmpty ? "Untitled Task" : trimmedTitle
         focusedField = nil
     }
     
