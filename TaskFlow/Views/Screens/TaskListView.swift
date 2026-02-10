@@ -116,9 +116,6 @@ struct TaskListView: View {
                 }
                 normalizeMissingDueDates()
             }
-            .navigationDestination(for: TaskItem.self) { task in
-                TaskDetailView(task: task)
-            }
             .safeAreaInset(edge: .bottom) {
                 InlineAddTaskRow(isFocused: $addTaskFocused, onCreate: createInlineTask)
             }
@@ -126,10 +123,7 @@ struct TaskListView: View {
     }
     
     private func taskRow(_ task: TaskItem) -> some View {
-        NavigationLink(value: task) {
-            TaskRowView(task: task)
-        }
-        .buttonStyle(.plain)
+        TaskRowView(task: task)
     }
     
     private func createInlineTask(title: String, dueDate: Date) {
