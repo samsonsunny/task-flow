@@ -12,7 +12,6 @@ struct TaskDetailView: View {
         _editedTitle = State(initialValue: task.safeTitle)
     }
     
-    @State private var dueDateEnabled = false
     @State private var dueDateDraft = Date()
     
     private enum FocusField {
@@ -83,28 +82,17 @@ struct TaskDetailView: View {
     }
     
     // MARK: - Schedule Card
-        private var scheduleCard: some View {
+    private var scheduleCard: some View {
             CardView {
                 VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
-                    Toggle("Due date", isOn: $dueDateEnabled)
-                        .onChange(of: dueDateEnabled) { _, isEnabled in
-                            if isEnabled {
-                                task.dueDate = dueDateDraft
-                            } else {
-                                task.dueDate = nil
-                            }
-                        }
-                    
-                    if dueDateEnabled {
-                        DatePicker(
-                            "Due",
-                            selection: $dueDateDraft,
-                            displayedComponents: [.date]
-                        )
-                        .datePickerStyle(.compact)
-                        .onChange(of: dueDateDraft) { _, newValue in
-                            task.dueDate = newValue
-                        }
+                    DatePicker(
+                        "Due",
+                        selection: $dueDateDraft,
+                        displayedComponents: [.date]
+                    )
+                    .datePickerStyle(.compact)
+                    .onChange(of: dueDateDraft) { _, newValue in
+                        task.dueDate = newValue
                     }
                 }
             }
@@ -134,8 +122,11 @@ struct TaskDetailView: View {
     }
     
     private func syncScheduleState() {
-        dueDateEnabled = task.dueDate != nil
-        dueDateDraft = task.dueDate ?? Date()
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        if task.dueDate == nil {
+            task.dueDate = todayStart
+        }
+        dueDateDraft = task.dueDate ?? todayStart
     }
 
 }

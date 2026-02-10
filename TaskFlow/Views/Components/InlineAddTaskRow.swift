@@ -10,12 +10,11 @@ import UIKit
 
 struct InlineAddTaskRow: View {
     @FocusState.Binding var isFocused: Bool
-    let onCreate: (_ title: String, _ dueDate: Date?) -> Void
+    let onCreate: (_ title: String, _ dueDate: Date) -> Void
     
     @State private var title = ""
-    @State private var dueDateEnabled = false
-    @State private var dueDate = Date()
-    @State private var selectedSuggestion: DueSuggestion? = nil
+    @State private var dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    @State private var selectedSuggestion: DueSuggestion = .tomorrow
     @State private var showDatePicker = false
     
     private enum DueSuggestion: String, CaseIterable, Identifiable {
@@ -55,7 +54,6 @@ struct InlineAddTaskRow: View {
                             if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 clearDraft()
                             } else {
-                                dueDateEnabled = false
                                 showDatePicker = false
                             }
                         }
@@ -88,29 +86,7 @@ struct InlineAddTaskRow: View {
             )
             .appShadow(AppTheme.shadows.elevationInlineAddTask)
             
-            if isFocused && !title.trimmingCharacters(in: .whitespaces).isEmpty && !dueDateEnabled {
-                Button {
-                    dueDateEnabled = true
-                    showDatePicker = false
-                    if selectedSuggestion == nil {
-                        applySuggestion(.today)
-                    }
-                } label: {
-                    HStack(spacing: AppTheme.spacing.xs) {
-                        Image(systemName: "calendar")
-                            .font(AppTheme.fonts.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.colors.secondaryText)
-                        Text("Add due date")
-                            .font(AppTheme.fonts.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.colors.secondaryText)
-                    }
-                    .padding(.vertical, AppTheme.spacing.xs)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-            }
-            
-            if dueDateEnabled {
+            if isFocused && !title.trimmingCharacters(in: .whitespaces).isEmpty {
                 VStack(alignment: .leading, spacing: AppTheme.spacing.sm) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: AppTheme.spacing.sm) {
@@ -167,24 +143,6 @@ struct InlineAddTaskRow: View {
                                 )
                         }
                         .buttonStyle(.plain)
-                        
-                        Button {
-                            dueDateEnabled = false
-                            selectedSuggestion = nil
-                            showDatePicker = false
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(AppTheme.fonts.caption.weight(.semibold))
-                                .foregroundStyle(AppTheme.colors.secondaryText)
-                                .frame(width: 28, height: 28)
-                                .background(AppTheme.colors.secondaryBackground)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(AppTheme.colors.secondaryText.opacity(0.12), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
                     }
                     
                     if showDatePicker {
@@ -225,14 +183,14 @@ struct InlineAddTaskRow: View {
         let trimmed = title.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         triggerHaptic()
-        onCreate(trimmed, dueDateEnabled ? dueDate : nil)
+        onCreate(trimmed, dueDate)
         clearDraft()
     }
     
     private func clearDraft() {
         title = ""
-        dueDateEnabled = false
-        selectedSuggestion = nil
+        selectedSuggestion = .tomorrow
+        dueDate = suggestionDate(.tomorrow)
         showDatePicker = false
     }
     

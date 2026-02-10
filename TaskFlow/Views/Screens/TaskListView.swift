@@ -33,7 +33,6 @@ struct TaskListView: View {
         case today = "Today"
         case upcoming = "Upcoming"
         case later = "Later"
-        case noDueDate = "Someday"
 
         var id: String { self.rawValue }
     }
@@ -46,13 +45,12 @@ struct TaskListView: View {
         var buckets: [TaskSection: [TaskItem]] = [
             .today: [],
             .upcoming: [],
-            .later: [],
-            .noDueDate: []
+            .later: []
         ]
         
         for task in incompleteTasks {
             guard let due = task.dueDate else {
-                buckets[.noDueDate, default: []].append(task)
+                buckets[.today, default: []].append(task)
                 continue
             }
             if due < todayStart {
@@ -67,7 +65,7 @@ struct TaskListView: View {
             }
         }
         
-        return ([TaskSection.today, TaskSection.upcoming, TaskSection.later, TaskSection.noDueDate]).compactMap { section in
+        return ([TaskSection.today, TaskSection.upcoming, TaskSection.later]).compactMap { section in
             guard let items = buckets[section], !items.isEmpty else { return nil }
             return (section, items)
         }
@@ -116,6 +114,7 @@ struct TaskListView: View {
                         addTaskFocused = true
                     }
                 }
+                normalizeMissingDueDates()
             }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
@@ -133,12 +132,24 @@ struct TaskListView: View {
         .buttonStyle(.plain)
     }
     
-    private func createInlineTask(title: String, dueDate: Date?) {
+    private func createInlineTask(title: String, dueDate: Date) {
         let task = TaskItem(
             taskTitle: title,
             dueDate: dueDate
         )
         modelContext.insert(task)
+    }
+
+    private func normalizeMissingDueDates() {
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        var didUpdate = false
+        for task in tasks where task.dueDate == nil {
+            task.dueDate = todayStart
+            didUpdate = true
+        }
+        if didUpdate {
+            try? modelContext.save()
+        }
     }
     
 }
