@@ -109,8 +109,6 @@ struct TaskDetailView: View {
                     }
                     
                     Spacer()
-                    
-                    TaskStatusBadge(task: task)
                 }
                 
                 HStack(spacing: AppTheme.spacing.sm) {

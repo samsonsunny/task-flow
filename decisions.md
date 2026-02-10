@@ -39,6 +39,19 @@
 - Search-related empty state case and preview were removed from `EmptyStateView.swift`.
 - README feature list was updated.
 
+## Decision: Remove Status Badges
+
+**Date:** 2026-02-10
+
+**Decision:** The task status badges (Done/Overdue/Days left) have been removed.
+
+**Rationale:** Status badges are a presentational layer that duplicates existing signals (completion state and due date). Removing them reduces UI noise and keeps the list focused on titles and schedules.
+
+**Impact:**
+- `TaskStatusBadge.swift` has been deleted.
+- The badge was removed from `TaskDetailView.swift`.
+- README feature list was updated.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

@@ -16,7 +16,6 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 - Completion tracking with completion date
 
 
-- Status badges for Done, Overdue, and time-to-due
 - Local storage via SwiftData
 
 ## Platforms
