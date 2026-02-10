@@ -17,16 +17,17 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
     @AppStorage("taskflow.notifications.enabled") private var notificationsEnabled = false
-    @AppStorage("dailyReviewEnabled") private var dailyReviewEnabled = true
+    // Removed: @AppStorage("dailyReviewEnabled") private var dailyReviewEnabled = true
     @State private var focusAddOnAppear = false
     
     var body: some View {
         TaskListView(shouldFocusOnAppear: focusAddOnAppear)
-            .task {
-                if notificationsEnabled && dailyReviewEnabled {
-                    NotificationManager.shared.scheduleDailyReview()
-                }
-            }
+            // Removed .task modifier for scheduling daily review
+            // .task {
+            //     if notificationsEnabled && dailyReviewEnabled {
+            //         NotificationManager.shared.scheduleDailyReview()
+            //     }
+            // }
             .onAppear {
                 if focusAddOnAppear {
                     focusAddOnAppear = false

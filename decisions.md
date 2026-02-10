@@ -12,3 +12,27 @@
 - The `OnboardingView.swift` file has been deleted.
 - `ContentView.swift` has been updated to remove the conditional logic that displays the onboarding screen, along with the `hasOnboarded` flag and the `sampleTaskCreated` property. The `seedSampleTaskIfNeeded` function has also been removed.
 - The app will now directly launch into the main task list view (`TaskListView`) for all users.
+
+## Decision: Remove Completed Tasks View
+
+**Date:** 2026-02-10
+
+**Decision:** The dedicated 'Completed Tasks View' (`CompletedTasksView.swift`) will be removed from the application.
+
+**Rationale:** While the app provides a link to view completed tasks from the main list, the dedicated `CompletedTasksView` offers functionality that is largely covered by the main task list's filtering capabilities and the direct link. Removing this separate view simplifies the app's navigation and reduces codebase complexity. Users can still access completed tasks via the link in the main `TaskListView`.
+
+**Impact:**
+- The `CompletedTasksView.swift` file will be deleted.
+- The `completedTasksLink` and related properties (`completedTasksCount`, `hasCompletedTasks`) will be removed from `TaskListView.swift`.
+
+## Decision: Remove Overdue Tasks View
+
+**Date:** 2026-02-10
+
+**Decision:** The dedicated 'Overdue Tasks View' (`OverdueTasksView.swift`) will be removed from the application.
+
+**Rationale:** Similar to the removal of the 'Completed Tasks View', the dedicated 'Overdue Tasks View' will be removed to simplify the application's navigation and codebase. The main `TaskListView` provides a prominent link to overdue tasks, and removing the separate view streamlines the user flow.
+
+**Impact:**
+- The `OverdueTasksView.swift` file will be deleted.
+- References to `OverdueTasksView` in `TaskListView.swift` will be removed, including the `AppScreen.overdue` case, the `overdueTasksLink` variable, the `overdueTasks` computed property, the conditional display of the overdue tasks link in the body, and the `.overdue:` case in the `navigationDestination` switch statement.

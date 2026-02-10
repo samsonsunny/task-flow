@@ -9,11 +9,6 @@
 import SwiftUI
 import SwiftData
 
-enum AppScreen: Hashable {
-    case overdue
-    case completed
-}
-
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
@@ -118,10 +113,6 @@ struct TaskListView: View {
                         if incompleteTasks.isEmpty {
                             EmptyStateView(type: hasAnyTasks ? .allDone : .noTasks)
                         } else {
-                            if !overdueTasks.isEmpty {
-                                overdueTasksLink
-                            }
-                            
                             ForEach(sectionedTasks, id: \.0) { section, items in
                                 Text(section.rawValue)
                                     .font(AppTheme.fonts.subheadline.weight(.semibold))
@@ -132,10 +123,6 @@ struct TaskListView: View {
                                 ForEach(items) { task in
                                     taskRow(task)
                                 }
-                            }
-                            
-                            if hasCompletedTasks {
-                                completedTasksLink
                             }
                         }
         }
@@ -167,72 +154,10 @@ struct TaskListView: View {
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
             }
-            .navigationDestination(for: AppScreen.self) { screen in
-                switch screen {
-                case .overdue:
-                    OverdueTasksView()
-                case .completed:
-                    CompletedTasksView()
-                }
-            }
             .safeAreaInset(edge: .bottom) {
                 InlineAddTaskRow(isFocused: $addTaskFocused, onCreate: createInlineTask)
             }
         }
-    }
-    
-
-
-    private var overdueTasksLink: some View {
-        NavigationLink(value: AppScreen.overdue) {
-            HStack {
-                Text("Overdue")
-                    .font(AppTheme.fonts.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.text)
-                Spacer()
-                Text("\(overdueTasks.count)")
-                    .font(AppTheme.fonts.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-                    .padding(.horizontal, AppTheme.spacing.xs)
-                    .padding(.vertical, AppTheme.spacing.xxs)
-                    .background(AppTheme.colors.background)
-                    .clipShape(Capsule())
-                Image(systemName: "chevron.right")
-                    .font(AppTheme.fonts.caption2)
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-            }
-            .padding(.horizontal, AppTheme.spacing.md)
-            .padding(.vertical, AppTheme.spacing.sm)
-            .background(AppTheme.colors.secondaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-        }
-        .buttonStyle(.plain)
-    }
-    
-    private var completedTasksLink: some View {
-        NavigationLink(value: AppScreen.completed) {
-            HStack {
-                Text("Completed")
-                    .font(AppTheme.fonts.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.text)
-                Spacer()
-                Text("\(completedTasksCount)")
-                    .font(AppTheme.fonts.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-                    .padding(.horizontal, AppTheme.spacing.xs)
-                    .padding(.vertical, AppTheme.spacing.xxs)
-                    .background(AppTheme.colors.background)
-                    .clipShape(Capsule())
-                Image(systemName: "chevron.right")
-                    .font(AppTheme.fonts.caption2)
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-            }
-            .padding(.horizontal, AppTheme.spacing.md)
-            .padding(.vertical, AppTheme.spacing.sm)
-            .background(AppTheme.colors.secondaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-        }
-        .buttonStyle(.plain)
     }
 
     private var reminderPrompt: some View {
