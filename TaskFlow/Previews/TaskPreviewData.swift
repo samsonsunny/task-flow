@@ -21,13 +21,11 @@ enum TaskPreviewData {
     static func seedTaskList(into container: ModelContainer) -> [TaskItem] {
         let task1 = TaskItem(
             taskTitle: "Build iOS App",
-            taskDescription: "Create a task management app with SwiftData",
             dueDate: Date().addingTimeInterval(86400 * 3)
         )
 
         let task2 = TaskItem(
             taskTitle: "Learn SwiftUI",
-            taskDescription: "Master SwiftUI fundamentals",
             isCompleted: true,
             dueDate: Date().addingTimeInterval(-86400)
         )
@@ -35,7 +33,6 @@ enum TaskPreviewData {
 
         let task3 = TaskItem(
             taskTitle: "Design App Icon",
-            taskDescription: "Create a modern app icon",
             dueDate: Date()
         )
 
@@ -47,7 +44,6 @@ enum TaskPreviewData {
     static func makeDetailTask() -> TaskItem {
         let task = TaskItem(
             taskTitle: "Build iOS App",
-            taskDescription: "Create a comprehensive task management app with SwiftData storage.",
             dueDate: Date().addingTimeInterval(86400 * 5)
         )
 

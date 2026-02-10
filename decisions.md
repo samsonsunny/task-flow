@@ -52,6 +52,19 @@
 - The badge was removed from `TaskDetailView.swift`.
 - README feature list was updated.
 
+## Decision: Remove Task Description UI
+
+**Date:** 2026-02-10
+
+**Decision:** Task descriptions are no longer editable or visible in the UI, leaving tasks as title + due date only.
+
+**Rationale:** Descriptions slow down capture and add UI/maintenance overhead without improving the core capture → schedule → complete loop.
+
+**Impact:**
+- Description editor UI was removed from `TaskDetailView.swift`.
+- Preview seed data was updated to remove descriptions.
+- README feature list was updated.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

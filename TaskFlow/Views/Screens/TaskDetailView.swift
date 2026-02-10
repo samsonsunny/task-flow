@@ -9,14 +9,12 @@ struct TaskDetailView: View {
     
     @State private var isEditing = false
     @State private var editedTitle: String
-    @State private var editedDescription: String
     @State private var showingDeleteAlert = false
     @FocusState private var focusedField: FocusField?
     
     init(task: TaskItem) {
         self.task = task
         _editedTitle = State(initialValue: task.safeTitle)
-        _editedDescription = State(initialValue: task.safeDescription)
     }
     
     @State private var dueDateEnabled = false
@@ -26,7 +24,6 @@ struct TaskDetailView: View {
     
     private enum FocusField {
         case title
-        case description
     }
 
     private enum SaveStatus {
@@ -45,7 +42,6 @@ struct TaskDetailView: View {
                     saveIndicator
                     headerCard
                     scheduleCard
-                    descriptionCard
                 }
                 .padding(AppTheme.spacing.lg)
             }
@@ -173,26 +169,6 @@ struct TaskDetailView: View {
             }
         }
     
-    // MARK: - Description Card
-    private var descriptionCard: some View {
-        CardView {
-            textEditorWithPlaceholder(
-                text: $editedDescription,
-                placeholder: "Add a short description, goals, or context.",
-                minHeight: 110
-            )
-            .focused($focusedField, equals: .description)
-            .disabled(!isEditing)
-            .scrollDisabled(!isEditing)
-            .contentShape(Rectangle()) // Makes the whole TextEditor tappable when disabled
-            .onTapGesture {
-                if !isEditing {
-                    startEditing(focus: .description)
-                }
-            }
-        }
-    }
-
     @ViewBuilder
     private var saveIndicator: some View {
         switch saveStatus {
@@ -225,14 +201,12 @@ struct TaskDetailView: View {
     // MARK: - Actions
     private func startEditing(focus: FocusField = .title) {
         editedTitle = task.safeTitle
-        editedDescription = task.safeDescription
         isEditing = true
         focusedField = focus
     }
     
     private func cancelEditing() {
         editedTitle = task.safeTitle
-        editedDescription = task.safeDescription
         isEditing = false
         focusedField = nil
     }
@@ -241,7 +215,6 @@ struct TaskDetailView: View {
         let trimmedTitle = editedTitle.trimmingCharacters(in: .whitespaces)
         if !trimmedTitle.isEmpty {
             task.taskTitle = trimmedTitle
-            task.taskDescription = editedDescription.trimmingCharacters(in: .whitespaces)
         }
         isEditing = false
         focusedField = nil
@@ -268,31 +241,6 @@ struct TaskDetailView: View {
             return AppTheme.colors.danger
         }
         return AppTheme.colors.secondaryText
-    }
-    
-    private func textEditorWithPlaceholder(
-        text: Binding<String>,
-        placeholder: String,
-        minHeight: CGFloat
-    ) -> some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: text)
-                .font(AppTheme.fonts.body)
-                .frame(minHeight: minHeight)
-                .padding(AppTheme.spacing.sm)
-                .background(AppTheme.colors.background)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-                .scrollContentBackground(.hidden)
-            
-            if text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(placeholder)
-                    .font(AppTheme.fonts.body)
-                    .foregroundStyle(AppTheme.colors.secondaryText)
-                    .padding(.horizontal, AppTheme.spacing.sm)
-                    .padding(.vertical, AppTheme.spacing.sm)
-                    .allowsHitTesting(false)
-            }
-        }
     }
     
     private func syncScheduleState() {

@@ -16,6 +16,7 @@ import Foundation
 final class TaskItem {
     var taskId: String?
     var taskTitle: String?
+    // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var taskDescription: String?
     var isCompleted: Bool?
     var completionDate: Date?
@@ -57,7 +58,7 @@ final class TaskItem {
     var safeTitle: String {
         taskTitle ?? "Untitled Task"
     }
-    
+
     var safeDescription: String {
         taskDescription ?? ""
     }

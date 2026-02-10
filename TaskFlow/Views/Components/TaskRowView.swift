@@ -20,16 +20,14 @@ struct TaskRowView: View {
     
     var body: some View {
         HStack(alignment: .center, spacing: AppTheme.spacing.sm) {
-            VStack(alignment: .leading, spacing: AppTheme.spacing.xs) {
-                VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
-                    Text(task.safeTitle)
-                        .font(AppTheme.fonts.headline)
-                        .foregroundStyle(AppTheme.colors.text)
-                        .strikethrough(task.safeIsCompleted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    
-                    // Description hidden in list for minimal metadata
-                }
+                VStack(alignment: .leading, spacing: AppTheme.spacing.xs) {
+                    VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
+                        Text(task.safeTitle)
+                            .font(AppTheme.fonts.headline)
+                            .foregroundStyle(AppTheme.colors.text)
+                            .strikethrough(task.safeIsCompleted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 
                 HStack(spacing: AppTheme.spacing.xs) {
                     if let dueDate = task.dueDate {
