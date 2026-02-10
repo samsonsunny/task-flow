@@ -1,7 +1,7 @@
 # TaskFlow
 
 
-TaskFlow is a SwiftUI task manager for iOS. It focuses on clean task capture, due-date tracking, and lightweight execution support with subtasks and daily notes. Data is stored with SwiftData and synced through iCloud via CloudKit.
+TaskFlow is a SwiftUI task manager for iOS. It focuses on clean task capture, due-date tracking, and lightweight execution support with subtasks and daily notes. Data is stored locally with SwiftData.
 
 ## Product Overview
 
@@ -18,7 +18,7 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 
 
 - Status badges for Done, Overdue, and time-to-due
-- iCloud sync via SwiftData + CloudKit, with pull-to-refresh to re-sync
+- Local storage via SwiftData
 
 ## Platforms
 
@@ -26,7 +26,7 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 
 ## Data & Sync
 
-TaskFlow uses SwiftData as the local persistence layer and enables iCloud sync via CloudKit. Entitlements are configured for an iCloud container in `TaskFlow/TaskFlow.entitlements`.
+TaskFlow uses SwiftData as the local persistence layer.
 
 ## Project Structure
 
@@ -42,7 +42,7 @@ TaskFlow uses SwiftData as the local persistence layer and enables iCloud sync v
 2. Select an iOS target.
 3. Build and run.
 
-If you want iCloud sync, ensure your signing team has access to the configured iCloud container.
+If you want to add sync later, you can reintroduce CloudKit and entitlements.
 
 ## Notes
 

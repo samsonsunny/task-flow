@@ -47,7 +47,7 @@ enum TaskPreviewData {
     static func makeDetailTask() -> TaskItem {
         let task = TaskItem(
             taskTitle: "Build iOS App",
-            taskDescription: "Create a comprehensive task management app with SwiftData and iCloud sync capabilities.",
+            taskDescription: "Create a comprehensive task management app with SwiftData storage.",
             dueDate: Date().addingTimeInterval(86400 * 5)
         )
 

@@ -14,6 +14,19 @@
 - Reminder controls and scheduling logic have been removed from `TaskDetailView.swift`.
 - Task model fields tied to reminders (`remindAt`, `storedReminderReferenceDate`) have been removed.
 
+## Decision: Remove iCloud Sync (CloudKit)
+
+**Date:** 2026-02-10
+
+**Decision:** iCloud sync via CloudKit will be removed, leaving TaskFlow as a local-only SwiftData app.
+
+**Rationale:** Sync adds configuration overhead (entitlements, CloudKit container setup) and introduces failure modes that are not required for the core task flow. Removing it reduces complexity and speeds up iteration.
+
+**Impact:**
+- CloudKit configuration was removed from `TaskFlowApp.swift`.
+- iCloud entitlements were removed from `TaskFlow.entitlements`.
+- Documentation and preview copy were updated to reflect local-only storage.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

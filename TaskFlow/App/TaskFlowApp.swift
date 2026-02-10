@@ -20,15 +20,8 @@ struct TaskFlowApp: App {
             TaskItem.self
         ])
         
-        // Enable iCloud sync with automatic CloudKit database
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic  // 🔑 KEY: Enables iCloud sync
-        )
-
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
