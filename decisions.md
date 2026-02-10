@@ -126,6 +126,17 @@
 - Edit mode state and toolbar actions were removed from `TaskDetailView.swift`.
 - Title input is now always active and saves on dismiss.
 
+## Decision: Remove Delete Action From Detail View
+
+**Date:** 2026-02-10
+
+**Decision:** The delete action was removed from the task detail view. Deletion is available via swipe-to-delete in the task list.
+
+**Rationale:** The detail view should stay minimal, and the delete menu added extra UI for a single action. Keeping deletion in the list reduces clutter and removes a redundant control.
+
+**Impact:**
+- The trailing menu and delete confirmation were removed from `TaskDetailView.swift`.
+
 ## Decision: Remove Onboarding Feature and Associated Cleanup
 
 **Date:** 2026-02-10

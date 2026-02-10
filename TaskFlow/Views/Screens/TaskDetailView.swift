@@ -2,13 +2,9 @@ import SwiftUI
 import SwiftData
 
 struct TaskDetailView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    
     @Bindable var task: TaskItem
     
     @State private var editedTitle: String
-    @State private var showingDeleteAlert = false
     @FocusState private var focusedField: FocusField?
     
     init(task: TaskItem) {
@@ -38,25 +34,6 @@ struct TaskDetailView: View {
         }
         .navigationTitle("Task Details")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button(role: .destructive, action: { showingDeleteAlert = true }) {
-                        Label("Delete Task", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(AppTheme.colors.primary)
-                }
-                .accessibilityLabel("More actions")
-            }
-        }
-        .alert("Delete Task", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive, action: deleteTask)
-        } message: {
-            Text("Are you sure you want to delete this task? This action cannot be undone.")
-        }
         .onAppear(perform: syncScheduleState)
         .onDisappear(perform: saveEdits)
     }
@@ -144,11 +121,6 @@ struct TaskDetailView: View {
         withAnimation {
             task.isCompleted = !task.safeIsCompleted
         }
-    }
-    
-    private func deleteTask() {
-        modelContext.delete(task)
-        dismiss()
     }
     
     private var dueDateColor: Color {
