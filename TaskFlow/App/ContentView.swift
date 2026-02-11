@@ -14,17 +14,8 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
-    @State private var focusAddOnAppear = false
-    
     var body: some View {
-        TaskListView(shouldFocusOnAppear: focusAddOnAppear)
-            .onAppear {
-                if focusAddOnAppear {
-                    focusAddOnAppear = false
-                }
-            }
+        TaskListView()
     }
 }
 

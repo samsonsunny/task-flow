@@ -26,7 +26,6 @@ enum TaskPreviewData {
 
         let task2 = TaskItem(
             taskTitle: "Learn SwiftUI",
-            isCompleted: true,
             dueDate: Date().addingTimeInterval(-86400)
         )
 

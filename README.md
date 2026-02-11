@@ -12,9 +12,6 @@ TaskFlow helps you plan, execute, and review work in a single place. Create task
 - Task list with due-date sorting and swipe-to-delete
 - Task creation with title and due date
 - Task details view with edit-in-place
-- Completion tracking
-
-
 - Local storage via SwiftData
 
 ## Platforms

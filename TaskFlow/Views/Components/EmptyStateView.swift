@@ -11,7 +11,6 @@ import SwiftUI
 
 enum EmptyStateType {
     case noTasks
-    case allDone
     case noOverdue
 }
 
@@ -21,7 +20,7 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: AppTheme.spacing.lg) {
             Image(systemName: emptyStateIcon)
-                .font(AppTheme.fonts.extraLargeIcon)
+                .font(.system(size: 56))
                 .foregroundStyle(AppTheme.colors.secondaryText.opacity(0.5))
             
             Text(emptyStateTitle)
@@ -40,8 +39,6 @@ struct EmptyStateView: View {
         switch type {
         case .noTasks:
             return "tray"
-        case .allDone:
-            return "checkmark.circle"
         case .noOverdue:
             return "clock"
         }
@@ -51,8 +48,6 @@ struct EmptyStateView: View {
         switch type {
         case .noTasks:
             return "No Tasks"
-        case .allDone:
-            return "All Done!"
         case .noOverdue:
             return "No Overdue Tasks"
         }
@@ -62,8 +57,6 @@ struct EmptyStateView: View {
         switch type {
         case .noTasks:
             return "Create your first task to get started."
-        case .allDone:
-            return "You have no active tasks."
         case .noOverdue:
             return "Overdue tasks will appear here."
         }
@@ -72,10 +65,6 @@ struct EmptyStateView: View {
 
 #Preview("No Tasks") {
     EmptyStateView(type: .noTasks)
-}
-
-#Preview("All Done") {
-    EmptyStateView(type: .allDone)
 }
 
 #Preview("No Overdue Tasks") {

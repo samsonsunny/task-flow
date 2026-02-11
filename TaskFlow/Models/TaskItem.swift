@@ -18,6 +18,7 @@ final class TaskItem {
     var taskTitle: String?
     // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var taskDescription: String?
+    // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var isCompleted: Bool?
     // Keep for backward compatibility with existing stores. Do not remove without a migration plan.
     var completionDate: Date?
@@ -28,23 +29,22 @@ final class TaskItem {
         taskId: String? = UUID().uuidString,
         taskTitle: String? = "",
         taskDescription: String? = "",
-        isCompleted: Bool? = false,
         dueDate: Date? = nil,
         createdAt: Date? = Date()
     ) {
         self.taskId = taskId
         self.taskTitle = taskTitle
         self.taskDescription = taskDescription
-        self.isCompleted = isCompleted
+        self.isCompleted = false
         self.dueDate = dueDate
         self.createdAt = createdAt
     }
     
     // Computed properties with safe unwrapping
     var isOverdue: Bool {
-        guard let isCompleted = isCompleted, let referenceDate = dueDate else { return false }
+        guard let referenceDate = dueDate else { return false }
         let todayStart = Calendar.current.startOfDay(for: Date())
-        return !isCompleted && referenceDate < todayStart
+        return referenceDate < todayStart
     }
     
     var daysUntilDue: Int {
@@ -71,10 +71,5 @@ final class TaskItem {
     var safeCreatedAt: Date {
         createdAt ?? Date()
     }
-    
-    var safeIsCompleted: Bool {
-        isCompleted ?? false
-    }
-    
 
 }

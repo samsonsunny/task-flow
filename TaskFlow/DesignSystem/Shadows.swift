@@ -7,9 +7,6 @@ struct AppShadow {
     static let elevation2: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)  // Matches TaskDetailView original shadow
     static let elevation3: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6) // Stronger
 
-    // Custom shadow for InlineAddTaskRow
-    static let elevationInlineAddTask: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
-
     // Helper struct to define shadow parameters
     struct ShadowStyle {
         let color: Color

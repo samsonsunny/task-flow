@@ -27,10 +27,6 @@ struct AppFont {
         .title2
     }
 
-    static var title3: Font { // Added for InlineAddTaskRow
-        .title3
-    }
-
     static var headline: Font {
         .headline // Using system font as it's a semantic style
     }

@@ -1,5 +1,124 @@
 # Decisions
 
+## Decision: Remove Completion Tracking
+
+**Date:** 2026-02-11
+
+**Decision:** Completion tracking has been removed from TaskFlow. Tasks no longer have a completion state in the UI and are always shown in the main list. The underlying `isCompleted` field remains in the model for backward compatibility with existing local data.
+
+**Rationale:** Completion state introduces extra UI states, filtering logic, and empty-state variants that distract from the core loop of capture → schedule → do. Removing it keeps the app focused on due dates and active work.
+
+**Impact:**
+- Completion UI indicators (strikethrough/status text) were removed from `TaskRowView.swift`.
+- The list no longer filters out completed tasks in `TaskListView.swift`, and the “All Done” empty state was removed.
+- The `isCompleted` field remains in `TaskItem` for backward compatibility but is no longer used by the UI, preserving existing local data without a migration.
+- Preview data and the README feature list were updated.
+
+## Decision: Remove List Sectioning
+
+**Date:** 2026-02-11
+
+**Decision:** The Today/Upcoming/Later section headers were removed from the main task list. Tasks now render as a single due-date-sorted stream.
+
+**Rationale:** Sectioning adds structure and logic that slow scanning and increase UI noise. A single list keeps the app focused on capture and execution without extra categorization.
+
+**Impact:**
+- Sectioning logic and headers were removed from `TaskListView.swift`.
+- The main list now renders tasks in their natural due-date order.
+
+## Decision: Remove Overdue Labeling
+
+**Date:** 2026-02-11
+
+**Decision:** The overdue status label in each task row has been removed. Due dates remain visible, but no additional overdue text is shown.
+
+**Rationale:** Overdue labels add status noise without changing the core due-date signal. Removing them keeps the row focused on title + date.
+
+**Impact:**
+- Overdue status text and color logic were removed from `TaskRowView.swift`.
+
+## Decision: Remove Due Date Display In List
+
+**Date:** 2026-02-11
+
+**Decision:** Due date labels (calendar icon + date text) were removed from task rows. The list now shows titles only.
+
+**Rationale:** Due dates are still used for sorting and scheduling, but the extra row metadata adds visual noise. Removing it keeps the list focused on task titles.
+
+**Impact:**
+- Due date label UI was removed from `TaskRowView.swift`.
+
+## Decision: Replace Inline Add With Floating New Task Button
+
+**Date:** 2026-02-11
+
+**Decision:** The inline add row was removed and replaced with a floating “New Task” button that opens a minimal creation sheet.
+
+**Rationale:** Inline add keeps persistent input state on screen and requires focus/keyboard management. A single floating action keeps capture fast while reducing UI and interaction overhead.
+
+**Impact:**
+- `InlineAddTaskRow.swift` was removed.
+- `TaskListView.swift` now uses a floating button and a quick-add sheet.
+- `ContentView.swift` no longer passes inline-add focus state.
+- Design-system helpers specific to inline add were removed.
+
+## Decision: Remove Task Row Chevron
+
+**Date:** 2026-02-11
+
+**Decision:** The chevron disclosure icon was removed from each task row.
+
+**Rationale:** With no navigation or detail view, the chevron implied an action that no longer exists. Removing it makes the list more honest and visually cleaner.
+
+**Impact:**
+- The trailing chevron was removed from `TaskRowView.swift`.
+
+## Decision: Remove Quick-Add Date Picker (Default Tomorrow)
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet no longer exposes a due-date picker. New tasks default to Tomorrow.
+
+**Rationale:** For personal users (including couples), a Tomorrow default keeps capture gentle and low-friction without pushing everything into Today. It preserves a light scheduling cadence while removing a decision step.
+
+**Impact:**
+- The date picker UI was removed from the quick-add sheet in `TaskListView.swift`.
+- New tasks created from quick-add default to Tomorrow.
+
+## Decision: Simplify Quick-Add Sheet Layout
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet now uses a minimal layout: a title, a single text field, and bottom-aligned Cancel/Add actions. The sheet opens at a compact height with expand options.
+
+**Rationale:** A title-only capture sheet reduces friction for personal users (including couples) and keeps the creation flow fast and lightweight while still allowing expansion when needed.
+
+**Impact:**
+- The quick-add sheet UI in `TaskListView.swift` was simplified to a one-field layout.
+- The sheet opens at a small height and supports expanding to medium/large.
+
+## Decision: Soften Empty State Icon
+
+**Date:** 2026-02-11
+
+**Decision:** The empty-state icon size was reduced to keep a friendly tone without overpowering the minimalist UI.
+
+**Rationale:** For couples/personal use, a small icon adds warmth and personality. Reducing the size keeps the UI calm and focused.
+
+**Impact:**
+- Empty-state icon size was reduced in `EmptyStateView.swift`.
+
+## Decision: Use Subtle Label In Quick-Add Sheet
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet uses a subtle “New task” label instead of a full-size title.
+
+**Rationale:** Returning users benefit from a lighter, more immediate capture feel, while a small label preserves orientation for new users.
+
+**Impact:**
+- The quick-add header label was reduced to caption size in `TaskListView.swift`.
+
 ## Decision: Remove Reminders & Notifications
 
 **Date:** 2026-02-10

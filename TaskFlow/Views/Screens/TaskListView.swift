@@ -13,63 +13,9 @@ struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
     
-    @FocusState private var addTaskFocused: Bool
-
-    let shouldFocusOnAppear: Bool
-
-    init(shouldFocusOnAppear: Bool = false) {
-        self.shouldFocusOnAppear = shouldFocusOnAppear
-    }
+    @State private var isPresentingQuickAdd = false
     
-    private var incompleteTasks: [TaskItem] {
-        tasks.filter { !$0.safeIsCompleted }
-    }
-    
-    private var hasAnyTasks: Bool {
-        !tasks.isEmpty
-    }
-
-    private enum TaskSection: String, CaseIterable, Identifiable {
-        case today = "Today"
-        case upcoming = "Upcoming"
-        case later = "Later"
-
-        var id: String { self.rawValue }
-    }
-    
-    private var sectionedTasks: [(TaskSection, [TaskItem])] {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
-        let upcomingLimit = calendar.date(byAdding: .day, value: 7, to: todayStart) ?? todayStart
-        
-        var buckets: [TaskSection: [TaskItem]] = [
-            .today: [],
-            .upcoming: [],
-            .later: []
-        ]
-        
-        for task in incompleteTasks {
-            guard let due = task.dueDate else {
-                buckets[.today, default: []].append(task)
-                continue
-            }
-            if due < todayStart {
-                // Overdue handled separately
-                continue
-            } else if calendar.isDateInToday(due) {
-                buckets[.today, default: []].append(task)
-            } else if due <= upcomingLimit {
-                buckets[.upcoming, default: []].append(task)
-            } else {
-                buckets[.later, default: []].append(task)
-            }
-        }
-        
-        return ([TaskSection.today, TaskSection.upcoming, TaskSection.later]).compactMap { section in
-            guard let items = buckets[section], !items.isEmpty else { return nil }
-            return (section, items)
-        }
-    }
+    private let floatingButtonSize: CGFloat = 56
     
     var body: some View {
         NavigationStack {
@@ -79,19 +25,11 @@ struct TaskListView: View {
                 
                 ScrollView {
                     LazyVStack(spacing: AppTheme.spacing.md) {
-                        if incompleteTasks.isEmpty {
-                            EmptyStateView(type: hasAnyTasks ? .allDone : .noTasks)
+                        if tasks.isEmpty {
+                            EmptyStateView(type: .noTasks)
                         } else {
-                            ForEach(sectionedTasks, id: \.0) { section, items in
-                                Text(section.rawValue)
-                                    .font(AppTheme.fonts.subheadline.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.secondaryText)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.top, AppTheme.spacing.sm)
-                                
-                                ForEach(items) { task in
-                                    taskRow(task)
-                                }
+                            ForEach(tasks) { task in
+                                taskRow(task)
                             }
                         }
                     }
@@ -100,24 +38,29 @@ struct TaskListView: View {
                     .padding(.bottom, AppTheme.spacing.lg)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .simultaneousGesture(
-                    TapGesture().onEnded {
-                        addTaskFocused = false
-                    }
-                )
-                .animation(.easeInOut, value: incompleteTasks.count)
+                .animation(.easeInOut, value: tasks.count)
             }
             .navigationTitle("Tasks")
             .onAppear {
-                if shouldFocusOnAppear {
-                    DispatchQueue.main.async {
-                        addTaskFocused = true
-                    }
-                }
                 normalizeMissingDueDates()
             }
-            .safeAreaInset(edge: .bottom) {
-                InlineAddTaskRow(isFocused: $addTaskFocused, onCreate: createInlineTask)
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    isPresentingQuickAdd = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(AppTheme.fonts.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.colors.background)
+                        .frame(width: floatingButtonSize, height: floatingButtonSize)
+                        .background(AppTheme.colors.primary)
+                        .clipShape(Circle())
+                        .appShadow(AppTheme.shadows.elevation2)
+                }
+                .padding(.trailing, AppTheme.spacing.lg)
+                .padding(.bottom, AppTheme.spacing.lg)
+            }
+            .sheet(isPresented: $isPresentingQuickAdd) {
+                QuickAddTaskSheet(onCreate: createTask)
             }
         }
     }
@@ -126,7 +69,7 @@ struct TaskListView: View {
         TaskRowView(task: task)
     }
     
-    private func createInlineTask(title: String, dueDate: Date) {
+    private func createTask(title: String, dueDate: Date) {
         let task = TaskItem(
             taskTitle: title,
             dueDate: dueDate
@@ -146,6 +89,59 @@ struct TaskListView: View {
         }
     }
     
+}
+
+private struct QuickAddTaskSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+    @State private var dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    
+    let onCreate: (_ title: String, _ dueDate: Date) -> Void
+    
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
+            Text("New task")
+                .font(AppTheme.fonts.caption)
+                .foregroundStyle(AppTheme.colors.secondaryText)
+            
+            TextField("Task title", text: $title, axis: .vertical)
+                .font(AppTheme.fonts.headline)
+                .textFieldStyle(.plain)
+                .lineLimit(3)
+                .padding(.bottom, AppTheme.spacing.sm)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundStyle(AppTheme.colors.secondaryText.opacity(0.2)),
+                    alignment: .bottom
+                )
+            
+            Spacer()
+            
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .foregroundStyle(AppTheme.colors.secondaryText)
+                
+                Spacer()
+                
+                Button("Add") {
+                    onCreate(trimmedTitle, dueDate)
+                    dismiss()
+                }
+                .disabled(trimmedTitle.isEmpty)
+            }
+            .font(AppTheme.fonts.body.weight(.semibold))
+        }
+        .padding(AppTheme.spacing.lg)
+        .presentationDetents([.height(240), .medium, .large])
+        .presentationDragIndicator(.visible)
+    }
 }
 
 
