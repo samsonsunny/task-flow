@@ -119,6 +119,189 @@
 **Impact:**
 - The quick-add header label was reduced to caption size in `TaskListView.swift`.
 
+## Decision: Replace Quick-Add Sheet With Inline Overlay
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add modal sheet was removed and replaced with an inline overlay input bar triggered by the floating button.
+
+**Rationale:** A lightweight overlay keeps capture fast and reduces modal overhead. For personal/couples use, this feels more immediate while preserving a single-step add flow.
+
+**Impact:**
+- The quick-add sheet UI was removed from `TaskListView.swift`.
+- A bottom overlay input bar with keyboard-aware positioning was added to `TaskListView.swift`.
+
+## Decision: Add Overlay Dismissal And Keyboard Polish
+
+**Date:** 2026-02-11
+
+**Decision:** The inline quick-add overlay now dims the background, supports swipe-down dismissal, and uses a slightly delayed auto-focus for smoother keyboard presentation.
+
+**Rationale:** These small behaviors make the overlay feel intentional and reduce accidental input issues, especially on phones with animation timing differences.
+
+**Impact:**
+- Background dim, swipe-down dismiss, and focus timing adjustments were added to `TaskListView.swift`.
+
+## Decision: Revert Inline Overlay To Quick-Add Sheet
+
+**Date:** 2026-02-11
+
+**Decision:** The inline overlay quick-add UI was rolled back in favor of the minimal modal sheet.
+
+**Rationale:** The sheet is more stable, easier to maintain, and simpler to customize long-term. It reduces keyboard edge cases and keeps the creation flow predictable.
+
+**Impact:**
+- The overlay input bar and keyboard observer were removed from `TaskListView.swift`.
+- The minimal quick-add sheet (240pt starting height) is restored.
+
+## Decision: Remove Task Row Shadows
+
+**Date:** 2026-02-11
+
+**Decision:** Shadows were removed from task rows to keep the list flatter and more minimal.
+
+**Rationale:** Row shadows are decorative and add visual weight. Removing them keeps focus on content and simplifies the styling.
+
+**Impact:**
+- The row shadow modifier was removed from `TaskRowView.swift`.
+
+## Decision: Flatten Task Row Styling
+
+**Date:** 2026-02-11
+
+**Decision:** Task rows were changed from card-style blocks to flat list rows with dividers.
+
+**Rationale:** A flat list reduces visual weight and aligns with the minimal, utility-first direction.
+
+**Impact:**
+- Row background/rounded card styling was removed in `TaskRowView.swift`.
+- Dividers between rows were added in `TaskListView.swift`.
+
+## Decision: Reduce Row Horizontal Padding
+
+**Date:** 2026-02-11
+
+**Decision:** Horizontal padding on task rows was reduced slightly.
+
+**Rationale:** Smaller side padding makes the list feel denser while keeping comfortable tap targets.
+
+**Impact:**
+- Horizontal padding in `TaskRowView.swift` was reduced from `sm` to `xs`.
+
+## Decision: Remove No-Overdue Empty State
+
+**Date:** 2026-02-11
+
+**Decision:** The unused “No Overdue Tasks” empty state variant was removed.
+
+**Rationale:** Overdue status is no longer surfaced in the UI, so the variant adds dead code and unnecessary copy.
+
+**Impact:**
+- The `noOverdue` case and preview were removed from `EmptyStateView.swift`.
+
+## Decision: Remove List Dividers
+
+**Date:** 2026-02-11
+
+**Decision:** Dividers between task rows were removed.
+
+**Rationale:** The list is meant to feel lightweight; dividers add visual noise without increasing clarity for short titles.
+
+**Impact:**
+- Divider rendering in `TaskListView.swift` was removed.
+
+## Decision: Sort By Creation Order
+
+**Date:** 2026-02-11
+
+**Decision:** Task list sorting was changed from due-date order to creation order.
+
+**Rationale:** The list is now a simple capture stream; ordering by creation keeps it predictable and removes date-driven prioritization.
+
+**Impact:**
+- The query sort in `TaskListView.swift` now uses `createdAt`.
+
+## Decision: Use Icon-Only Add Action
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet’s Add action uses an icon instead of text.
+
+**Rationale:** Reduces button chrome and keeps the sheet minimal while preserving a clear primary action.
+
+**Impact:**
+- The Add button label in `TaskListView.swift` is now a plus icon.
+
+## Decision: Use Standard Empty-State Icon Size
+
+**Date:** 2026-02-11
+
+**Decision:** The empty-state icon now uses a standard font size instead of a custom size.
+
+**Rationale:** Removes custom sizing logic and keeps the empty state aligned with the app’s typography scale.
+
+**Impact:**
+- Empty-state icon sizing in `EmptyStateView.swift` now uses `AppTheme.fonts.title2`.
+
+## Decision: Simplify Empty State To Title Only
+
+**Date:** 2026-02-11
+
+**Decision:** The empty state now shows only the title text, with no icon or subtitle.
+
+**Rationale:** For a minimal experience, removing decorative elements and extra copy keeps the screen calm and focused.
+
+**Impact:**
+- Empty-state icon and subtitle were removed from `EmptyStateView.swift`.
+
+## Decision: Remove Floating Button Shadow
+
+**Date:** 2026-02-11
+
+**Decision:** The floating add button no longer uses a shadow.
+
+**Rationale:** The UI is now flat and minimal; shadows add unnecessary visual weight.
+
+**Impact:**
+- Shadow styling was removed from the floating add button in `TaskListView.swift`.
+
+## Decision: Remove Quick-Add Cancel Action
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet no longer shows a Cancel button.
+
+**Rationale:** The sheet can be dismissed via swipe, so removing the button reduces chrome.
+
+**Impact:**
+- The Cancel action was removed from the quick-add sheet in `TaskListView.swift`.
+
+## Decision: Strip Quick-Add Sheet Chrome
+
+**Date:** 2026-02-11
+
+**Decision:** The quick-add sheet was reduced to a bare input + Add action with no title, underline, drag indicator, or extra padding. The sheet now uses a fixed 240pt height.
+
+**Rationale:** Further reduces UI chrome and keeps capture minimal and consistent with the stripped-down direction.
+
+**Impact:**
+- The “New task” label and input underline were removed from `TaskListView.swift`.
+- The Add action now uses a text label.
+- Sheet padding and extra detents were removed; only a fixed 240pt height remains.
+- The drag indicator was removed.
+- A small horizontal inset was added for readability.
+
+## Decision: Stop Normalizing Missing Due Dates
+
+**Date:** 2026-02-11
+
+**Decision:** Tasks with missing due dates are no longer auto-assigned Today on list load.
+
+**Rationale:** The list is now a simple capture stream; silently modifying data adds hidden behavior.
+
+**Impact:**
+- The due-date normalization function and its call were removed from `TaskListView.swift`.
+
 ## Decision: Remove Reminders & Notifications
 
 **Date:** 2026-02-10

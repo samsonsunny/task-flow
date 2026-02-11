@@ -11,10 +11,10 @@ import SwiftData
 
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TaskItem.dueDate) private var tasks: [TaskItem]
+    @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
     
     @State private var isPresentingQuickAdd = false
-    
+
     private let floatingButtonSize: CGFloat = 56
     
     var body: some View {
@@ -24,14 +24,16 @@ struct TaskListView: View {
                     .ignoresSafeArea()
                 
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.spacing.md) {
-                        if tasks.isEmpty {
-                            EmptyStateView(type: .noTasks)
-                        } else {
+                    Group {
+                    if tasks.isEmpty {
+                        EmptyStateView(type: .noTasks)
+                    } else {
+                        VStack(spacing: 0) {
                             ForEach(tasks) { task in
                                 taskRow(task)
                             }
                         }
+                    }
                     }
                     .padding(.horizontal, AppTheme.spacing.lg)
                     .padding(.top, AppTheme.spacing.md)
@@ -41,9 +43,6 @@ struct TaskListView: View {
                 .animation(.easeInOut, value: tasks.count)
             }
             .navigationTitle("Tasks")
-            .onAppear {
-                normalizeMissingDueDates()
-            }
             .overlay(alignment: .bottomTrailing) {
                 Button {
                     isPresentingQuickAdd = true
@@ -54,7 +53,6 @@ struct TaskListView: View {
                         .frame(width: floatingButtonSize, height: floatingButtonSize)
                         .background(AppTheme.colors.primary)
                         .clipShape(Circle())
-                        .appShadow(AppTheme.shadows.elevation2)
                 }
                 .padding(.trailing, AppTheme.spacing.lg)
                 .padding(.bottom, AppTheme.spacing.lg)
@@ -77,18 +75,6 @@ struct TaskListView: View {
         modelContext.insert(task)
     }
 
-    private func normalizeMissingDueDates() {
-        let todayStart = Calendar.current.startOfDay(for: Date())
-        var didUpdate = false
-        for task in tasks where task.dueDate == nil {
-            task.dueDate = todayStart
-            didUpdate = true
-        }
-        if didUpdate {
-            try? modelContext.save()
-        }
-    }
-    
 }
 
 private struct QuickAddTaskSheet: View {
@@ -103,47 +89,32 @@ private struct QuickAddTaskSheet: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
-            Text("New task")
-                .font(AppTheme.fonts.caption)
-                .foregroundStyle(AppTheme.colors.secondaryText)
-            
+        VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
             TextField("Task title", text: $title, axis: .vertical)
                 .font(AppTheme.fonts.headline)
                 .textFieldStyle(.plain)
                 .lineLimit(3)
-                .padding(.bottom, AppTheme.spacing.sm)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundStyle(AppTheme.colors.secondaryText.opacity(0.2)),
-                    alignment: .bottom
-                )
             
             Spacer()
             
             HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .foregroundStyle(AppTheme.colors.secondaryText)
-                
                 Spacer()
                 
-                Button("Add") {
+                Button {
                     onCreate(trimmedTitle, dueDate)
                     dismiss()
+                } label: {
+                    Text("Add")
+                        .font(AppTheme.fonts.body.weight(.semibold))
+                        .foregroundStyle(AppTheme.colors.primary)
                 }
                 .disabled(trimmedTitle.isEmpty)
             }
-            .font(AppTheme.fonts.body.weight(.semibold))
         }
-        .padding(AppTheme.spacing.lg)
-        .presentationDetents([.height(240), .medium, .large])
-        .presentationDragIndicator(.visible)
+        .padding(.horizontal, AppTheme.spacing.md)
+        .presentationDetents([.height(240)])
     }
 }
-
 
 
 #Preview("With Tasks") {

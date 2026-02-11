@@ -28,10 +28,8 @@ struct TaskRowView: View {
                 }
             }
         }
-        .padding(AppTheme.spacing.xs)
-        .background(AppTheme.colors.secondaryBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
-        .appShadow(AppTheme.shadows.elevation2)
+        .padding(.vertical, AppTheme.spacing.xs)
+        .padding(.horizontal, AppTheme.spacing.xs)
         .contentShape(Rectangle())
     }
 
