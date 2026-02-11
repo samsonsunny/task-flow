@@ -28,6 +28,7 @@ struct TaskRowView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, AppTheme.spacing.xs)
         .padding(.horizontal, AppTheme.spacing.xs)
         .contentShape(Rectangle())

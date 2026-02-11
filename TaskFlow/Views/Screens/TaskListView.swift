@@ -41,22 +41,29 @@ struct TaskListView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .animation(.easeInOut, value: tasks.count)
-            }
-            .navigationTitle("Tasks")
-            .overlay(alignment: .bottomTrailing) {
-                Button {
-                    isPresentingQuickAdd = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(AppTheme.fonts.title2.weight(.semibold))
-                        .foregroundStyle(AppTheme.colors.background)
-                        .frame(width: floatingButtonSize, height: floatingButtonSize)
-                        .background(AppTheme.colors.primary)
-                        .clipShape(Circle())
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            isPresentingQuickAdd = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(AppTheme.fonts.title2.weight(.semibold))
+                                .foregroundStyle(AppTheme.colors.background)
+                                .frame(width: floatingButtonSize, height: floatingButtonSize)
+                                .background(AppTheme.colors.primary)
+                                .clipShape(Circle())
+                        }
+                        .padding(.trailing, AppTheme.spacing.lg)
+                        .padding(.bottom, AppTheme.spacing.lg)
+                    }
                 }
-                .padding(.trailing, AppTheme.spacing.lg)
-                .padding(.bottom, AppTheme.spacing.lg)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .navigationTitle("Tasks")
             .sheet(isPresented: $isPresentingQuickAdd) {
                 QuickAddTaskSheet(onCreate: createTask)
             }
@@ -81,6 +88,7 @@ private struct QuickAddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    @FocusState private var titleFocused: Bool
     
     let onCreate: (_ title: String, _ dueDate: Date) -> Void
     
@@ -89,30 +97,49 @@ private struct QuickAddTaskSheet: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
+            Text("Task title")
+                .font(AppTheme.fonts.caption)
+                .foregroundStyle(AppTheme.colors.secondaryText)
+
             TextField("Task title", text: $title, axis: .vertical)
                 .font(AppTheme.fonts.headline)
                 .textFieldStyle(.plain)
                 .lineLimit(3)
+                .focused($titleFocused)
+                .padding(.vertical, AppTheme.spacing.sm)
+                .padding(.horizontal, AppTheme.spacing.md)
+                .background(AppTheme.colors.secondaryBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
             
             Spacer()
             
             HStack {
                 Spacer()
-                
                 Button {
                     onCreate(trimmedTitle, dueDate)
                     dismiss()
                 } label: {
                     Text("Add")
                         .font(AppTheme.fonts.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.colors.primary)
+                        .foregroundStyle(AppTheme.colors.background)
+                        .padding(.horizontal, AppTheme.spacing.lg)
+                        .padding(.vertical, AppTheme.spacing.sm)
+                        .background(trimmedTitle.isEmpty ? AppTheme.colors.secondaryText.opacity(0.3) : AppTheme.colors.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
                 }
                 .disabled(trimmedTitle.isEmpty)
             }
         }
-        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.horizontal, AppTheme.spacing.lg)
+        .padding(.top, AppTheme.spacing.md)
+        .padding(.bottom, AppTheme.spacing.lg)
         .presentationDetents([.height(240)])
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                titleFocused = true
+            }
+        }
     }
 }
 
