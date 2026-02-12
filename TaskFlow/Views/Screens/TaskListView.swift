@@ -12,11 +12,12 @@ import SwiftData
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
+    @Environment(\.scenePhase) private var scenePhase
     
-    @State private var isPresentingQuickAdd = false
+    @StateObject private var captureSession = CaptureSessionState()
+    @State private var newTaskTitle = ""
+    @FocusState private var captureFocused: Bool
 
-    private let floatingButtonSize: CGFloat = 56
-    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -41,31 +42,37 @@ struct TaskListView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .animation(.easeInOut, value: tasks.count)
-
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button {
-                            isPresentingQuickAdd = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(AppTheme.fonts.title2.weight(.semibold))
-                                .foregroundStyle(AppTheme.colors.background)
-                                .frame(width: floatingButtonSize, height: floatingButtonSize)
-                                .background(AppTheme.colors.primary)
-                                .clipShape(Circle())
-                        }
-                        .padding(.trailing, AppTheme.spacing.lg)
-                        .padding(.bottom, AppTheme.spacing.lg)
+                .simultaneousGesture(
+                    DragGesture().onChanged { _ in
+                        captureSession.markScrolledBeforeTyping()
                     }
-                }
-                .ignoresSafeArea(.keyboard, edges: .bottom)
+                )
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .navigationTitle("Tasks")
-            .sheet(isPresented: $isPresentingQuickAdd) {
-                QuickAddTaskSheet(onCreate: createTask)
+            .safeAreaInset(edge: .bottom) {
+                captureBar
+            }
+            .onAppear {
+                updateFocusIfNeeded()
+            }
+            .onChange(of: scenePhase) { phase in
+                captureSession.handleScenePhase(phase)
+                if phase == .active {
+                    updateFocusIfNeeded()
+                }
+            }
+            .onChange(of: captureFocused) { focused in
+                if focused {
+                    captureSession.recordFocused()
+                } else if scenePhase == .active {
+                    captureSession.markKeyboardDismissed()
+                }
+            }
+            .onChange(of: newTaskTitle) { value in
+                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    captureSession.markTypedInSession()
+                }
             }
         }
     }
@@ -74,72 +81,68 @@ struct TaskListView: View {
         TaskRowView(task: task)
     }
     
-    private func createTask(title: String, dueDate: Date) {
-        let task = TaskItem(
-            taskTitle: title,
-            dueDate: dueDate
-        )
+    private func createTask(title: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        let task = TaskItem(taskTitle: trimmedTitle)
         modelContext.insert(task)
+        captureSession.recordTaskAdded()
+    }
+
+    private var captureBar: some View {
+        let trimmedTitle = newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return VStack(spacing: AppTheme.spacing.sm) {
+            ZStack {
+                TextField("Capture a task...", text: $newTaskTitle, axis: .vertical)
+                    .font(AppTheme.fonts.body)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...4)
+                    .multilineTextAlignment(.leading)
+                    .focused($captureFocused)
+                    .padding(.vertical, AppTheme.spacing.md)
+                    .padding(.leading, AppTheme.spacing.sm)
+                    .padding(.trailing, AppTheme.spacing.xl * 2.2)
+                    .background(AppTheme.colors.secondaryBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
+                    .overlay(alignment: .bottomTrailing) {
+                        simpleAddButton(isDisabled: trimmedTitle.isEmpty)
+                            .padding(.trailing, AppTheme.spacing.sm)
+                            .padding(.bottom, AppTheme.spacing.xs)
+                    }
+            }
+        }
+        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.vertical, AppTheme.spacing.md)
+        .background(AppTheme.colors.background)
+    }
+
+    private func updateFocusIfNeeded() {
+        if captureSession.shouldAutoFocus(isListEmpty: tasks.isEmpty) {
+            captureFocused = true
+        }
     }
 
 }
 
-private struct QuickAddTaskSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var title = ""
-    @State private var dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
-    @FocusState private var titleFocused: Bool
-    
-    let onCreate: (_ title: String, _ dueDate: Date) -> Void
-    
-    private var trimmedTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.spacing.lg) {
-            Text("Task title")
-                .font(AppTheme.fonts.caption)
-                .foregroundStyle(AppTheme.colors.secondaryText)
-
-            TextField("Task title", text: $title, axis: .vertical)
-                .font(AppTheme.fonts.headline)
-                .textFieldStyle(.plain)
-                .lineLimit(3)
-                .focused($titleFocused)
-                .padding(.vertical, AppTheme.spacing.sm)
-                .padding(.horizontal, AppTheme.spacing.md)
-                .background(AppTheme.colors.secondaryBackground)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-            
-            Spacer()
-            
-            HStack {
-                Spacer()
-                Button {
-                    onCreate(trimmedTitle, dueDate)
-                    dismiss()
-                } label: {
-                    Text("Add")
-                        .font(AppTheme.fonts.body.weight(.semibold))
-                        .foregroundStyle(AppTheme.colors.background)
-                        .padding(.horizontal, AppTheme.spacing.lg)
-                        .padding(.vertical, AppTheme.spacing.sm)
-                        .background(trimmedTitle.isEmpty ? AppTheme.colors.secondaryText.opacity(0.3) : AppTheme.colors.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-                }
-                .disabled(trimmedTitle.isEmpty)
-            }
+private extension TaskListView {
+    func simpleAddButton(isDisabled: Bool) -> some View {
+        Button {
+            createTask(title: newTaskTitle)
+            newTaskTitle = ""
+            captureFocused = true
+        } label: {
+            Text("Add")
+                .font(AppTheme.fonts.body.weight(.semibold))
+                .foregroundStyle(isDisabled ? AppTheme.colors.secondaryText : AppTheme.colors.primary)
+                .padding(.horizontal, AppTheme.spacing.xs)
+                .padding(.vertical, AppTheme.spacing.xxs)
+                .frame(minWidth: 40, minHeight: 40, alignment: .center)
+                .contentShape(Rectangle())
         }
-        .padding(.horizontal, AppTheme.spacing.lg)
-        .padding(.top, AppTheme.spacing.md)
-        .padding(.bottom, AppTheme.spacing.lg)
-        .presentationDetents([.height(240)])
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                titleFocused = true
-            }
-        }
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.5 : 1)
     }
 }
 
