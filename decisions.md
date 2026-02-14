@@ -1,5 +1,20 @@
 # Decisions
 
+## Decision: Lock Task List Iteration 1 Contract
+
+**Date:** 2026-02-14
+
+**Decision:** Task list iteration 1 is locked to a simple, high-clarity model: title-only rows (up to 3 lines), newest-first ordering, and trailing swipe-to-delete. Scrolling while typing is allowed, keyboard dismisses interactively, and draft text remains preserved.
+
+**Rationale:** The list is the second most important feature, so iteration 1 prioritizes readability, predictability, and fast interaction while avoiding unnecessary UI complexity.
+
+**Impact:**
+- `TaskListView.swift` now sorts by `createdAt` in reverse order (newest first).
+- Task rows now use a 3-line title cap and calmer text styling.
+- Trailing swipe delete is available on each task row.
+- Iteration-1 list behavior is documented in `Specs/task-list-v1.md`.
+- Future ranking enhancements remain scoped to `Specs/task-list-smart-order.md`.
+
 ## Decision: Adopt Locked Semantic Color System v1.0
 
 **Date:** 2026-02-14
@@ -28,19 +43,32 @@
 - Capture-mode layout is now defined as keyboard-flush with no vertical gap.
 - Input behavior is now explicitly defined: visual wrapping up to 4 lines, Return submits, and pasted newlines are converted to spaces.
 
-## Decision: Remove Completion Tracking
+## Decision: Keep Completion UI Removed, Hide Completed In Main List
 
-**Date:** 2026-02-11
+**Date:** 2026-02-14
 
-**Decision:** Completion tracking has been removed from TaskFlow. Tasks no longer have a completion state in the UI and are always shown in the main list. The underlying `isCompleted` field remains in the model for backward compatibility with existing local data.
+**Decision:** Completion controls remain removed from the UI, and the main task list now hides tasks where `isCompleted == true`. The `isCompleted` field remains in the model for backward compatibility with existing local data.
 
-**Rationale:** Completion state introduces extra UI states, filtering logic, and empty-state variants that distract from the core loop of capture → schedule → do. Removing it keeps the app focused on due dates and active work.
+**Rationale:** The primary list is an actionable workspace. Excluding completed items improves scan speed and focus while preserving the current minimal interaction model.
 
 **Impact:**
-- Completion UI indicators (strikethrough/status text) were removed from `TaskRowView.swift`.
-- The list no longer filters out completed tasks in `TaskListView.swift`, and the “All Done” empty state was removed.
-- The `isCompleted` field remains in `TaskItem` for backward compatibility but is no longer used by the UI, preserving existing local data without a migration.
-- Preview data and the README feature list were updated.
+- Completion UI indicators remain removed from `TaskRowView.swift`.
+- `TaskListView.swift` now filters the query to exclude completed tasks.
+- `TaskItem.isCompleted` remains in the model for store compatibility and migration safety.
+
+## Decision: Add Chip-Based Completion With Timed Revert Window
+
+**Date:** 2026-02-14
+
+**Decision:** The main list uses a leading completion chip as the primary completion control. Tapping the chip sets a temporary completed visual state for 1.8 seconds; tapping again within that window reverts to pending. If not reverted, the task is marked completed and removed from the main list.
+
+**Rationale:** This keeps completion discoverable without adding snackbar UI, preserves a clean list aesthetic, and still provides a short accidental-tap recovery path.
+
+**Impact:**
+- `TaskRowView.swift` now renders a 24pt completion chip with a 44pt tap target, plus chip/text state animations.
+- Completed visual state uses chip fill + title color/opacity change (no strikethrough).
+- `TaskListView.swift` now manages a per-row pending-completion timer and finalizes completion after 1.8 seconds.
+- The main query remains active-only (`isCompleted != true`), so finalized tasks leave the primary list.
 
 ## Decision: Remove List Sectioning
 

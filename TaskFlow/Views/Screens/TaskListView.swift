@@ -21,11 +21,17 @@ struct TaskListView: View {
     }
 
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
+    @Query(
+        filter: #Predicate<TaskItem> { $0.isCompleted != true },
+        sort: \TaskItem.createdAt,
+        order: .reverse
+    ) private var tasks: [TaskItem]
     @Environment(\.scenePhase) private var scenePhase
     
     @StateObject private var captureSession = CaptureSessionState()
     @State private var newTaskTitle = ""
+    @State private var pendingCompletionTaskKeys: Set<String> = []
+    @State private var completionWorkItems: [String: DispatchWorkItem] = [:]
     @FocusState private var captureFocused: Bool
 
     var body: some View {
@@ -34,21 +40,38 @@ struct TaskListView: View {
                 AppTheme.colors.appBackground
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    Group {
+                Group {
                     if tasks.isEmpty {
                         EmptyStateView(type: .noTasks)
+                            .padding(.horizontal, AppTheme.spacing.lg)
+                            .padding(.top, AppTheme.spacing.md)
+                            .padding(.bottom, AppTheme.spacing.lg)
                     } else {
-                        VStack(spacing: 0) {
+                        List {
                             ForEach(tasks) { task in
                                 taskRow(task)
+                                    .listRowInsets(
+                                        EdgeInsets(
+                                            top: AppTheme.spacing.xxs,
+                                            leading: AppTheme.spacing.md,
+                                            bottom: AppTheme.spacing.xxs,
+                                            trailing: AppTheme.spacing.md
+                                        )
+                                    )
+                                    .listRowBackground(AppTheme.colors.appBackground)
+                                    .listRowSeparator(.hidden)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            deleteTask(task)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
                             }
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
-                    }
-                    .padding(.horizontal, AppTheme.spacing.lg)
-                    .padding(.top, AppTheme.spacing.md)
-                    .padding(.bottom, AppTheme.spacing.lg)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .animation(.easeInOut, value: tasks.count)
@@ -94,7 +117,13 @@ struct TaskListView: View {
     }
     
     private func taskRow(_ task: TaskItem) -> some View {
-        TaskRowView(task: task)
+        let key = taskKey(for: task)
+        return TaskRowView(
+            task: task,
+            isCompletedVisualState: pendingCompletionTaskKeys.contains(key)
+        ) {
+            toggleCompletion(for: task)
+        }
     }
     
     private func createTask(title: String) {
@@ -104,6 +133,52 @@ struct TaskListView: View {
         let task = TaskItem(taskTitle: normalizedTitle)
         modelContext.insert(task)
         captureSession.recordTaskAdded()
+    }
+
+    private func deleteTask(_ task: TaskItem) {
+        cancelPendingCompletion(for: taskKey(for: task))
+        modelContext.delete(task)
+    }
+
+    private func toggleCompletion(for task: TaskItem) {
+        let key = taskKey(for: task)
+        if pendingCompletionTaskKeys.contains(key) {
+            cancelPendingCompletion(for: key)
+            return
+        }
+
+        pendingCompletionTaskKeys.insert(key)
+
+        let workItem = DispatchWorkItem {
+            finalizeCompletion(for: task, key: key)
+        }
+        completionWorkItems[key] = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8, execute: workItem)
+    }
+
+    private func finalizeCompletion(for task: TaskItem, key: String) {
+        guard pendingCompletionTaskKeys.contains(key) else { return }
+        completionWorkItems[key] = nil
+        withAnimation(.easeInOut(duration: 0.22)) {
+            pendingCompletionTaskKeys.remove(key)
+            task.isCompleted = true
+            task.completionDate = Date()
+        }
+    }
+
+    private func cancelPendingCompletion(for key: String) {
+        completionWorkItems[key]?.cancel()
+        completionWorkItems[key] = nil
+        withAnimation(.easeInOut(duration: 0.14)) {
+            pendingCompletionTaskKeys.remove(key)
+        }
+    }
+
+    private func taskKey(for task: TaskItem) -> String {
+        if let taskId = task.taskId, !taskId.isEmpty {
+            return taskId
+        }
+        return String(describing: task.persistentModelID)
     }
 
     private var captureBar: some View {
