@@ -3,9 +3,10 @@ import SwiftUI
 /// Provides a centralized source for all shadow styles used in the application.
 /// All shadows MUST use predefined constants from here.
 struct AppShadow {
-    static let elevation1: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2) // Lighter, smaller blur
-    static let elevation2: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)  // Matches TaskDetailView original shadow
-    static let elevation3: ShadowStyle = ShadowStyle(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6) // Stronger
+    // Locked color system forbids decorative/colored shadows.
+    static let elevation1: ShadowStyle = ShadowStyle(color: .clear, radius: 0, x: 0, y: 0)
+    static let elevation2: ShadowStyle = ShadowStyle(color: .clear, radius: 0, x: 0, y: 0)
+    static let elevation3: ShadowStyle = ShadowStyle(color: .clear, radius: 0, x: 0, y: 0)
 
     // Helper struct to define shadow parameters
     struct ShadowStyle {

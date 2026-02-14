@@ -31,6 +31,14 @@ TaskFlow uses SwiftData as the local persistence layer. There is no sync enabled
 - `TaskFlow/DesignSystem`: App styling, typography, and tokens
 - `TaskFlow/Extensions`: Utilities and shared helpers
 
+## Color System
+
+TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors.swift` and backed by color assets in `TaskFlow/Assets.xcassets`.
+
+- Never use raw hex values in views.
+- Use only semantic tokens (`primaryAction`, `appBackground`, `surface`, `textPrimary`, `border`, etc.).
+- Avoid opacity-based text coloring; use `textPrimary`, `textSecondary`, and `textDisabled`.
+
 ## Getting Started
 
 1. Open `TaskFlow.xcodeproj` in Xcode.

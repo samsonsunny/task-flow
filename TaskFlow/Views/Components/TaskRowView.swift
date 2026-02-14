@@ -10,6 +10,7 @@ import SwiftUI
 
 struct TaskRowView: View {
     let task: TaskItem
+    var isSelected: Bool = false
     var statusStyle: StatusStyle = .standard
 
     enum StatusStyle {
@@ -23,7 +24,7 @@ struct TaskRowView: View {
                 VStack(alignment: .leading, spacing: AppTheme.spacing.xxs) {
                     Text(task.safeTitle)
                         .font(AppTheme.fonts.headline)
-                        .foregroundStyle(AppTheme.colors.text)
+                        .foregroundStyle(AppTheme.colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -31,6 +32,10 @@ struct TaskRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, AppTheme.spacing.xs)
         .padding(.horizontal, AppTheme.spacing.xs)
+        .background(
+            isSelected ? AppTheme.colors.primaryAction.opacity(0.10) : Color.clear
+        )
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
         .contentShape(Rectangle())
     }
 

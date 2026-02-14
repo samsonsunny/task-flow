@@ -10,9 +10,12 @@ struct CardView<Content: View>: View {
     var body: some View {
         content
             .padding(AppTheme.spacing.md)
-            .background(AppTheme.colors.secondaryBackground)
+            .background(AppTheme.colors.surfaceElevated)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.radius.large)
+                    .stroke(AppTheme.colors.border, lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.large))
-            .appShadow(AppTheme.shadows.elevation2)
     }
 }
 

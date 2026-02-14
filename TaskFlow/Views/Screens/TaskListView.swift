@@ -10,6 +10,16 @@ import SwiftUI
 import SwiftData
 
 struct TaskListView: View {
+    private enum CaptureMetrics {
+        static let bottomInset: CGFloat = 10
+        static let horizontalScreenInset: CGFloat = 16
+        static let inputMinHeight: CGFloat = 54
+        static let inputVerticalPadding: CGFloat = 15
+        static let inputHorizontalPadding: CGFloat = 16
+        static let cornerRadius: CGFloat = 16
+        static let containerVerticalPadding: CGFloat = 8
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt) private var tasks: [TaskItem]
     @Environment(\.scenePhase) private var scenePhase
@@ -21,7 +31,7 @@ struct TaskListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppTheme.colors.background
+                AppTheme.colors.appBackground
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -70,6 +80,12 @@ struct TaskListView: View {
                 }
             }
             .onChange(of: newTaskTitle) { value in
+                if hasTrailingNewline(value) {
+                    newTaskTitle = value.trimmingTrailingNewlines()
+                    submitFromKeyboard()
+                    return
+                }
+
                 if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     captureSession.markTypedInSession()
                 }
@@ -82,40 +98,49 @@ struct TaskListView: View {
     }
     
     private func createTask(title: String) {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { return }
+        let normalizedTitle = normalizedCaptureTitle(title)
+        guard !normalizedTitle.isEmpty else { return }
 
-        let task = TaskItem(taskTitle: trimmedTitle)
+        let task = TaskItem(taskTitle: normalizedTitle)
         modelContext.insert(task)
         captureSession.recordTaskAdded()
     }
 
     private var captureBar: some View {
-        let trimmedTitle = newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        VStack(spacing: .zero) {
+            ZStack(alignment: .topLeading) {
+                if newTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("What's on your mind?")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(AppTheme.colors.textDisabled)
+                }
 
-        return VStack(spacing: AppTheme.spacing.sm) {
-            ZStack {
-                TextField("Capture a task...", text: $newTaskTitle, axis: .vertical)
-                    .font(AppTheme.fonts.body)
+                TextField("", text: $newTaskTitle, axis: .vertical)
+                    .submitLabel(.done)
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .multilineTextAlignment(.leading)
                     .focused($captureFocused)
-                    .padding(.vertical, AppTheme.spacing.md)
-                    .padding(.leading, AppTheme.spacing.sm)
-                    .padding(.trailing, AppTheme.spacing.xl * 2.2)
-                    .background(AppTheme.colors.secondaryBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radius.medium))
-                    .overlay(alignment: .bottomTrailing) {
-                        simpleAddButton(isDisabled: trimmedTitle.isEmpty)
-                            .padding(.trailing, AppTheme.spacing.sm)
-                            .padding(.bottom, AppTheme.spacing.xs)
+                    .onSubmit {
+                        submitFromKeyboard()
                     }
             }
+            .padding(.vertical, CaptureMetrics.inputVerticalPadding)
+            .padding(.horizontal, CaptureMetrics.inputHorizontalPadding)
+            .frame(minHeight: CaptureMetrics.inputMinHeight)
+            .background(AppTheme.colors.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: CaptureMetrics.cornerRadius)
+                    .stroke(AppTheme.colors.border, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: CaptureMetrics.cornerRadius))
         }
-        .padding(.horizontal, AppTheme.spacing.md)
-        .padding(.vertical, AppTheme.spacing.md)
-        .background(AppTheme.colors.background)
+        .padding(.vertical, CaptureMetrics.containerVerticalPadding)
+        .padding(.horizontal, CaptureMetrics.horizontalScreenInset)
+        .padding(.bottom, CaptureMetrics.bottomInset)
+        .background(AppTheme.colors.appBackground)
     }
 
     private func updateFocusIfNeeded() {
@@ -124,25 +149,35 @@ struct TaskListView: View {
         }
     }
 
+    private func submitFromKeyboard() {
+        let normalizedTitle = normalizedCaptureTitle(newTaskTitle)
+        guard !normalizedTitle.isEmpty else { return }
+
+        createTask(title: normalizedTitle)
+        newTaskTitle = ""
+        captureFocused = true
+    }
+
+    private func normalizedCaptureTitle(_ rawTitle: String) -> String {
+        let withSpacesForNewlines = rawTitle
+            .components(separatedBy: .newlines)
+            .joined(separator: " ")
+        return withSpacesForNewlines.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func hasTrailingNewline(_ value: String) -> Bool {
+        value.last?.isNewline == true
+    }
+
 }
 
-private extension TaskListView {
-    func simpleAddButton(isDisabled: Bool) -> some View {
-        Button {
-            createTask(title: newTaskTitle)
-            newTaskTitle = ""
-            captureFocused = true
-        } label: {
-            Text("Add")
-                .font(AppTheme.fonts.body.weight(.semibold))
-                .foregroundStyle(isDisabled ? AppTheme.colors.secondaryText : AppTheme.colors.primary)
-                .padding(.horizontal, AppTheme.spacing.xs)
-                .padding(.vertical, AppTheme.spacing.xxs)
-                .frame(minWidth: 40, minHeight: 40, alignment: .center)
-                .contentShape(Rectangle())
+private extension String {
+    func trimmingTrailingNewlines() -> String {
+        var result = self
+        while result.last?.isNewline == true {
+            result.removeLast()
         }
-        .disabled(isDisabled)
-        .opacity(isDisabled ? 0.5 : 1)
+        return result
     }
 }
 

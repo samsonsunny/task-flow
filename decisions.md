@@ -1,5 +1,33 @@
 # Decisions
 
+## Decision: Adopt Locked Semantic Color System v1.0
+
+**Date:** 2026-02-14
+
+**Decision:** TaskFlow adopts a locked semantic color system and forbids raw color usage in views. UI color usage is centralized in `DesignSystem/Colors.swift` and backed by named color assets for light/dark variants.
+
+**Rationale:** A strict semantic token contract reduces visual drift, lowers cognitive load, and keeps styling changes safe and fast across the app.
+
+**Impact:**
+- New semantic tokens were introduced and standardized: `primaryAction`, `primaryActionPressed`, `appBackground`, `secondaryBackground`, `surface`, `surfaceElevated`, `textPrimary`, `textSecondary`, `textDisabled`, `border`, `divider`, `success`, `warning`, `error`.
+- Capture bar styling in `TaskListView.swift` now uses `appBackground` + `surface` + `border` + `textPrimary` + `textDisabled`.
+- Opacity-based text coloring was removed from active UI paths.
+- Card elevation was changed from colored shadow styling to neutral surface + border styling.
+- Design documentation was updated in `Design/DesignRules.md` and `README.md`.
+
+## Decision: Keyboard-First Task Capture (No Inline Add Button)
+
+**Date:** 2026-02-13
+
+**Decision:** Task capture uses a keyboard-first submission flow. In capture mode, the bar is flush to the keyboard with no vertical padding. There is no inline Add button. Users submit with the keyboard `Done` key. The title field wraps visually and grows up to 4 lines. Return acts as submit (not newline insertion), and pasted newline characters are normalized to spaces before save. After submit, the field clears, focus remains in the field, and the keyboard stays open.
+
+**Rationale:** This removes an extra tap target and keeps capture in one continuous action path (type -> Done). A keyboard-flush bar reduces visual and physical distance to the active input surface. The multiline cap supports longer thoughts without adding UI complexity, while newline normalization keeps task titles clean and list-friendly.
+
+**Impact:**
+- Capture UX spec was updated in `Specs/task-capture-feature.md` to reflect keyboard-first submission and no inline Add button.
+- Capture-mode layout is now defined as keyboard-flush with no vertical gap.
+- Input behavior is now explicitly defined: visual wrapping up to 4 lines, Return submits, and pasted newlines are converted to spaces.
+
 ## Decision: Remove Completion Tracking
 
 **Date:** 2026-02-11

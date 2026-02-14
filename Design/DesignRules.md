@@ -84,6 +84,12 @@ To ensure visual consistency, predictable UX, and fast iteration, all UI impleme
 ## 5. Color & Contrast
 
 *   **Semantic Colors:** Use semantic colors exclusively (e.g., `primary`, `background`, `textPrimary`). Do not use raw color values.
+*   **Locked Token Set (v1.0):** UI must only use the following design tokens from `DesignSystem/Colors.swift`:
+    *   `primaryAction`, `primaryActionPressed`
+    *   `appBackground`, `secondaryBackground`, `surface`, `surfaceElevated`
+    *   `textPrimary`, `textSecondary`, `textDisabled`
+    *   `border`, `divider`
+    *   `success`, `warning`, `error`
 *   **Brand Palette:** Define one primary brand color and one accent color. All other colors should be neutral.
 *   **Contrast:** Text contrast MUST meet or exceed WCAG AA guidelines for accessibility.
 *   **State Definition:** Clearly define all four states for interactive elements: default, hover/focus, pressed, and disabled.
@@ -176,6 +182,8 @@ To ensure visual consistency, predictable UX, and fast iteration, all UI impleme
 
 *   **Do Not Invent:** Avoid creating new colors, spacing values, font styles, or component variants not defined in the Design System.
 *   **Do Not Hardcode:** Never hardcode UI constants (e.g., specific padding values, colors, font sizes) directly within screen implementations.
+*   **Do Not Use Opacity-Based Text Colors:** Use `textPrimary`, `textSecondary`, and `textDisabled` instead of applying opacity to text colors.
+*   **Do Not Use Decorative Color Effects:** No gradients, rainbow tag colors, or colored shadows.
 *   **Do Not Over-Design:** Resist the urge to over-design early features. Prioritize functionality and clarity.
 *   **Do Not Sacrifice Clarity for Aesthetics:** Aesthetics are important, but never at the expense of clarity and usability.
 

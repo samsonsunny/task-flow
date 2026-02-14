@@ -20,7 +20,7 @@ struct EmptyStateView: View {
         VStack(spacing: AppTheme.spacing.md) {
             Text(emptyStateTitle)
                 .font(AppTheme.fonts.title)
-                .foregroundStyle(AppTheme.colors.text)
+                .foregroundStyle(AppTheme.colors.textPrimary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
