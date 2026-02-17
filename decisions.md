@@ -568,3 +568,16 @@
 **Impact:**
 - `TaskDetailView.swift` was deleted.
 - Task rows no longer navigate to a detail view.
+
+## Decision: Support Tappable URLs In Task Rows
+
+**Date:** 2026-02-17
+
+**Decision:** Task rows now detect `http` and `https` URLs inside the title text and render those URL segments as tappable links.
+
+**Rationale:** Users often paste links with surrounding reminder text (for example, "read this https://google.com"). Enabling inline URL taps supports "save now, open later" without adding new fields or extra row UI.
+
+**Impact:**
+- `TaskRowView.swift` now uses attributed text with link detection.
+- Mixed text titles keep full visible text while URL parts are tappable.
+- Non-URL titles continue to render as plain title text.

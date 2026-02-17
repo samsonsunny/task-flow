@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import Foundation
 
 struct TaskRowView: View {
     let task: TaskItem
@@ -19,17 +20,48 @@ struct TaskRowView: View {
         HStack(alignment: .top, spacing: 8) {
             completionButton
 
-            Text(task.safeTitle)
-                .font(AppTheme.fonts.body)
-                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
-                .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                .lineLimit(3)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, AppTheme.spacing.xs)
-                .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+            titleView
         }
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var titleView: some View {
+        Text(attributedTitle)
+            .font(AppTheme.fonts.body)
+            .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
+            .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
+            .opacity(isCompletedVisualState ? 0.82 : 1.0)
+            .lineLimit(3)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, AppTheme.spacing.xs)
+            .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+    }
+
+    private var attributedTitle: AttributedString {
+        let raw = task.safeTitle
+        var attributed = AttributedString(raw)
+        let nsRange = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return attributed
+        }
+
+        let matches = detector.matches(in: raw, options: [], range: nsRange)
+        for match in matches {
+            guard
+                let url = match.url,
+                let scheme = url.scheme?.lowercased(),
+                scheme == "http" || scheme == "https",
+                let range = Range(match.range, in: attributed)
+            else {
+                continue
+            }
+            attributed[range].link = url
+        }
+
+        return attributed
     }
 
     private var completionButton: some View {
