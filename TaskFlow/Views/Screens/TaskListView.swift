@@ -10,6 +10,30 @@ import SwiftUI
 import SwiftData
 
 struct TaskListView: View {
+    private enum TaskBucket: String, CaseIterable, Identifiable {
+        case today
+        case tomorrow
+        case later
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .today: return "Today"
+            case .tomorrow: return "Tomorrow"
+            case .later: return "Later"
+            }
+        }
+        
+        var iconName: String {
+            switch self {
+            case .today: return "sun.max"
+            case .tomorrow: return "calendar"
+            case .later: return "tray.full"
+            }
+        }
+    }
+
     private enum CaptureMetrics {
         static let bottomInset: CGFloat = 10
         static let horizontalScreenInset: CGFloat = 16
@@ -19,6 +43,8 @@ struct TaskListView: View {
         static let cornerRadius: CGFloat = 16
         static let containerVerticalPadding: CGFloat = 8
     }
+    
+    private static var hasAppliedColdLaunchDefault = false
 
     @Environment(\.modelContext) private var modelContext
     @Query(
@@ -29,26 +55,87 @@ struct TaskListView: View {
     @Environment(\.scenePhase) private var scenePhase
     
     @StateObject private var captureSession = CaptureSessionState()
+    @State private var selectedBucket: TaskBucket = .today
+    @State private var didInitializeTabSelection = false
+    @State private var isCaptureBarVisible = false
     @State private var newTaskTitle = ""
     @State private var pendingCompletionTaskKeys: Set<String> = []
     @State private var completionWorkItems: [String: DispatchWorkItem] = [:]
     @FocusState private var captureFocused: Bool
+    @SceneStorage("tasklist.selectedBucket") private var sceneSelectedBucketRaw = TaskBucket.today.rawValue
+    @AppStorage("tasklist.lastOpenedBucket") private var lastOpenedBucketRaw = TaskBucket.today.rawValue
 
     var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            TabView(selection: $selectedBucket) {
+                bucketScreen(for: .today)
+                    .tag(TaskBucket.today)
+                    .tabItem {
+                        Label(TaskBucket.today.title, systemImage: TaskBucket.today.iconName)
+                    }
+                bucketScreen(for: .tomorrow)
+                    .tag(TaskBucket.tomorrow)
+                    .tabItem {
+                        Label(TaskBucket.tomorrow.title, systemImage: TaskBucket.tomorrow.iconName)
+                    }
+                bucketScreen(for: .later)
+                    .tag(TaskBucket.later)
+                    .tabItem {
+                        Label(TaskBucket.later.title, systemImage: TaskBucket.later.iconName)
+                    }
+            }
+            .onAppear {
+                initializeTabSelectionIfNeeded()
+                updateFocusIfNeeded()
+            }
+            .onChange(of: scenePhase) { phase in
+                captureSession.handleScenePhase(phase)
+                if phase == .active {
+                    updateFocusIfNeeded()
+                }
+            }
+            .onChange(of: captureFocused) { focused in
+                if focused {
+                    captureSession.recordFocused()
+                } else if scenePhase == .active {
+                    captureSession.markKeyboardDismissed()
+                    hideCaptureBar()
+                }
+            }
+            .onChange(of: newTaskTitle) { value in
+                if hasTrailingNewline(value) {
+                    newTaskTitle = value.trimmingTrailingNewlines()
+                    submitFromKeyboard()
+                    return
+                }
+                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    captureSession.markTypedInSession()
+                }
+            }
+            .onChange(of: selectedBucket) { bucket in
+                sceneSelectedBucketRaw = bucket.rawValue
+                lastOpenedBucketRaw = bucket.rawValue
+            }
+
+            if !isCaptureBarVisible {
+                floatingAddButton
+                    .padding(.trailing, AppTheme.spacing.lg)
+                    .padding(.bottom, 84)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+    private func bucketScreen(for bucket: TaskBucket) -> some View {
         NavigationStack {
             ZStack {
                 AppTheme.colors.appBackground
                     .ignoresSafeArea()
                 
-                Group {
-                    if tasks.isEmpty {
-                        EmptyStateView(type: .noTasks)
-                            .padding(.horizontal, AppTheme.spacing.lg)
-                            .padding(.top, AppTheme.spacing.md)
-                            .padding(.bottom, AppTheme.spacing.lg)
-                    } else {
-                        List {
-                            ForEach(tasks) { task in
+                VStack(spacing: 0) {
+                    List {
+                        Section(header: headerView(for: bucket)) {
+                            ForEach(filteredTasks(for: bucket)) { task in
                                 taskRow(task)
                                     .listRowInsets(
                                         EdgeInsets(
@@ -69,50 +156,30 @@ struct TaskListView: View {
                                     }
                             }
                         }
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .animation(.easeInOut, value: tasks.count)
+                .animation(.easeInOut, value: filteredTasks(for: bucket).count)
+                .animation(.easeInOut, value: selectedBucket)
                 .simultaneousGesture(
                     DragGesture().onChanged { _ in
                         captureSession.markScrolledBeforeTyping()
+                        hideCaptureBar()
                     }
                 )
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
-            .navigationTitle("Tasks")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
-                captureBar
-            }
-            .onAppear {
-                updateFocusIfNeeded()
-            }
-            .onChange(of: scenePhase) { phase in
-                captureSession.handleScenePhase(phase)
-                if phase == .active {
-                    updateFocusIfNeeded()
+                if isCaptureBarVisible {
+                    captureBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .onChange(of: captureFocused) { focused in
-                if focused {
-                    captureSession.recordFocused()
-                } else if scenePhase == .active {
-                    captureSession.markKeyboardDismissed()
-                }
-            }
-            .onChange(of: newTaskTitle) { value in
-                if hasTrailingNewline(value) {
-                    newTaskTitle = value.trimmingTrailingNewlines()
-                    submitFromKeyboard()
-                    return
-                }
-
-                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    captureSession.markTypedInSession()
-                }
-            }
+            .animation(.easeInOut(duration: 0.22), value: isCaptureBarVisible)
         }
     }
     
@@ -130,7 +197,10 @@ struct TaskListView: View {
         let normalizedTitle = normalizedCaptureTitle(title)
         guard !normalizedTitle.isEmpty else { return }
 
-        let task = TaskItem(taskTitle: normalizedTitle)
+        let task = TaskItem(
+            taskTitle: normalizedTitle,
+            dueDate: dueDateForCreate(in: selectedBucket)
+        )
         modelContext.insert(task)
         captureSession.recordTaskAdded()
     }
@@ -205,10 +275,10 @@ struct TaskListView: View {
             .padding(.vertical, CaptureMetrics.inputVerticalPadding)
             .padding(.horizontal, CaptureMetrics.inputHorizontalPadding)
             .frame(minHeight: CaptureMetrics.inputMinHeight)
-            .background(AppTheme.colors.surface)
+            .background(.regularMaterial)
             .overlay(
                 RoundedRectangle(cornerRadius: CaptureMetrics.cornerRadius)
-                    .stroke(AppTheme.colors.border, lineWidth: 1)
+                    .stroke(AppTheme.colors.border.opacity(0.7), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: CaptureMetrics.cornerRadius))
         }
@@ -219,7 +289,8 @@ struct TaskListView: View {
     }
 
     private func updateFocusIfNeeded() {
-        if captureSession.shouldAutoFocus(isListEmpty: tasks.isEmpty) {
+        guard isCaptureBarVisible else { return }
+        if captureSession.shouldAutoFocus(isListEmpty: filteredTasks(for: selectedBucket).isEmpty) {
             captureFocused = true
         }
     }
@@ -233,6 +304,50 @@ struct TaskListView: View {
         captureFocused = true
     }
 
+    private func toggleCaptureBar() {
+        if isCaptureBarVisible {
+            hideCaptureBar()
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            isCaptureBarVisible = true
+        }
+        DispatchQueue.main.async {
+            captureFocused = true
+        }
+    }
+
+    private func hideCaptureBar() {
+        guard isCaptureBarVisible else { return }
+        captureFocused = false
+        withAnimation(.easeInOut(duration: 0.22)) {
+            isCaptureBarVisible = false
+        }
+    }
+    
+    private var floatingAddButton: some View {
+        Button {
+            toggleCaptureBar()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(.regularMaterial)
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Circle()
+                            .stroke(AppTheme.colors.border.opacity(0.6), lineWidth: 0.8)
+                    )
+                    .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add Task")
+        .padding(.top, AppTheme.spacing.sm)
+    }
+
     private func normalizedCaptureTitle(_ rawTitle: String) -> String {
         let withSpacesForNewlines = rawTitle
             .components(separatedBy: .newlines)
@@ -243,6 +358,106 @@ struct TaskListView: View {
     private func hasTrailingNewline(_ value: String) -> Bool {
         value.last?.isNewline == true
     }
+    
+    private func filteredTasks(for bucket: TaskBucket) -> [TaskItem] {
+        let calendar = Calendar.current
+        return tasks.filter { task in
+            guard let dueDate = task.dueDate else {
+                return bucket == .later
+            }
+            switch bucket {
+            case .today:
+                return calendar.isDateInToday(dueDate)
+            case .tomorrow:
+                return calendar.isDateInTomorrow(dueDate)
+            case .later:
+                return !calendar.isDateInToday(dueDate) && !calendar.isDateInTomorrow(dueDate)
+            }
+        }
+    }
+    
+    private func bucketSubtitle(for bucket: TaskBucket) -> String? {
+        switch bucket {
+        case .today:
+            return Self.tabDateFormatter.string(from: Date())
+        case .tomorrow:
+            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+            return Self.tabDateFormatter.string(from: tomorrow)
+        case .later:
+            return nil
+        }
+    }
+    
+    private func headerView(for bucket: TaskBucket) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(screenTitle(for: bucket))
+                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+            if let subtitle = bucketSubtitle(for: bucket) {
+                Text(subtitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.textPrimary.opacity(0.9))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.top, AppTheme.spacing.lg)
+        .padding(.bottom, AppTheme.spacing.sm)
+    }
+    
+    private func screenTitle(for bucket: TaskBucket) -> String {
+        switch bucket {
+        case .today:
+            return "Today"
+        case .tomorrow:
+            return "Tomorrow"
+        case .later:
+            return "Tasks"
+        }
+    }
+    
+    private func dueDateForCreate(in bucket: TaskBucket) -> Date? {
+        switch bucket {
+        case .today:
+            return Date()
+        case .tomorrow:
+            return Calendar.current.date(byAdding: .day, value: 1, to: Date())
+        case .later:
+            return nil
+        }
+    }
+    
+    private func initializeTabSelectionIfNeeded() {
+        guard !didInitializeTabSelection else { return }
+        defer { didInitializeTabSelection = true }
+        
+        if Self.hasAppliedColdLaunchDefault {
+            if let restoredBucket = TaskBucket(rawValue: sceneSelectedBucketRaw) {
+                selectedBucket = restoredBucket
+            } else if let persistedBucket = TaskBucket(rawValue: lastOpenedBucketRaw) {
+                selectedBucket = persistedBucket
+            } else {
+                selectedBucket = .today
+            }
+        } else {
+            selectedBucket = defaultBucketForCurrentTime()
+            Self.hasAppliedColdLaunchDefault = true
+        }
+        sceneSelectedBucketRaw = selectedBucket.rawValue
+        lastOpenedBucketRaw = selectedBucket.rawValue
+    }
+    
+    private func defaultBucketForCurrentTime(now: Date = Date()) -> TaskBucket {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: now)
+        return hour >= 20 ? .tomorrow : .today
+    }
+    
+    private static let tabDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
+        return formatter
+    }()
 
 }
 

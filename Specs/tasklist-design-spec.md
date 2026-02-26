@@ -12,12 +12,15 @@
 Reduce anxiety and decision fatigue by showing tasks in simple time buckets so users can focus on immediate work without scanning one long mixed list.
 
 ## 2. Information Architecture
-- Single TaskList screen with 3 top tabs:
+- Single TaskList screen with 3 bottom tab bar items:
   - `Today`
   - `Tomorrow`
   - `Later`
-- Tab style is text-first (no icons in tab items).
-- `Today` and `Tomorrow` show localized subtitle date in `EEE, MMM d` format (example: `Thu, Feb 26`).
+- Tab items use icon + text:
+  - `Today` + `sun.max`
+  - `Tomorrow` + `calendar`
+  - `Later` + `tray.full`
+- Active context for `Today` and `Tomorrow` shows localized subtitle date in `EEE, MMM d` format (example: `Thu, Feb 26`).
 
 ## 3. Tab Content Rules
 - `Today` tab: active tasks with due date on current day.
@@ -35,9 +38,14 @@ Active means `isCompleted != true`.
   - Plain list style
   - No row separators
   - Existing row design retained (completion chip + task title).
-- Bottom capture bar:
-  - Present in all three tabs
-  - Persistent with safe-area inset
+- Navigation trailing action:
+  - Global `+` button in navigation bar.
+  - Visual style follows Apple liquid-glass language and matches tab bar tone.
+  - Uses adaptive material/semantic colors for light and dark mode.
+- Capture bar:
+  - Reuses existing capture component.
+  - Hidden by default; shown on `+` tap.
+  - Appears above keyboard with smooth show/hide animation.
   - Placeholder: `What's on your mind?`
   - Multiline input 1...4 lines
 - Empty tabs:
@@ -45,10 +53,19 @@ Active means `isCompleted != true`.
 
 ## 5. Interaction and Behavior
 ### 5.1 Capture Behavior by Tab
+- Tap global `+` to show capture bar and focus input.
 - Create from `Today`: auto-assign due date = today.
 - Create from `Tomorrow`: auto-assign due date = tomorrow.
 - Create from `Later`: no auto due date assignment.
 - Existing normalization/submit behavior remains unchanged.
+- Continuous capture remains unchanged while visible:
+  - submit creates task
+  - input clears
+  - focus stays active
+- Hide behavior:
+  - Interactive scroll/tap-outside hides capture bar.
+  - Hide also applies when unsent text exists.
+  - Unsent text is preserved and restored on next `+` tap.
 
 ### 5.2 Task Actions
 - Keep existing in-list actions:
@@ -69,6 +86,10 @@ Active means `isCompleted != true`.
   - `Today`
   - `Tomorrow`
   - `Later`
+- Navigation title by selected tab:
+  - `Today` tab -> `Today`
+  - `Tomorrow` tab -> `Tomorrow`
+  - `Later` tab -> `Tasks`
 - No additional helper copy required for empty lists.
 
 ## 7. Accessibility
@@ -87,7 +108,8 @@ Active means `isCompleted != true`.
 1. User can switch between `Today`, `Tomorrow`, and `Later` tabs from TaskList.
 2. `Today` and `Tomorrow` display date subtitle in `EEE, MMM d` localized format.
 3. Each tab shows only tasks matching its defined content rule.
-4. Capture bar is visible and usable in all tabs.
-5. New task due date assignment matches active-tab rules.
-6. Empty tabs render without empty-state text.
-7. On cold launch, default tab follows the 8:00 PM time rule; warm in-session relaunch restores last-opened tab.
+4. Global `+` shows capture bar with smooth keyboard-synced animation.
+5. Capture bar hides on interactive scroll/tap-outside and restores unsent draft on reopen.
+6. New task due date assignment matches active-tab rules.
+7. Empty tabs render without empty-state text.
+8. On cold launch, default tab follows the 8:00 PM time rule; warm in-session relaunch restores last-opened tab.

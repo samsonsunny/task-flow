@@ -6,50 +6,60 @@
 - Last updated: 2026-02-26
 
 ## 1. Tabbed TaskList Structure
-- [ ] Add 3-tab UI container in TaskList screen with labels:
-  - [ ] `Today`
-  - [ ] `Tomorrow`
-  - [ ] `Later`
-- [ ] Keep text-first tab items (no icons).
-- [ ] Add subtitle date for `Today` and `Tomorrow` in `EEE, MMM d` localized format.
+- [x] Add 3-tab UI container in TaskList screen with labels:
+  - [x] `Today`
+  - [x] `Tomorrow`
+  - [x] `Later`
+- [x] Use bottom tab bar tab items with icon + text:
+  - [x] `Today` + `sun.max`
+  - [x] `Tomorrow` + `calendar`
+  - [x] `Later` + `tray.full`
+- [x] Add localized subtitle date context for `Today` and `Tomorrow` in `EEE, MMM d` format.
 
 ## 2. Data Filtering by Tab
-- [ ] Keep active-task filter (`isCompleted != true`) for all tabs.
-- [ ] Implement `Today` filter: due date is current calendar day.
-- [ ] Implement `Tomorrow` filter: due date is next calendar day.
-- [ ] Implement `Later` filter: tasks not in `Today` or `Tomorrow`:
-  - [ ] No due date
-  - [ ] Due date after tomorrow
-  - [ ] Overdue
-- [ ] Keep existing sort order (`createdAt` descending) within each tab.
+- [x] Keep active-task filter (`isCompleted != true`) for all tabs.
+- [x] Implement `Today` filter: due date is current calendar day.
+- [x] Implement `Tomorrow` filter: due date is next calendar day.
+- [x] Implement `Later` filter: tasks not in `Today` or `Tomorrow`:
+  - [x] No due date
+  - [x] Due date after tomorrow
+  - [x] Overdue
+- [x] Keep existing sort order (`createdAt` descending) within each tab.
 
 ## 3. Capture Bar Behavior
-- [ ] Ensure capture bar is visible in all tabs.
-- [ ] Keep existing input normalization and submit behavior.
-- [ ] Assign due date from active tab on create:
-  - [ ] `Today` -> today due date
-  - [ ] `Tomorrow` -> tomorrow due date
-  - [ ] `Later` -> no auto due date
+- [x] Add global navigation `+` action in TaskList.
+- [x] Keep capture bar hidden by default.
+- [x] Show capture bar on `+` tap with smooth bottom-up + fade animation.
+- [x] Ensure keyboard and capture bar animation are synchronized.
+- [x] Keep capture bar component/functionality unchanged once visible.
+- [x] Keep existing input normalization and submit behavior.
+- [x] Assign due date from active tab on create:
+  - [x] `Today` -> today due date
+  - [x] `Tomorrow` -> tomorrow due date
+  - [x] `Later` -> no auto due date
+- [x] Hide capture bar on interactive scroll/tap-outside.
+- [x] Preserve unsent draft text on hide and restore on next `+` tap.
 - [ ] Verify input/focus behavior remains unchanged after tab integration.
 
 ## 4. Launch Tab Logic
-- [ ] Implement cold-launch default tab rule:
-  - [ ] Before 8:00 PM local time -> open `Today`
-  - [ ] At/after 8:00 PM local time -> open `Tomorrow`
-- [ ] Persist last-opened tab while app is active.
-- [ ] Implement warm resume/relaunch in same session -> restore last-opened tab.
-- [ ] Ensure cold-launch time rule takes precedence over persisted tab.
+- [x] Implement cold-launch default tab rule:
+  - [x] Before 8:00 PM local time -> open `Today`
+  - [x] At/after 8:00 PM local time -> open `Tomorrow`
+- [x] Persist last-opened tab while app is active.
+- [x] Implement warm resume/relaunch in same session -> restore last-opened tab.
+- [x] Ensure cold-launch time rule takes precedence over persisted tab.
 
 ## 5. Existing Behavior Regression Checks
 - [ ] Completion chip delay/cancel behavior still works per row.
 - [ ] Swipe-to-delete still cancels pending completion and deletes item.
 - [ ] Link detection in task title still works.
-- [ ] No empty-state message appears in empty tabs.
+- [x] No empty-state message appears in empty tabs.
 
 ## 6. Accessibility and Localization
-- [ ] Ensure tab labels are announced as visible text.
+- [x] Ensure tab labels are announced as visible text.
 - [ ] Ensure subtitle date strings read correctly in VoiceOver.
-- [ ] Ensure date subtitles use locale-aware formatting.
+- [x] Ensure date subtitles use locale-aware formatting.
+- [x] Ensure global `+` has accessibility label (`Add Task`) and 44x44 target.
 
 ## 7. QA Scenarios
 - [ ] Add task in `Today`; verify due date and placement.
@@ -60,8 +70,12 @@
 - [ ] Cold launch before 8:00 PM opens `Today`.
 - [ ] Cold launch at/after 8:00 PM opens `Tomorrow`.
 - [ ] Warm resume returns to last-opened tab.
+- [ ] Tap `+` shows capture bar and keyboard smoothly.
+- [ ] Scroll/tap-outside hides capture bar.
+- [ ] Hide with unsent text and verify draft restores on next `+`.
+- [ ] Verify repeated capture works without opening/closing glitches.
 
 ## 8. Documentation Updates
-- [ ] Update `README.md` if user-visible behavior changed.
+- [x] Update `README.md` if user-visible behavior changed.
 - [ ] Add implementation notes or code-map references after merge.
-
+- [x] Verify PRD/design docs reflect global `+` and non-persistent capture bar.

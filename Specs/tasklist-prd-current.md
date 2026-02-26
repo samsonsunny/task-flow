@@ -12,7 +12,7 @@ Define the current TaskList behavior exactly as implemented, so future changes c
 ## 2. Product Scope
 The TaskList view is the app's primary and only working screen at launch. It supports:
 - Viewing active tasks in date buckets (`Today`, `Tomorrow`, `Later`)
-- Adding tasks via bottom capture bar
+- Adding tasks via global navigation `+` with on-demand capture bar
 - Completing tasks via delayed completion chip
 - Deleting tasks via trailing swipe action
 
@@ -35,9 +35,16 @@ Not in current scope:
 
 ### TL-01 Screen Entry and Navigation
 - App opens directly into TaskList view.
-- Navigation title is `Tasks`.
-- TaskList is wrapped in a `NavigationStack`.
-- Primary organization is a 3-tab layout: `Today`, `Tomorrow`, `Later`.
+- Navigation title is tab-contextual:
+  - `Today` tab title: `Today`
+  - `Tomorrow` tab title: `Tomorrow`
+  - `Later` tab title: `Tasks`
+- Navigation bar includes a global trailing `+` action for task capture.
+- TaskList uses a bottom tab bar with 3 tabs: `Today`, `Tomorrow`, `Later`.
+- Each tab item uses icon + text:
+  - `Today`: `sun.max`
+  - `Tomorrow`: `calendar`
+  - `Later`: `tray.full`
 - `Today` and `Tomorrow` show subtitle dates in `EEE, MMM d` format (localized), e.g. `Thu, Feb 26`.
 
 ### TL-02 Data Source and Filtering
@@ -63,8 +70,10 @@ Not in current scope:
 - Row visual state changes when pending completion is active.
 
 ### TL-06 Task Creation (Capture Bar)
-- Persistent bottom capture bar via `safeAreaInset(edge: .bottom)`.
-- Capture bar is available in all three tabs.
+- Capture starts from global navigation `+`.
+- Tapping `+` shows existing capture bar above keyboard with smooth animated transition.
+- Capture bar is hidden by default (not always visible).
+- No new capture-specific buttons are added.
 - Placeholder text: `What's on your mind?`
 - Text field supports 1...4 lines.
 - Submit via keyboard Done / submit event.
@@ -82,6 +91,11 @@ Not in current scope:
   - Insert into SwiftData context
   - Clear input
   - Keep focus active
+- Dismiss/hide behavior:
+  - Interactive scroll or tap outside hides the capture bar.
+  - Hide occurs even if there is unsent input.
+  - Unsent input is preserved as draft.
+  - Reopening capture via `+` restores the draft.
 
 ### TL-07 Completion Flow (Delayed Finalization)
 - Tapping completion chip sets temporary visual-complete state immediately.
@@ -133,7 +147,9 @@ Additional existing fields not surfaced in TaskList UI:
 
 ## 6. Visual and Design Constraints
 - Screen background uses semantic `appBackground` token.
-- Capture input uses `surface` + `border` with rounded corners.
+- Global `+` and capture bar use a liquid-glass style aligned with the tab bar visual language.
+- Use native material-backed styling and semantic colors that adapt to both light and dark mode.
+- Capture input uses glass-compatible surface/border tokens with rounded corners.
 - No row separators.
 - List style is plain.
 
@@ -158,3 +174,4 @@ Before requesting AI code changes, update this PRD first:
 ## 10. Change Log
 - 2026-02-25: Created initial code-mapped TaskList PRD baseline.
 - 2026-02-26: Updated PRD for `Today`/`Tomorrow`/`Later` tab model, tab-scoped capture due-date defaults, tab filtering rules, and launch tab selection behavior.
+- 2026-02-26: Updated PRD for global `+` capture entry, on-demand capture bar show/hide with draft restore, and liquid-glass visual requirements.
