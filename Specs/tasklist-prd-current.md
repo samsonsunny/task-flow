@@ -11,7 +11,7 @@ Define the current TaskList behavior exactly as implemented, so future changes c
 
 ## 2. Product Scope
 The TaskList view is the app's primary and only working screen at launch. It supports:
-- Viewing active tasks in date buckets (`Today`, `Tomorrow`, `Later`)
+- Viewing active tasks in date buckets (`Today`, `Tomorrow`, `Upcoming`)
 - Adding tasks via global navigation `+` with on-demand capture bar
 - Completing tasks via delayed completion chip
 - Deleting tasks via trailing swipe action
@@ -38,13 +38,13 @@ Not in current scope:
 - Navigation title is tab-contextual:
   - `Today` tab title: `Today`
   - `Tomorrow` tab title: `Tomorrow`
-  - `Later` tab title: `Tasks`
+  - `Upcoming` tab title: `Tasks`
 - Navigation bar includes a global trailing `+` action for task capture.
-- TaskList uses a bottom tab bar with 3 tabs: `Today`, `Tomorrow`, `Later`.
+- TaskList uses a bottom tab bar with 3 tabs: `Today`, `Tomorrow`, `Upcoming`.
 - Each tab item uses icon + text:
   - `Today`: `sun.max`
   - `Tomorrow`: `calendar`
-  - `Later`: `tray.full`
+  - `Upcoming`: `tray.full`
 - `Today` and `Tomorrow` show subtitle dates in `EEE, MMM d` format (localized), e.g. `Thu, Feb 26`.
 
 ### TL-02 Data Source and Filtering
@@ -54,7 +54,7 @@ Not in current scope:
 - Tab filtering:
   - `Today`: tasks with due date on current calendar day only.
   - `Tomorrow`: tasks with due date on next calendar day only.
-  - `Later`: tasks not in `Today` or `Tomorrow` (no due date, future-dated beyond tomorrow, and overdue).
+  - `Upcoming`: tasks not in `Today` or `Tomorrow` (no due date, future-dated beyond tomorrow, and overdue).
 
 ### TL-03 Ordering
 - Sort order remains `createdAt` descending (newest first) within each tab.
@@ -85,7 +85,7 @@ Not in current scope:
 - On successful create, due date is assigned from active tab:
   - In `Today`, due date auto-assigns to today.
   - In `Tomorrow`, due date auto-assigns to tomorrow.
-  - In `Later`, keep current behavior (no auto due date assignment).
+  - In `Upcoming`, keep current behavior (no auto due date assignment).
 - Create path:
   - Create `TaskItem(taskTitle: normalizedTitle)` and set due date per tab rule above.
   - Insert into SwiftData context
@@ -160,7 +160,7 @@ Additional existing fields not surfaced in TaskList UI:
 - No task detail navigation.
 - No due-date edit flow in current TaskList version.
 - No explicit empty-state text for empty tabs.
-- No dedicated overdue handling experience beyond inclusion in `Later`.
+- No dedicated overdue handling experience beyond inclusion in `Upcoming`.
 - No automated test coverage for TaskList behaviors in `TaskFlowTests` yet.
 
 ## 9. Acceptance Checklist for Future Changes
@@ -175,3 +175,4 @@ Before requesting AI code changes, update this PRD first:
 - 2026-02-25: Created initial code-mapped TaskList PRD baseline.
 - 2026-02-26: Updated PRD for `Today`/`Tomorrow`/`Later` tab model, tab-scoped capture due-date defaults, tab filtering rules, and launch tab selection behavior.
 - 2026-02-26: Updated PRD for global `+` capture entry, on-demand capture bar show/hide with draft restore, and liquid-glass visual requirements.
+- 2026-02-27: Updated PRD to rename the `Later` tab to `Upcoming`, keeping filtering behavior and language consistent.

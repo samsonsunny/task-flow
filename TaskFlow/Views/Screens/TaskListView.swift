@@ -13,7 +13,7 @@ struct TaskListView: View {
     private enum TaskBucket: String, CaseIterable, Identifiable {
         case today
         case tomorrow
-        case later
+        case upcoming = "later"
 
         var id: String { rawValue }
 
@@ -21,7 +21,7 @@ struct TaskListView: View {
             switch self {
             case .today: return "Today"
             case .tomorrow: return "Tomorrow"
-            case .later: return "Later"
+            case .upcoming: return "Upcoming"
             }
         }
         
@@ -29,7 +29,7 @@ struct TaskListView: View {
             switch self {
             case .today: return "sun.max"
             case .tomorrow: return "calendar"
-            case .later: return "tray.full"
+            case .upcoming: return "tray.full"
             }
         }
     }
@@ -78,10 +78,10 @@ struct TaskListView: View {
                     .tabItem {
                         Label(TaskBucket.tomorrow.title, systemImage: TaskBucket.tomorrow.iconName)
                     }
-                bucketScreen(for: .later)
-                    .tag(TaskBucket.later)
+                bucketScreen(for: .upcoming)
+                    .tag(TaskBucket.upcoming)
                     .tabItem {
-                        Label(TaskBucket.later.title, systemImage: TaskBucket.later.iconName)
+                        Label(TaskBucket.upcoming.title, systemImage: TaskBucket.upcoming.iconName)
                     }
             }
             .onAppear {
@@ -363,14 +363,14 @@ struct TaskListView: View {
         let calendar = Calendar.current
         return tasks.filter { task in
             guard let dueDate = task.dueDate else {
-                return bucket == .later
+                return bucket == .upcoming
             }
             switch bucket {
             case .today:
                 return calendar.isDateInToday(dueDate)
             case .tomorrow:
                 return calendar.isDateInTomorrow(dueDate)
-            case .later:
+            case .upcoming:
                 return !calendar.isDateInToday(dueDate) && !calendar.isDateInTomorrow(dueDate)
             }
         }
@@ -383,7 +383,7 @@ struct TaskListView: View {
         case .tomorrow:
             let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
             return Self.tabDateFormatter.string(from: tomorrow)
-        case .later:
+        case .upcoming:
             return nil
         }
     }
@@ -411,7 +411,7 @@ struct TaskListView: View {
             return "Today"
         case .tomorrow:
             return "Tomorrow"
-        case .later:
+        case .upcoming:
             return "Tasks"
         }
     }
@@ -422,7 +422,7 @@ struct TaskListView: View {
             return Date()
         case .tomorrow:
             return Calendar.current.date(byAdding: .day, value: 1, to: Date())
-        case .later:
+        case .upcoming:
             return nil
         }
     }
