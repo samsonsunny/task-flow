@@ -13,10 +13,26 @@ struct TaskRowView: View {
     let task: TaskItem
     var isCompletedVisualState: Bool = false
     var onToggleCompletion: () -> Void
+    var onMoveToNextDay: (() -> Void)? = nil
 
     @State private var chipScale: CGFloat = 1
     
     var body: some View {
+        Group {
+            if let moveAction = onMoveToNextDay {
+                rowContent
+                    .contextMenu {
+                        Button("Move to Next Day") {
+                            moveAction()
+                        }
+                    }
+            } else {
+                rowContent
+            }
+        }
+    }
+
+    private var rowContent: some View {
         HStack(alignment: .top, spacing: 8) {
             completionButton
 

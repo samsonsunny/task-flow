@@ -111,6 +111,16 @@ Not in current scope:
 - Full swipe allowed.
 - Deletion cancels pending completion timer (if any) before deleting model.
 
+### TL-12 Context Menu Rescheduling
+- Each task row in the `Today` and `Tomorrow` buckets exposes a single context-menu action labeled `Move to Next Day`.
+- Selecting the action moves the task into the next calendar day (e.g., `Today` → tomorrow, `Tomorrow` → two days from now) by incrementing the stored `dueDate`.
+- The button is not shown in `Upcoming`, preserving the current-row layout for tasks that already sit outside the two primary buckets.
+
+### TL-12 Context Menu Rescheduling
+- Each task row in the `Today` and `Tomorrow` buckets exposes a single context-menu action labeled `Move to Next Day`.
+- Selecting the action moves the task into the next calendar day (e.g., `Today` → tomorrow, `Tomorrow` → two days from now) by incrementing the stored `dueDate`.
+- The button is not shown in `Upcoming`, preserving the current-row layout for tasks that already sit outside the two primary buckets.
+
 ### TL-09 Keyboard and Focus Behavior
 - Keyboard dismisses interactively during scroll.
 - Drag gesture marks scroll-before-typing signal for focus policy.

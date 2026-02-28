@@ -136,7 +136,7 @@ struct TaskListView: View {
                     List {
                         Section(header: headerView(for: bucket)) {
                             ForEach(filteredTasks(for: bucket)) { task in
-                                taskRow(task)
+                                taskRow(task, in: bucket)
                                     .listRowInsets(
                                         EdgeInsets(
                                             top: AppTheme.spacing.xxs,
@@ -183,14 +183,36 @@ struct TaskListView: View {
         }
     }
     
-    private func taskRow(_ task: TaskItem) -> some View {
+    private func taskRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
         let key = taskKey(for: task)
         return TaskRowView(
             task: task,
-            isCompletedVisualState: pendingCompletionTaskKeys.contains(key)
-        ) {
-            toggleCompletion(for: task)
+            isCompletedVisualState: pendingCompletionTaskKeys.contains(key),
+            onToggleCompletion: {
+                toggleCompletion(for: task)
+            },
+            onMoveToNextDay: shouldExposeMoveToNextDay(in: bucket)
+                ? { moveTaskToNextDay(task) }
+                : nil
+        )
+    }
+
+    private func shouldExposeMoveToNextDay(in bucket: TaskBucket) -> Bool {
+        switch bucket {
+        case .today, .tomorrow:
+            return true
+        case .upcoming:
+            return false
         }
+    }
+
+    private func moveTaskToNextDay(_ task: TaskItem) {
+        let calendar = Calendar.current
+        let referenceDate = calendar.startOfDay(for: task.dueDate ?? Date())
+        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: referenceDate) else {
+            return
+        }
+        task.dueDate = nextDay
     }
     
     private func createTask(title: String) {
