@@ -13,23 +13,31 @@ struct TaskRowView: View {
     let task: TaskItem
     var isCompletedVisualState: Bool = false
     var onToggleCompletion: () -> Void
-    var onMoveToNextDay: (() -> Void)? = nil
+    var onMoveToToday: (() -> Void)? = nil
+    var onMoveToTomorrow: (() -> Void)? = nil
+    var onMoveToLater: (() -> Void)? = nil
 
     @State private var chipScale: CGFloat = 1
     
     var body: some View {
-        Group {
-            if let moveAction = onMoveToNextDay {
-                rowContent
-                    .contextMenu {
-                        Button("Move to Next Day") {
-                            moveAction()
-                        }
+        rowContent
+            .contextMenu {
+                if let moveTomorrow = onMoveToTomorrow {
+                    Button("Tomorrow") {
+                        moveTomorrow()
                     }
-            } else {
-                rowContent
+                }
+                if let moveToday = onMoveToToday {
+                    Button("Today") {
+                        moveToday()
+                    }
+                }
+                if let moveLater = onMoveToLater {
+                    Button("Later") {
+                        moveLater()
+                    }
+                }
             }
-        }
     }
 
     private var rowContent: some View {

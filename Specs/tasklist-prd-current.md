@@ -4,7 +4,7 @@
 - Product: TaskFlow iOS
 - Feature: TaskList View
 - Status: Active
-- Last updated: 2026-02-26
+- Last updated: 2026-03-02
 
 ## 1. Purpose
 Define the current TaskList behavior exactly as implemented, so future changes can be requested by updating this PRD first, then applying code updates against it.
@@ -112,14 +112,16 @@ Not in current scope:
 - Deletion cancels pending completion timer (if any) before deleting model.
 
 ### TL-12 Context Menu Rescheduling
-- Each task row in the `Today` and `Tomorrow` buckets exposes a single context-menu action labeled `Move to Next Day`.
-- Selecting the action moves the task into the next calendar day (e.g., `Today` → tomorrow, `Tomorrow` → two days from now) by incrementing the stored `dueDate`.
-- The button is not shown in `Upcoming`, preserving the current-row layout for tasks that already sit outside the two primary buckets.
-
-### TL-12 Context Menu Rescheduling
-- Each task row in the `Today` and `Tomorrow` buckets exposes a single context-menu action labeled `Move to Next Day`.
-- Selecting the action moves the task into the next calendar day (e.g., `Today` → tomorrow, `Tomorrow` → two days from now) by incrementing the stored `dueDate`.
-- The button is not shown in `Upcoming`, preserving the current-row layout for tasks that already sit outside the two primary buckets.
+- Each task row exposes a context menu for rescheduling. The options depend on the task's current view:
+  - **Today tasks:**
+    - `Tomorrow`: Sets due date to the next calendar day.
+  - **Tomorrow tasks:**
+    - `Today`: Sets due date to the current calendar day.
+    - `Later`: Removes the due date (`dueDate = nil`), moving it to `Upcoming`.
+  - **Upcoming tasks:**
+    - `Today`: Sets due date to the current calendar day.
+    - `Tomorrow`: Sets due date to the next calendar day.
+- All due date changes use start-of-day normalization for date consistency.
 
 ### TL-09 Keyboard and Focus Behavior
 - Keyboard dismisses interactively during scroll.
@@ -186,3 +188,5 @@ Before requesting AI code changes, update this PRD first:
 - 2026-02-26: Updated PRD for `Today`/`Tomorrow`/`Later` tab model, tab-scoped capture due-date defaults, tab filtering rules, and launch tab selection behavior.
 - 2026-02-26: Updated PRD for global `+` capture entry, on-demand capture bar show/hide with draft restore, and liquid-glass visual requirements.
 - 2026-02-27: Updated PRD to rename the `Later` tab to `Upcoming`, keeping filtering behavior and language consistent.
+- 2026-03-02: Added `TL-12` context-menu rescheduling requirement for `Today`/`Tomorrow`, clarified due-date increment semantics, and removed duplicate requirement block.
+- 2026-03-02: Updated `TL-12` to replace the "Move to Next Day" action with a comprehensive, tab-specific rescheduling context menu for `Today`, `Tomorrow`, and `Upcoming` views.

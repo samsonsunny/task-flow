@@ -49,19 +49,27 @@
 - [x] Implement warm resume/relaunch in same session -> restore last-opened tab.
 - [x] Ensure cold-launch time rule takes precedence over persisted tab.
 
-## 5. Existing Behavior Regression Checks
+## 5. Context Menu Rescheduling
+- [ ] Add context menu to task rows in all tabs.
+- [ ] Today tab: implement "Tomorrow" action.
+- [ ] Tomorrow tab: implement "Today" action.
+- [ ] Tomorrow tab: implement "Later" action (sets dueDate to nil).
+- [ ] Upcoming tab: implement "Today" action.
+- [ ] Upcoming tab: implement "Tomorrow" action.
+
+## 6. Existing Behavior Regression Checks
 - [ ] Completion chip delay/cancel behavior still works per row.
 - [ ] Swipe-to-delete still cancels pending completion and deletes item.
 - [ ] Link detection in task title still works.
 - [x] No empty-state message appears in empty tabs.
 
-## 6. Accessibility and Localization
+## 7. Accessibility and Localization
 - [x] Ensure tab labels are announced as visible text.
 - [ ] Ensure subtitle date strings read correctly in VoiceOver.
 - [x] Ensure date subtitles use locale-aware formatting.
 - [x] Ensure global `+` has accessibility label (`Add Task`) and 44x44 target.
 
-## 7. QA Scenarios
+## 8. QA Scenarios
 - [ ] Add task in `Today`; verify due date and placement.
 - [ ] Add task in `Tomorrow`; verify due date and placement.
 - [ ] Add task in `Upcoming`; verify no due date and placement.
@@ -74,8 +82,13 @@
 - [ ] Scroll/tap-outside hides capture bar.
 - [ ] Hide with unsent text and verify draft restores on next `+`.
 - [ ] Verify repeated capture works without opening/closing glitches.
+- [ ] Today tab: Verify "Tomorrow" context menu action works.
+- [ ] Tomorrow tab: Verify "Today" context menu action works.
+- [ ] Tomorrow tab: Verify "Later" context menu action works.
+- [ ] Upcoming tab: Verify "Today" context menu action works.
+- [ ] Upcoming tab: Verify "Tomorrow" context menu action works.
 
-## 8. Documentation Updates
+## 9. Documentation Updates
 - [x] Update `README.md` if user-visible behavior changed.
 - [ ] Add implementation notes or code-map references after merge.
 - [x] Verify PRD/design docs reflect global `+` and non-persistent capture bar.

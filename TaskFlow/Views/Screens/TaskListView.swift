@@ -191,28 +191,27 @@ struct TaskListView: View {
             onToggleCompletion: {
                 toggleCompletion(for: task)
             },
-            onMoveToNextDay: shouldExposeMoveToNextDay(in: bucket)
-                ? { moveTaskToNextDay(task) }
-                : nil
+            onMoveToToday: bucket == .tomorrow || bucket == .upcoming ? { rescheduleTaskToToday(task) } : nil,
+            onMoveToTomorrow: bucket == .today || bucket == .upcoming ? { rescheduleTaskToTomorrow(task) } : nil,
+            onMoveToLater: bucket == .tomorrow ? { rescheduleTaskToLater(task) } : nil
         )
     }
 
-    private func shouldExposeMoveToNextDay(in bucket: TaskBucket) -> Bool {
-        switch bucket {
-        case .today, .tomorrow:
-            return true
-        case .upcoming:
-            return false
-        }
+        private func rescheduleTaskToToday(_ task: TaskItem) {
+        task.dueDate = Calendar.current.startOfDay(for: Date())
     }
 
-    private func moveTaskToNextDay(_ task: TaskItem) {
+    private func rescheduleTaskToTomorrow(_ task: TaskItem) {
         let calendar = Calendar.current
-        let referenceDate = calendar.startOfDay(for: task.dueDate ?? Date())
-        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: referenceDate) else {
+        let referenceDate = calendar.startOfDay(for: Date())
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: referenceDate) else {
             return
         }
-        task.dueDate = nextDay
+        task.dueDate = tomorrow
+    }
+
+    private func rescheduleTaskToLater(_ task: TaskItem) {
+        task.dueDate = nil
     }
     
     private func createTask(title: String) {

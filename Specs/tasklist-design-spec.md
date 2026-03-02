@@ -71,6 +71,15 @@ Active means `isCompleted != true`.
 - Keep existing in-list actions:
   - Delayed completion (1.8s, cancellable)
   - Swipe-to-delete
+- Add context menu for rescheduling:
+  - **Today tab:**
+    - "Tomorrow"
+  - **Tomorrow tab:**
+    - "Today"
+    - "Later" (removes due date)
+  - **Upcoming tab:**
+    - "Today"
+    - "Tomorrow"
 - No task detail flow in this phase.
 - No due-date editing in this phase.
 
