@@ -43,6 +43,36 @@ struct TaskListView: View {
         static let cornerRadius: CGFloat = 16
         static let containerVerticalPadding: CGFloat = 8
     }
+
+    private enum UpcomingSection: String, CaseIterable, Identifiable, Hashable {
+        case thisWeek
+        case nextWeek
+        case later
+        case unscheduled
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .thisWeek: return "This Week"
+            case .nextWeek: return "Next Week"
+            case .later: return "Later"
+            case .unscheduled: return "Unscheduled"
+            }
+        }
+
+        var isExpandedByDefault: Bool {
+            self == .thisWeek
+        }
+
+    }
+
+    private struct UpcomingSectionGroup: Identifiable {
+        let section: UpcomingSection
+        let tasks: [TaskItem]
+
+        var id: String { section.rawValue }
+    }
     
     private static var hasAppliedColdLaunchDefault = false
 
@@ -61,6 +91,10 @@ struct TaskListView: View {
     @State private var newTaskTitle = ""
     @State private var pendingCompletionTaskKeys: Set<String> = []
     @State private var completionWorkItems: [String: DispatchWorkItem] = [:]
+    @State private var upcomingSectionExpansionOverrides: [UpcomingSection: Bool] = [:]
+    @State private var schedulingTask: TaskItem?
+    @State private var schedulingDate = Calendar.current.startOfDay(for: Date())
+    @State private var isScheduleSheetPresented = false
     @FocusState private var captureFocused: Bool
     @SceneStorage("tasklist.selectedBucket") private var sceneSelectedBucketRaw = TaskBucket.today.rawValue
     @AppStorage("tasklist.lastOpenedBucket") private var lastOpenedBucketRaw = TaskBucket.today.rawValue
@@ -88,13 +122,13 @@ struct TaskListView: View {
                 initializeTabSelectionIfNeeded()
                 updateFocusIfNeeded()
             }
-            .onChange(of: scenePhase) { phase in
+            .onChange(of: scenePhase) { _, phase in
                 captureSession.handleScenePhase(phase)
                 if phase == .active {
                     updateFocusIfNeeded()
                 }
             }
-            .onChange(of: captureFocused) { focused in
+            .onChange(of: captureFocused) { _, focused in
                 if focused {
                     captureSession.recordFocused()
                 } else if scenePhase == .active {
@@ -102,7 +136,7 @@ struct TaskListView: View {
                     hideCaptureBar()
                 }
             }
-            .onChange(of: newTaskTitle) { value in
+            .onChange(of: newTaskTitle) { _, value in
                 if hasTrailingNewline(value) {
                     newTaskTitle = value.trimmingTrailingNewlines()
                     submitFromKeyboard()
@@ -112,9 +146,15 @@ struct TaskListView: View {
                     captureSession.markTypedInSession()
                 }
             }
-            .onChange(of: selectedBucket) { bucket in
+            .onChange(of: selectedBucket) { _, bucket in
                 sceneSelectedBucketRaw = bucket.rawValue
                 lastOpenedBucketRaw = bucket.rawValue
+            }
+            .onAppear {
+                synchronizeUpcomingSectionVisibilityState()
+            }
+            .onChange(of: upcomingVisibilitySignature) { _, _ in
+                synchronizeUpcomingSectionVisibilityState()
             }
 
             if !isCaptureBarVisible {
@@ -125,6 +165,11 @@ struct TaskListView: View {
             }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .sheet(isPresented: $isScheduleSheetPresented, onDismiss: {
+            schedulingTask = nil
+        }) {
+            scheduleSheet
+        }
     }
     private func bucketScreen(for bucket: TaskBucket) -> some View {
         NavigationStack {
@@ -134,26 +179,23 @@ struct TaskListView: View {
                 
                 VStack(spacing: 0) {
                     List {
-                        Section(header: headerView(for: bucket)) {
+                        headerView(for: bucket)
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: .zero,
+                                    leading: AppTheme.spacing.md,
+                                    bottom: .zero,
+                                    trailing: AppTheme.spacing.md
+                                )
+                            )
+                            .listRowBackground(AppTheme.colors.appBackground)
+                            .listRowSeparator(.hidden)
+
+                        if bucket == .upcoming {
+                            upcomingListContent
+                        } else {
                             ForEach(filteredTasks(for: bucket)) { task in
-                                taskRow(task, in: bucket)
-                                    .listRowInsets(
-                                        EdgeInsets(
-                                            top: AppTheme.spacing.xxs,
-                                            leading: AppTheme.spacing.md,
-                                            bottom: AppTheme.spacing.xxs,
-                                            trailing: AppTheme.spacing.md
-                                        )
-                                    )
-                                    .listRowBackground(AppTheme.colors.appBackground)
-                                    .listRowSeparator(.hidden)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button(role: .destructive) {
-                                            deleteTask(task)
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
+                                taskListRow(task, in: bucket)
                             }
                         }
                     }
@@ -193,8 +235,182 @@ struct TaskListView: View {
             },
             onMoveToToday: bucket == .tomorrow || bucket == .upcoming ? { rescheduleTaskToToday(task) } : nil,
             onMoveToTomorrow: bucket == .today || bucket == .upcoming ? { rescheduleTaskToTomorrow(task) } : nil,
-            onMoveToLater: bucket == .tomorrow ? { rescheduleTaskToLater(task) } : nil
+            onMoveToLater: bucket == .tomorrow ? { rescheduleTaskToLater(task) } : nil,
+            onSchedule: bucket == .upcoming ? { presentSchedulePicker(for: task) } : nil
         )
+    }
+
+    private func taskListRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
+        taskRow(task, in: bucket)
+            .listRowInsets(
+                EdgeInsets(
+                    top: AppTheme.spacing.xxs,
+                    leading: AppTheme.spacing.md,
+                    bottom: AppTheme.spacing.xxs,
+                    trailing: AppTheme.spacing.md
+                )
+            )
+            .listRowBackground(AppTheme.colors.appBackground)
+            .listRowSeparator(.hidden)
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button(role: .destructive) {
+                    deleteTask(task)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var upcomingListContent: some View {
+        let groups = upcomingSectionGroups()
+        if groups.isEmpty {
+            upcomingEmptyStateRow
+        } else {
+            ForEach(groups) { group in
+                Section {
+                    if isUpcomingSectionExpanded(group.section) {
+                        ForEach(group.tasks) { task in
+                            taskListRow(task, in: .upcoming)
+                        }
+                    }
+                } header: {
+                    upcomingSectionHeader(for: group.section, count: group.tasks.count)
+                }
+            }
+        }
+    }
+
+    private var upcomingEmptyStateRow: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacing.xs) {
+            Text("Nothing in Upcoming")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+            Text("Future tasks will appear here when you schedule them.")
+                .font(AppTheme.fonts.body)
+                .foregroundStyle(AppTheme.colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, AppTheme.spacing.md)
+        .listRowInsets(
+            EdgeInsets(
+                top: AppTheme.spacing.xxs,
+                leading: AppTheme.spacing.md,
+                bottom: AppTheme.spacing.xxs,
+                trailing: AppTheme.spacing.md
+            )
+        )
+        .listRowBackground(AppTheme.colors.appBackground)
+        .listRowSeparator(.hidden)
+    }
+
+    private func upcomingSectionHeader(for section: UpcomingSection, count: Int) -> some View {
+        Button {
+            toggleUpcomingSection(section)
+        } label: {
+            HStack(spacing: AppTheme.spacing.xs) {
+                Image(systemName: isUpcomingSectionExpanded(section) ? "chevron.down" : "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Text("\(section.title) (\(count))")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .textCase(nil)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(section.title)
+        .accessibilityValue(isUpcomingSectionExpanded(section) ? "Expanded" : "Collapsed")
+        .accessibilityHint("Shows or hides tasks in this section")
+        .padding(.horizontal, AppTheme.spacing.md)
+        .padding(.top, AppTheme.spacing.sm)
+        .padding(.bottom, AppTheme.spacing.xs)
+        .background(AppTheme.colors.appBackground)
+    }
+
+    private func isUpcomingSectionExpanded(_ section: UpcomingSection) -> Bool {
+        upcomingSectionExpansionOverrides[section] ?? section.isExpandedByDefault
+    }
+
+    private func toggleUpcomingSection(_ section: UpcomingSection) {
+        let updatedValue = !isUpcomingSectionExpanded(section)
+        if updatedValue == section.isExpandedByDefault {
+            upcomingSectionExpansionOverrides[section] = nil
+        } else {
+            upcomingSectionExpansionOverrides[section] = updatedValue
+        }
+    }
+
+    private var upcomingVisibilitySignature: String {
+        upcomingSectionGroups().map(\.section.rawValue).joined(separator: "|")
+    }
+
+    private func synchronizeUpcomingSectionVisibilityState() {
+        let visibleSections = Set(upcomingSectionGroups().map(\.section))
+        upcomingSectionExpansionOverrides = upcomingSectionExpansionOverrides.filter { visibleSections.contains($0.key) }
+    }
+
+    private func upcomingSectionGroups() -> [UpcomingSectionGroup] {
+        let upcomingTasks = filteredTasks(for: .upcoming)
+        let grouped = Dictionary(grouping: upcomingTasks, by: upcomingSection(for:))
+        return UpcomingSection.allCases.compactMap { section in
+            guard let sectionTasks = grouped[section], !sectionTasks.isEmpty else {
+                return nil
+            }
+            return UpcomingSectionGroup(section: section, tasks: sortUpcomingTasks(sectionTasks, in: section))
+        }
+    }
+
+    private func upcomingSection(for task: TaskItem) -> UpcomingSection {
+        guard let dueDate = task.dueDate else {
+            return .unscheduled
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: currentWeekStart) ?? currentWeekStart
+        let weekAfterNextStart = calendar.date(byAdding: .weekOfYear, value: 2, to: currentWeekStart) ?? nextWeekStart
+        let normalizedDueDate = calendar.startOfDay(for: dueDate)
+
+        if normalizedDueDate < nextWeekStart {
+            return .thisWeek
+        }
+        if normalizedDueDate < weekAfterNextStart {
+            return .nextWeek
+        }
+        return .later
+    }
+
+    private func sortUpcomingTasks(_ items: [TaskItem], in section: UpcomingSection) -> [TaskItem] {
+        switch section {
+        case .unscheduled:
+            return items.sorted { lhs, rhs in
+                let lhsCreatedAt = lhs.createdAt ?? .distantPast
+                let rhsCreatedAt = rhs.createdAt ?? .distantPast
+                if lhsCreatedAt != rhsCreatedAt {
+                    return lhsCreatedAt > rhsCreatedAt
+                }
+                return taskKey(for: lhs) < taskKey(for: rhs)
+            }
+        case .thisWeek, .nextWeek, .later:
+            return items.sorted { lhs, rhs in
+                let calendar = Calendar.current
+                let lhsDue = calendar.startOfDay(for: lhs.dueDate ?? .distantFuture)
+                let rhsDue = calendar.startOfDay(for: rhs.dueDate ?? .distantFuture)
+                if lhsDue != rhsDue {
+                    return lhsDue < rhsDue
+                }
+                let lhsCreatedAt = lhs.createdAt ?? .distantPast
+                let rhsCreatedAt = rhs.createdAt ?? .distantPast
+                if lhsCreatedAt != rhsCreatedAt {
+                    return lhsCreatedAt > rhsCreatedAt
+                }
+                return taskKey(for: lhs) < taskKey(for: rhs)
+            }
+        }
     }
 
         private func rescheduleTaskToToday(_ task: TaskItem) {
@@ -212,6 +428,19 @@ struct TaskListView: View {
 
     private func rescheduleTaskToLater(_ task: TaskItem) {
         task.dueDate = nil
+    }
+
+    private func presentSchedulePicker(for task: TaskItem) {
+        let calendar = Calendar.current
+        schedulingTask = task
+        schedulingDate = calendar.startOfDay(for: task.dueDate ?? Date())
+        isScheduleSheetPresented = true
+    }
+
+    private func applyScheduledDate(_ date: Date) {
+        guard let task = schedulingTask else { return }
+        task.dueDate = Calendar.current.startOfDay(for: date)
+        isScheduleSheetPresented = false
     }
     
     private func createTask(title: String) {
@@ -260,7 +489,7 @@ struct TaskListView: View {
     private func cancelPendingCompletion(for key: String) {
         completionWorkItems[key]?.cancel()
         completionWorkItems[key] = nil
-        withAnimation(.easeInOut(duration: 0.14)) {
+        _ = withAnimation(.easeInOut(duration: 0.14)) {
             pendingCompletionTaskKeys.remove(key)
         }
     }
@@ -307,6 +536,30 @@ struct TaskListView: View {
         .padding(.horizontal, CaptureMetrics.horizontalScreenInset)
         .padding(.bottom, CaptureMetrics.bottomInset)
         .background(AppTheme.colors.appBackground)
+    }
+
+    private var scheduleSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: AppTheme.spacing.md) {
+                DatePicker(
+                    "Schedule",
+                    selection: Binding(
+                        get: { schedulingDate },
+                        set: { newValue in
+                            schedulingDate = newValue
+                            applyScheduledDate(newValue)
+                        }
+                    ),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+            }
+            .padding(AppTheme.spacing.md)
+            .navigationTitle("Schedule")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium, .large])
     }
 
     private func updateFocusIfNeeded() {
@@ -382,6 +635,7 @@ struct TaskListView: View {
     
     private func filteredTasks(for bucket: TaskBucket) -> [TaskItem] {
         let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
         return tasks.filter { task in
             guard let dueDate = task.dueDate else {
                 return bucket == .upcoming
@@ -392,7 +646,9 @@ struct TaskListView: View {
             case .tomorrow:
                 return calendar.isDateInTomorrow(dueDate)
             case .upcoming:
-                return !calendar.isDateInToday(dueDate) && !calendar.isDateInTomorrow(dueDate)
+                return !calendar.isDateInToday(dueDate)
+                    && !calendar.isDateInTomorrow(dueDate)
+                    && calendar.startOfDay(for: dueDate) >= todayStart
             }
         }
     }

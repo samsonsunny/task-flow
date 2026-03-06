@@ -11,10 +11,13 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 - Bottom tab navigation: `Today`, `Tomorrow`, `Upcoming`
 - Tab-aware filtering for active tasks (today-only, tomorrow-only, and everything else in upcoming)
+- Upcoming grouped into planning horizons: `This Week`, `Next Week`, `Later`, `Unscheduled`
+- Overdue tasks excluded from `Upcoming`
 - Global `+` action to reveal/hide quick capture bar
 - Fast continuous capture with keyboard-first submit flow
 - Auto due-date assignment based on active tab (`Today`/`Tomorrow`/`Upcoming`)
-- Task list sorted by creation time within each tab
+- `Upcoming` sorting: dated sections by due date (then created time), `Unscheduled` by created time
+- Upcoming row rescheduling actions: `Today`, `Tomorrow`, `Schedule`
 - No explicit empty-state message in tabs
 - Local storage via SwiftData
 

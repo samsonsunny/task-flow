@@ -16,6 +16,7 @@ struct TaskRowView: View {
     var onMoveToToday: (() -> Void)? = nil
     var onMoveToTomorrow: (() -> Void)? = nil
     var onMoveToLater: (() -> Void)? = nil
+    var onSchedule: (() -> Void)? = nil
 
     @State private var chipScale: CGFloat = 1
     
@@ -35,6 +36,11 @@ struct TaskRowView: View {
                 if let moveLater = onMoveToLater {
                     Button("Later") {
                         moveLater()
+                    }
+                }
+                if let schedule = onSchedule {
+                    Button("Schedule") {
+                        schedule()
                     }
                 }
             }

@@ -6,7 +6,7 @@
 - Spec type: Design Specification
 - Status: Draft
 - Last updated: 2026-02-26
-- PRD reference: `Specs/tasklist-prd-current.md`
+- PRD reference: `Specs/tasklist/prd.md`
 
 ## 1. Design Goal
 Reduce anxiety and decision fatigue by showing tasks in simple time buckets so users can focus on immediate work without scanning one long mixed list.

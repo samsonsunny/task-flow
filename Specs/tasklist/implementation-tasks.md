@@ -1,8 +1,8 @@
 # TaskList Implementation Tasks (Today/Tomorrow/Upcoming)
 
 ## Status
-- Scope source: `Specs/tasklist-prd-current.md`
-- Design source: `Specs/tasklist-design-spec.md`
+- Scope source: `Specs/tasklist/prd.md`
+- Design source: `Specs/tasklist/design-spec.md`
 - Last updated: 2026-02-26
 
 ## 1. Tabbed TaskList Structure
