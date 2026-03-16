@@ -22,6 +22,7 @@ struct TaskListBucketScreenView: View {
                     subtitle: bucketSubtitle(for: bucket)
                 )
                 .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
                 if bucket == .upcoming {
                     upcomingContent
@@ -33,13 +34,13 @@ struct TaskListBucketScreenView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            .scrollDismissesKeyboard(.immediately)
             .animation(.easeInOut, value: TaskListLogic.filteredTasks(tasks, for: bucket).count)
             .animation(.easeInOut, value: selectedDestination)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .safeAreaInset(edge: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 12) {
             TaskCaptureBarView(
                 title: $captureTitle,
                 dueSelection: $captureDueSelection,
@@ -63,7 +64,7 @@ struct TaskListBucketScreenView: View {
     }
 
     private func taskRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
-        return TaskRowView(
+        TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
             onToggleCompletion: { toggleCompletion(for: task) },
@@ -76,7 +77,9 @@ struct TaskListBucketScreenView: View {
 
     private func taskListRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
         taskRow(task, in: bucket)
+            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
             .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     modelContext.delete(task)

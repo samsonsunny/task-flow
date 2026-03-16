@@ -31,9 +31,9 @@ enum TaskListCaptureMetrics {
     static let bottomInset: CGFloat = 10
     static let horizontalScreenInset: CGFloat = 16
     static let inputMinHeight: CGFloat = 54
-    static let inputVerticalPadding: CGFloat = 15
-    static let inputHorizontalPadding: CGFloat = 16
-    static let cornerRadius: CGFloat = 16
+    static let inputVerticalPadding: CGFloat = 4
+    static let inputHorizontalPadding: CGFloat = 12
+    static let cornerRadius: CGFloat = 20
     static let containerVerticalPadding: CGFloat = 8
 }
 

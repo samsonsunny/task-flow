@@ -7,7 +7,7 @@ struct TaskListHeaderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(AppTheme.colors.textPrimary)
             if let subtitle {
                 Text(subtitle)
@@ -18,4 +18,3 @@ struct TaskListHeaderView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
-

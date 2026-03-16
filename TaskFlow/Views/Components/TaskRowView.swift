@@ -19,6 +19,7 @@ struct TaskRowView: View {
     var onSchedule: (() -> Void)? = nil
 
     @State private var chipScale: CGFloat = 1
+    @State private var isRowPressed = false
     
     var body: some View {
         rowContent
@@ -47,22 +48,32 @@ struct TaskRowView: View {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 12) {
             completionButton
 
             titleView
         }
         .contentShape(Rectangle())
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.secondarySystemFill).opacity(isRowPressed ? 0.3 : 0))
+        }
+        .animation(.easeInOut(duration: 0.12), value: isRowPressed)
+        .onLongPressGesture(minimumDuration: 0.01, maximumDistance: 30, pressing: { pressing in
+            isRowPressed = pressing
+        }, perform: {})
     }
 
     @ViewBuilder
     private var titleView: some View {
         Text(attributedTitle)
-            .font(AppTheme.fonts.body)
+            .font(.system(size: 17, weight: .regular))
             .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
             .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
             .opacity(isCompletedVisualState ? 0.82 : 1.0)
-            .lineLimit(3)
+            .lineLimit(2)
+            .lineSpacing(2)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
@@ -101,27 +112,27 @@ struct TaskRowView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
-                        .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
+                        .stroke(isCompletedVisualState ? Color.accentColor : Color(.systemGray4), lineWidth: 1.5)
                         .background(
                             Circle()
-                                .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
+                                .fill(isCompletedVisualState ? Color.accentColor : Color(.secondarySystemBackground))
                         )
-                        .frame(width: 24, height: 24)
+                        .frame(width: 20, height: 20)
                         .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
                         .opacity(isCompletedVisualState ? 1 : 0)
                         .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
                         .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
                 }
-                .padding(.top, 2)
+                .padding(.top, 1)
                 .scaleEffect(chipScale)
 
                 Spacer(minLength: 0)
             }
-            .frame(width: 44, height: 44, alignment: .top)
+            .frame(width: 40, height: 40, alignment: .top)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isCompletedVisualState ? "Mark active" : "Mark complete")
