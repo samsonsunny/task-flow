@@ -5,8 +5,6 @@ import SwiftUI
 struct AppColors {
     static let primaryAction: Color = Color("primaryAction")
     static let primaryActionPressed: Color = Color("primaryActionPressed")
-    static let appBackground: Color = Color("appBackground")
-    static let secondaryBackground: Color = Color("secondaryBackground")
     static let surface: Color = Color("surface")
     static let surfaceElevated: Color = Color("surfaceElevated")
     static let textPrimary: Color = Color("textPrimary")

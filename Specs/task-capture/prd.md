@@ -4,7 +4,7 @@
 - Product: TaskFlow iOS
 - Feature: Task Capture
 - Status: Active
-- Last updated: 2026-03-07
+- Last updated: 2026-03-11
 - Companion baseline: `Specs/tasklist/prd.md`
 
 ## 1. Purpose
@@ -32,16 +32,27 @@ Out of scope:
 ## 4. Functional Requirements
 
 ### TC-01 Capture Entry
-- Capture is initiated by the floating `+` button (`Add Task`) anchored bottom-trailing.
-- The floating `+` button is shown only when the capture bar is hidden.
+- Capture bar is always visible at the bottom of each TaskList destination (`Today`, `Tomorrow`, `Upcoming`, `Someday`).
+- There is no floating `+` button.
+
+### TC-01a Due-Date Chips (Above Capture Bar)
+- Capture bar includes due-date chips above the input field:
+  - `Today`
+  - `Tomorrow`
+  - `Someday` (undated; `dueDate = nil`)
+  - `Choose Day` (opens date picker)
+- Chips are hidden when capture is idle (not focused) and appear when the input becomes focused.
+- Chips affect only the due date for the next created task (no navigation changes).
+- Default selected chip is derived from the active destination:
+  - In `Today`: `Today` is selected.
+  - In `Tomorrow`: `Tomorrow` is selected.
+  - In `Someday`: `Someday` is selected.
+  - In `Upcoming`: `Choose Day` is selected, prefilled to the day after tomorrow.
+- Tapping `Choose Day` opens a date picker; selecting a date updates the chip label/state and applies to the next created task.
 
 ### TC-02 Capture Bar Visibility
-- Capture bar is hidden by default.
-- Tapping floating `+` toggles the capture bar:
-  - If hidden: show capture bar and focus input.
-  - If visible: hide capture bar.
-- Capture bar dismisses when focus is lost (including keyboard dismissal during active use).
-- Interactive drag/scroll actions dismiss capture.
+- Capture bar remains visible even when idle.
+- Keyboard/focus may be dismissed (including via interactive scroll), but the bar itself stays on screen.
 
 ### TC-03 Draft Persistence
 - Dismissing capture does not clear unsent input.
@@ -63,13 +74,14 @@ Out of scope:
   - `Today`: `dueDate = Date()`
   - `Tomorrow`: `dueDate = Date() + 1 day`
   - `Upcoming`: `dueDate = nil`
+  - `Someday`: `dueDate = nil`
+- If the user has selected a due-date chip, chip selection overrides the destination-derived default for that create.
 - Insert created task into SwiftData model context.
 
 ### TC-06 Continuous Capture After Submit
 - After successful create:
   - Input is cleared.
-  - Focus stays active.
-  - Keyboard remains open.
+  - Keyboard is dismissed.
   - Capture session records a task-added event.
 
 ### TC-07 Focus and Session Policy
@@ -120,7 +132,7 @@ No model migration is required by this PRD alone.
 
 ## 9. Implementation Notes
 - Primary implementation lives in:
-  - `TaskFlow/Views/Screens/TaskListView.swift`
+  - `TaskFlow/Features/Tasks/TaskList/TaskListView.swift` (MVP: no Settings, no scheduling sheet, no delayed-complete, flat Upcoming list)
   - `TaskFlow/Features/Capture/CaptureSessionState.swift`
   - `TaskFlow/Features/Capture/CaptureFocusPolicy.swift`
 - If list-level behavior changes alongside capture, update this PRD and `Specs/tasklist/prd.md`.

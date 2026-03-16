@@ -5,7 +5,7 @@ import SwiftUI
 struct AppTheme {
     // References to other design system components
     static let colors = AppColors.self
-    static let spacing = Spacing.self
+//    static let spacing = Spacing.self
     static let fonts = AppFont.self
     static let radius = AppRadius.self
     static let shadows = AppShadow.self

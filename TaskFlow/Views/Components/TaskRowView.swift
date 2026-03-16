@@ -65,7 +65,6 @@ struct TaskRowView: View {
             .lineLimit(3)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, AppTheme.spacing.xs)
             .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
     }
 
@@ -99,25 +98,30 @@ struct TaskRowView: View {
             animateChipTap()
             onToggleCompletion()
         } label: {
-            ZStack {
-                Circle()
-                    .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
-                    .background(
-                        Circle()
-                            .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
-                    )
-                    .frame(width: 24, height: 24)
-                    .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
+                        .background(
+                            Circle()
+                                .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
+                        )
+                        .frame(width: 24, height: 24)
+                        .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
-                Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .opacity(isCompletedVisualState ? 1 : 0)
-                    .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
-                    .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .opacity(isCompletedVisualState ? 1 : 0)
+                        .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
+                        .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
+                }
+                .padding(.top, 2)
+                .scaleEffect(chipScale)
+
+                Spacer(minLength: 0)
             }
-            .scaleEffect(chipScale)
-            .frame(width: 44, height: 44)
+            .frame(width: 44, height: 44, alignment: .top)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isCompletedVisualState ? "Mark active" : "Mark complete")

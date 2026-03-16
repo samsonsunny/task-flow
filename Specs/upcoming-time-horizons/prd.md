@@ -4,7 +4,7 @@
 - Product: TaskFlow iOS
 - Feature: Upcoming Tab Time Horizons
 - Status: Draft
-- Last updated: 2026-03-06
+- Last updated: 2026-03-11
 - Companion baseline: `Specs/tasklist/prd.md`
 
 ## 1. Purpose
@@ -28,7 +28,7 @@ Out of scope:
 ## 3. Users and Primary Jobs
 - Review near-future commitments without scanning a long mixed list.
 - Distinguish soon vs later work at a glance.
-- Keep unscheduled tasks visible without mixing them into dated horizons.
+- Keep unscheduled tasks visible without mixing them into dated horizons (via `Someday`).
 
 ## 4. Functional Requirements (Upcoming Horizons)
 
@@ -37,20 +37,19 @@ Out of scope:
 - `Upcoming` excludes tasks due today.
 - `Upcoming` excludes tasks due tomorrow.
 - `Upcoming` excludes overdue tasks (due before today).
+- `Upcoming` excludes unscheduled tasks (`dueDate == nil`) — these belong to `Someday`.
 
 ### UH-02 Section Model and Order
 When tasks qualify, `Upcoming` is grouped into these sections in fixed top-to-bottom order:
 1. `This Week`
 2. `Next Week`
 3. `Later`
-4. `Unscheduled`
 
 ### UH-03 Section Assignment Rules
 Each eligible task appears in exactly one section:
 - `This Week`: due date is after tomorrow and within the current calendar week.
 - `Next Week`: due date is within the next calendar week.
 - `Later`: due date is after next calendar week.
-- `Unscheduled`: `dueDate == nil`.
 
 ### UH-04 Calendar-Week Semantics
 - Week boundaries use the user's locale/calendar settings.
@@ -60,8 +59,6 @@ Each eligible task appears in exactly one section:
 - For `This Week`, `Next Week`, and `Later`:
   - Primary sort: due date ascending.
   - Secondary sort (tie-breaker): createdAt descending.
-- For `Unscheduled`:
-  - Sort: createdAt descending.
 
 ### UH-06 Conditional Section Rendering
 - Only sections containing at least one task are shown.
@@ -72,7 +69,6 @@ Default expansion applies only to rendered (non-empty) sections:
 - `This Week`: expanded when shown.
 - `Next Week`: collapsed when shown.
 - `Later`: collapsed when shown.
-- `Unscheduled`: collapsed when shown.
 
 If no sections are rendered (no eligible tasks), show a single tab-level `Upcoming` empty state.
 
@@ -107,7 +103,6 @@ No data model migration is required by this PRD alone.
   - `This Week`
   - `Next Week`
   - `Later`
-  - `Unscheduled`
 - Empty-state copy is shown only when all sections are empty.
 
 ## 7. Explicit Non-Requirements (This PRD)
@@ -122,7 +117,7 @@ No data model migration is required by this PRD alone.
 3. Only non-empty sections are rendered.
 4. Expansion defaults are applied only to visible sections.
 5. Dated sections sort by due date ascending, then createdAt descending.
-6. `Unscheduled` sorts by createdAt descending.
+6. Unscheduled tasks do not appear in `Upcoming` (they appear in `Someday`).
 7. If all sections are empty, exactly one tab-level empty state is shown.
 8. Week-boundary classification is correct for locale calendar settings.
 

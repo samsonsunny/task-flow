@@ -17,7 +17,7 @@ struct EmptyStateView: View {
     let type: EmptyStateType
     
     var body: some View {
-        VStack(spacing: AppTheme.spacing.md) {
+        VStack {
             Text(emptyStateTitle)
                 .font(AppTheme.fonts.title)
                 .foregroundStyle(AppTheme.colors.textPrimary)

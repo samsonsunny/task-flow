@@ -5,7 +5,7 @@
 - Feature: Upcoming Tab Time Horizons
 - Spec type: Design Specification
 - Status: Draft
-- Last updated: 2026-03-06
+- Last updated: 2026-03-11
 - PRD reference: `Specs/upcoming-time-horizons/prd.md`
 - Baseline reference: `Specs/tasklist/prd.md`
 
@@ -14,17 +14,17 @@ Transform `Upcoming` into a calm future-planning view by replacing a mixed list 
 
 ## 2. Information Architecture
 - Screen: existing `TaskList` view.
-- Tab model remains unchanged:
+- Sidebar destinations include:
   - `Today`
   - `Tomorrow`
   - `Upcoming`
+  - `Someday` (unscheduled tasks)
 - This spec changes only the content structure inside `Upcoming`.
 
 Upcoming section order is fixed:
 1. `This Week`
 2. `Next Week`
 3. `Later`
-4. `Unscheduled`
 
 ## 3. Content Rules for Upcoming
 ### 3.1 Inclusion
@@ -38,13 +38,13 @@ Upcoming section order is fixed:
 - Tasks due today
 - Tasks due tomorrow
 - Overdue tasks
+- Unscheduled tasks (no due date)
 - Completed tasks
 
 ### 3.3 Section Assignment
 - `This Week`: due date after tomorrow and within current calendar week.
 - `Next Week`: due date in next calendar week.
 - `Later`: due date after next calendar week.
-- `Unscheduled`: no due date.
 
 A task must appear in exactly one section.
 
@@ -62,7 +62,6 @@ Default on opening `Upcoming`:
 - `This Week`: expanded when present.
 - `Next Week`: collapsed when present.
 - `Later`: collapsed when present.
-- `Unscheduled`: collapsed when present.
 
 Precedence:
 - Expansion defaults apply only to rendered (non-empty) sections.
@@ -73,8 +72,6 @@ Inside each section:
 - `This Week`, `Next Week`, `Later`:
   - Primary: due date ascending
   - Secondary: createdAt descending
-- `Unscheduled`:
-  - createdAt descending
 
 Section ordering never changes based on counts.
 
@@ -113,7 +110,7 @@ Proposed copy:
 ## 10. Edge Cases and Boundary Behavior
 - Week boundaries follow user locale/calendar settings.
 - Tasks due at day boundaries are interpreted by calendar-day semantics.
-- A task with `dueDate == nil` always maps to `Unscheduled`.
+- A task with `dueDate == nil` is excluded from `Upcoming` and appears in `Someday`.
 - Overdue tasks remain hidden from `Upcoming` even when all sections are empty.
 
 ## 11. Out of Scope (This Iteration)
@@ -124,7 +121,7 @@ Proposed copy:
 - Calendar integration.
 
 ## 12. Design-Level Acceptance Criteria
-1. Upcoming renders horizon sections in fixed order: `This Week`, `Next Week`, `Later`, `Unscheduled`.
+1. Upcoming renders horizon sections in fixed order: `This Week`, `Next Week`, `Later`.
 2. Only non-empty sections are shown.
 3. Overdue tasks are not visible in Upcoming.
 4. Each visible task belongs to exactly one section.

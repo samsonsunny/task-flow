@@ -4,21 +4,20 @@
 - Scope source: `Specs/upcoming-time-horizons/prd.md`
 - Design source: `Specs/upcoming-time-horizons/design-spec.md`
 - Baseline source: `Specs/tasklist/prd.md`
-- Last updated: 2026-03-06
+- Last updated: 2026-03-11
 
 ## 1. Upcoming Filtering and Eligibility
 - [x] Keep active-task filter (`isCompleted != true`).
 - [x] Update `Upcoming` filtering to exclude tasks due today.
 - [x] Update `Upcoming` filtering to exclude tasks due tomorrow.
 - [x] Update `Upcoming` filtering to exclude overdue tasks.
-- [x] Keep `Unscheduled` eligibility for tasks with `dueDate == nil`.
+- [x] Update `Upcoming` filtering to exclude unscheduled tasks (`dueDate == nil`) — these belong to `Someday`.
 
 ## 2. Time-Horizon Sectioning
 - [x] Implement horizon grouping in `Upcoming` with fixed order:
   - [x] `This Week`
   - [x] `Next Week`
   - [x] `Later`
-  - [x] `Unscheduled`
 - [x] Ensure each task appears in exactly one section.
 - [x] Classify using calendar-week boundaries based on user locale/calendar settings.
 
@@ -29,14 +28,12 @@
   - [x] `This Week` expanded
   - [x] `Next Week` collapsed
   - [x] `Later` collapsed
-  - [x] `Unscheduled` collapsed
 - [x] If all sections are empty, show one tab-level `Upcoming` empty state.
 
 ## 4. Sorting Rules in Upcoming
 - [x] Sort `This Week`, `Next Week`, `Later` by:
   - [x] Due date ascending
   - [x] CreatedAt descending (tie-breaker)
-- [x] Sort `Unscheduled` by createdAt descending.
 - [x] Verify stable deterministic ordering for same-day tasks.
 
 ## 5. Upcoming Row Actions
@@ -68,7 +65,7 @@
 - [ ] Task due later this week appears in `This Week` only.
 - [ ] Task due in next calendar week appears in `Next Week` only.
 - [ ] Task due beyond next week appears in `Later` only.
-- [ ] Task with no due date appears in `Unscheduled` only.
+- [ ] Task with no due date appears in `Someday` only.
 - [ ] Overdue task is not visible in `Upcoming`.
 - [ ] No empty sections are displayed.
 - [ ] If only one section has tasks, only that section is shown.

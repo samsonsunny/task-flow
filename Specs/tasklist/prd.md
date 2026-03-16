@@ -4,22 +4,22 @@
 - Product: TaskFlow iOS
 - Feature: TaskList View
 - Status: Active
-- Last updated: 2026-03-02
+- Last updated: 2026-03-11
 
 ## 1. Purpose
 Define the current TaskList behavior exactly as implemented, so future changes can be requested by updating this PRD first, then applying code updates against it.
 
 ## 2. Product Scope
 The TaskList view is the app's primary and only working screen at launch. It supports:
-- Viewing active tasks in date buckets (`Today`, `Tomorrow`, `Upcoming`)
-- Adding tasks via global navigation `+` with on-demand capture bar
+- Viewing active tasks in buckets (`Today`, `Tomorrow`, `Upcoming`, `Someday`)
+- Adding tasks via the capture entry affordance (see `Specs/task-capture/prd.md`)
 - Completing tasks via delayed completion chip
 - Deleting tasks via trailing swipe action
 
 Not in current scope:
 - Task detail screen
 - Due-date editing in TaskList
-- Overdue-specific workflow/rollover policy beyond tab filtering
+- Overdue-specific workflow/rollover policy beyond view filtering
 - Reminders/notifications
 - Completed-task history screen
 - Cloud sync/collaboration
@@ -33,34 +33,67 @@ Not in current scope:
 
 ## 4. Functional Requirements (Current Behavior)
 
-### TL-01 Screen Entry and Navigation
-- App opens directly into TaskList view.
-- Navigation title is tab-contextual:
-  - `Today` tab title: `Today`
-  - `Tomorrow` tab title: `Tomorrow`
-  - `Upcoming` tab title: `Tasks`
-- Navigation bar includes a global trailing `+` action for task capture.
-- TaskList uses a bottom tab bar with 3 tabs: `Today`, `Tomorrow`, `Upcoming`.
-- Each tab item uses icon + text:
-  - `Today`: `sun.max`
-  - `Tomorrow`: `calendar`
-  - `Upcoming`: `tray.full`
-- `Today` and `Tomorrow` show subtitle dates in `EEE, MMM d` format (localized), e.g. `Thu, Feb 26`.
+### TL-01 Screen Entry and Navigation (Sidebar)
+- App opens directly into TaskList view with default selection: `Today`.
+- Primary navigation is a left sidebar (ChatGPT-style) with multiple sections.
+- Sidebar is the single source of truth for switching between TaskList scopes:
+  - `Today`
+  - `Tomorrow`
+  - `Upcoming`
+  - `Someday`
+- Bottom tab bar is removed.
+- Navigation title is scope-contextual:
+  - `Today` title: `Today`
+  - `Tomorrow` title: `Tomorrow`
+  - `Upcoming` title: `Tasks`
+  - `Someday` title: `Someday`
+- `Today` and `Tomorrow` show a subtitle date in `EEE, MMM d` format (localized), e.g. `Thu, Feb 26`.
+
+### TL-01a Sidebar Structure (Sections)
+The sidebar is grouped into labeled sections (at minimum):
+- **Views**
+  - `Today` (icon: `sun.max`)
+  - `Tomorrow` (icon: `calendar`)
+  - `Upcoming` (icon: `tray.full`)
+- **Someday**
+  - `Someday` (icon: `archivebox`)
+- **More**
+  - `Settings` (destination is out of scope; item is present for navigation scaffolding)
+
+### TL-01b Sidebar Interaction Contract
+- Sidebar supports:
+  - Tap to select a destination
+  - Swipe from left edge to reveal (when hidden)
+  - Tap outside to dismiss (when presented as an overlay)
+- iPhone presentation:
+  - Sidebar is hidden by default and presented as an overlay.
+  - Selecting an item dismisses the overlay and navigates.
+- iPad / large-width presentation:
+  - Sidebar is visible by default (persistent split view style).
+  - A collapse/expand affordance may be present; behavior is implementation-defined.
+- Selection state is always visible in the sidebar (highlighted current destination).
+- Switching destinations preserves the current capture draft (per `Specs/task-capture/prd.md`).
+
+### TL-01c Sidebar Acceptance Criteria
+1. On iPhone, swipe-from-left reveals the sidebar; tapping outside dismisses it.
+2. Selecting `Today`, `Tomorrow`, `Upcoming`, or `Someday` navigates immediately and highlights the selected item.
+3. Switching destinations does not clear an unsent capture draft.
 
 ### TL-02 Data Source and Filtering
 - Data uses SwiftData `@Query` on `TaskItem`.
 - List includes only active tasks (`isCompleted != true`).
 - Completed tasks are excluded from the main list.
-- Tab filtering:
+- View filtering:
   - `Today`: tasks with due date on current calendar day only.
   - `Tomorrow`: tasks with due date on next calendar day only.
-  - `Upcoming`: tasks not in `Today` or `Tomorrow` (no due date, future-dated beyond tomorrow, and overdue).
+  - `Upcoming`: tasks with a due date after tomorrow (future-dated beyond tomorrow).
+  - `Someday`: tasks with no due date (`dueDate == nil`) only.
 
 ### TL-03 Ordering
-- Sort order remains `createdAt` descending (newest first) within each tab.
+- Sort order remains `createdAt` descending (newest first) within each view.
 
 ### TL-04 Empty State
-- No empty-state message is shown for empty tabs.
+- No empty-state message is shown for empty views.
 
 ### TL-05 Row UI Contract
 - Row contains:
@@ -82,12 +115,12 @@ Not in current scope:
   - Trim whitespace/newlines
   - Replace embedded newlines with spaces
 - Empty/whitespace-only input is rejected.
-- On successful create, due date is assigned from active tab:
+- On successful create, due date is assigned from active view:
   - In `Today`, due date auto-assigns to today.
   - In `Tomorrow`, due date auto-assigns to tomorrow.
   - In `Upcoming`, keep current behavior (no auto due date assignment).
 - Create path:
-  - Create `TaskItem(taskTitle: normalizedTitle)` and set due date per tab rule above.
+  - Create `TaskItem(taskTitle: normalizedTitle)` and set due date per view rule above.
   - Insert into SwiftData context
   - Clear input
   - Keep focus active
@@ -138,11 +171,11 @@ Not in current scope:
 ### TL-10 Accessibility
 - Completion control has accessibility label/hint for complete vs revert behavior.
 
-### TL-11 Launch Tab Selection Behavior
-- On every cold app launch, default tab is time-based:
+### TL-11 Launch Default Destination Behavior
+- On every cold app launch, default destination is time-based:
   - Before 8:00 PM local time: open `Today`.
   - At or after 8:00 PM local time: open `Tomorrow`.
-- Within an active session (warm resume/relaunch), restore the last-opened tab for continuity.
+- Within an active session (warm resume/relaunch), restore the last-opened destination for continuity.
 - Time-based daily launch rule takes precedence for cold launches.
 
 ## 5. Data Model Requirements (TaskList-Relevant)
@@ -152,14 +185,14 @@ Not in current scope:
 - `isCompleted: Bool?`
 - `completionDate: Date?`
 - `createdAt: Date?`
-- `dueDate: Date?` (tab filtering + capture auto-assignment)
+- `dueDate: Date?` (view filtering + capture auto-assignment)
 
 Additional existing fields not surfaced in TaskList UI:
 - `taskDescription: String?` (backward compatibility)
 
 ## 6. Visual and Design Constraints
 - Screen background uses semantic `appBackground` token.
-- Global `+` and capture bar use a liquid-glass style aligned with the tab bar visual language.
+- Sidebar, capture entry, and capture bar use a liquid-glass style aligned with overall app chrome.
 - Use native material-backed styling and semantic colors that adapt to both light and dark mode.
 - Capture input uses glass-compatible surface/border tokens with rounded corners.
 - No row separators.
@@ -171,7 +204,7 @@ Additional existing fields not surfaced in TaskList UI:
 - No completed-task browsing UI.
 - No task detail navigation.
 - No due-date edit flow in current TaskList version.
-- No explicit empty-state text for empty tabs.
+- No explicit empty-state text for empty views.
 - No dedicated overdue handling experience beyond inclusion in `Upcoming`.
 - No automated test coverage for TaskList behaviors in `TaskFlowTests` yet.
 
@@ -185,8 +218,9 @@ Before requesting AI code changes, update this PRD first:
 
 ## 10. Change Log
 - 2026-02-25: Created initial code-mapped TaskList PRD baseline.
-- 2026-02-26: Updated PRD for `Today`/`Tomorrow`/`Later` tab model, tab-scoped capture due-date defaults, tab filtering rules, and launch tab selection behavior.
+- 2026-02-26: Updated PRD for `Today`/`Tomorrow`/`Later` navigation model, context-scoped capture due-date defaults, filtering rules, and time-based default destination behavior.
 - 2026-02-26: Updated PRD for global `+` capture entry, on-demand capture bar show/hide with draft restore, and liquid-glass visual requirements.
 - 2026-02-27: Updated PRD to rename the `Later` tab to `Upcoming`, keeping filtering behavior and language consistent.
 - 2026-03-02: Added `TL-12` context-menu rescheduling requirement for `Today`/`Tomorrow`, clarified due-date increment semantics, and removed duplicate requirement block.
 - 2026-03-02: Updated `TL-12` to replace the "Move to Next Day" action with a comprehensive, tab-specific rescheduling context menu for `Today`, `Tomorrow`, and `Upcoming` views.
+- 2026-03-11: Replaced bottom tabs with a ChatGPT-style sidebar navigation shell (sectioned) for `Today`/`Tomorrow`/`Upcoming`.
