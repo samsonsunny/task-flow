@@ -17,6 +17,7 @@ struct TaskRowView: View {
     var onMoveToTomorrow: (() -> Void)? = nil
     var onMoveToLater: (() -> Void)? = nil
     var onSchedule: (() -> Void)? = nil
+    var showsDueDate: Bool = false
 
     @State private var chipScale: CGFloat = 1
     @State private var isRowPressed = false
@@ -67,16 +68,26 @@ struct TaskRowView: View {
 
     @ViewBuilder
     private var titleView: some View {
-        Text(attributedTitle)
-            .font(.system(size: 17, weight: .regular))
-            .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
-            .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
-            .opacity(isCompletedVisualState ? 0.82 : 1.0)
-            .lineLimit(2)
-            .lineSpacing(2)
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(attributedTitle)
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
+                .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
+                .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                .lineLimit(2)
+                .lineSpacing(2)
+                .multilineTextAlignment(.leading)
+                .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+
+            if let dueText, showsDueDate {
+                Text(dueText)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .lineLimit(1)
+                    .accessibilityLabel("Due \(dueText)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var attributedTitle: AttributedString {
@@ -102,6 +113,11 @@ struct TaskRowView: View {
         }
 
         return attributed
+    }
+
+    private var dueText: String? {
+        guard let dueDate = task.dueDate else { return nil }
+        return Self.dueDateFormatter.string(from: dueDate)
     }
 
     private var completionButton: some View {
@@ -148,4 +164,9 @@ struct TaskRowView: View {
         }
     }
 
+    private static let dueDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
+        return formatter
+    }()
 }

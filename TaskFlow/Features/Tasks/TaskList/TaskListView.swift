@@ -16,29 +16,28 @@ struct TaskListView: View {
     @State private var isCaptureDatePickerPresented = false
     @State private var captureChosenDate = Calendar.current.startOfDay(for: Date())
 
-    // Removed upcoming expand/collapse UI state for MVP simplicity.
-
-    @State var selectedDestination: SidebarDestination = .bucket(.today)
-    @State var didInitializeDestinationSelection = false
-    @State var splitViewVisibility: NavigationSplitViewVisibility = .automatic
-
     var body: some View {
-        NavigationSplitView(columnVisibility: $splitViewVisibility) {
-            TaskListSidebarView(
-                selectedDestination: $selectedDestination,
-                splitViewVisibility: $splitViewVisibility
+        NavigationStack {
+            TaskListGroupedScreenView(
+                tasks: tasks,
+                captureTitle: $captureTitle,
+                captureDueSelection: $captureDueSelection,
+                isCaptureDatePickerPresented: $isCaptureDatePickerPresented,
+                captureChosenDate: $captureChosenDate
             )
-        } detail: {
-            ZStack(alignment: .bottomTrailing) {
-                destinationDetail
+            .navigationDestination(for: TaskBucket.self) { bucket in
+                TaskListBucketScreenView(
+                    bucket: bucket,
+                    tasks: tasks,
+                    captureTitle: $captureTitle,
+                    captureDueSelection: $captureDueSelection,
+                    isCaptureDatePickerPresented: $isCaptureDatePickerPresented,
+                    captureChosenDate: $captureChosenDate
+                )
             }
         }
         .onAppear {
-            initializeDestinationSelectionIfNeeded()
-            applyDefaultCaptureDueSelectionForCurrentDestination()
-        }
-        .onChange(of: selectedDestination) { _, destination in
-            applyDefaultCaptureDueSelectionForCurrentDestination()
+            applyDefaultCaptureDueSelectionForUpcomingIfNeeded()
         }
         .sheet(isPresented: $isCaptureDatePickerPresented) {
             TaskCaptureDatePickerSheet(
@@ -49,49 +48,12 @@ struct TaskListView: View {
         }
     }
 
-    @ViewBuilder
-    private var destinationDetail: some View {
-        switch selectedDestination {
-        case .bucket(let bucket):
-            TaskListBucketScreenView(
-                bucket: bucket,
-                tasks: tasks,
-                captureTitle: $captureTitle,
-                captureDueSelection: $captureDueSelection,
-                isCaptureDatePickerPresented: $isCaptureDatePickerPresented,
-                captureChosenDate: $captureChosenDate,
-                selectedDestination: $selectedDestination
-            )
-        }
-    }
-
-    private var selectedBucketForCapture: TaskBucket {
-        if case .bucket(let bucket) = selectedDestination {
-            return bucket
-        }
-        return .today
-    }
-
-    private func applyDefaultCaptureDueSelectionForCurrentDestination() {
-        captureDueSelection = nil
-        if selectedBucketForCapture == .upcoming {
-            let calendar = Calendar.current
-            let todayStart = calendar.startOfDay(for: Date())
-            let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: todayStart) ?? todayStart
-            captureChosenDate = dayAfterTomorrow
-        }
-    }
-
-    private func initializeDestinationSelectionIfNeeded() {
-        guard !didInitializeDestinationSelection else { return }
-        defer { didInitializeDestinationSelection = true }
-
-        if Self.hasAppliedColdLaunchDefault {
-            selectedDestination = .bucket(.today)
-        } else {
-            selectedDestination = .bucket(.today)
-            Self.hasAppliedColdLaunchDefault = true
-        }
+    private func applyDefaultCaptureDueSelectionForUpcomingIfNeeded() {
+        guard captureDueSelection == nil else { return }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: todayStart) ?? todayStart
+        captureChosenDate = dayAfterTomorrow
     }
 
     static let tabDateFormatter: DateFormatter = {

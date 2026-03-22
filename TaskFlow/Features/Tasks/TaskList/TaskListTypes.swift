@@ -13,7 +13,7 @@ enum TaskBucket: String, CaseIterable, Identifiable {
         case .today: return "Today"
         case .tomorrow: return "Tomorrow"
         case .upcoming: return "Upcoming"
-        case .someday: return "Someday"
+        case .someday: return "Later"
         }
     }
 

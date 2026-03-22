@@ -1,44 +1,34 @@
 import SwiftUI
 import SwiftData
 
-struct TaskListBucketScreenView: View {
+struct TaskListGroupedScreenView: View {
     @Environment(\.modelContext) private var modelContext
 
-    let bucket: TaskBucket
     let tasks: [TaskItem]
     @Binding var captureTitle: String
     @Binding var captureDueSelection: CaptureDueSelection?
     @Binding var isCaptureDatePickerPresented: Bool
     @Binding var captureChosenDate: Date
 
-    @FocusState var captureFocused: Bool
+    @FocusState private var captureFocused: Bool
 
     var body: some View {
         List {
             TaskListHeaderView(
-                title: screenTitle(for: bucket),
-                subtitle: bucketSubtitle(for: bucket)
+                title: "TaskFlow",
+                subtitle: nil
             )
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
-            if bucket == .upcoming {
-                upcomingContent
-            } else {
-                let bucketTasks = TaskListLogic.filteredTasks(tasks, for: bucket)
-                if bucketTasks.isEmpty {
-                    emptyStateRow(for: bucket)
-                } else {
-                    ForEach(bucketTasks) { task in
-                        taskListRow(task, in: bucket)
-                    }
-                }
-            }
+            bucketSection(.today, alwaysVisible: true, maxCount: nil, emptyText: "No tasks for today.")
+            bucketSection(.tomorrow, alwaysVisible: true, maxCount: 5, emptyText: "No tasks for tomorrow yet.")
+            bucketSection(.upcoming, alwaysVisible: true, maxCount: 5, emptyText: "No upcoming tasks yet.")
+            bucketSection(.someday, alwaysVisible: false, maxCount: 5, emptyText: "No tasks in Later.")
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        .animation(.easeInOut, value: TaskListLogic.filteredTasks(tasks, for: bucket).count)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom, spacing: 12) {
@@ -47,21 +37,80 @@ struct TaskListBucketScreenView: View {
                 dueSelection: $captureDueSelection,
                 isDatePickerPresented: $isCaptureDatePickerPresented,
                 chosenDate: $captureChosenDate,
-                selectedBucket: bucket,
+                selectedBucket: .today,
                 onSubmit: submitFromCapture,
                 captureFocused: $captureFocused
             )
         }
     }
 
-    private var upcomingContent: some View {
-        let upcomingTasks = TaskListLogic.filteredTasks(tasks, for: .upcoming)
-        let sorted = TaskListLogic.sortUpcomingTasks(upcomingTasks)
+    @ViewBuilder
+    private func bucketSection(_ bucket: TaskBucket, alwaysVisible: Bool, maxCount: Int?, emptyText: String) -> some View {
+        let bucketTasks = tasksForBucket(bucket)
+        if alwaysVisible || !bucketTasks.isEmpty {
+            Section {
+                if bucketTasks.isEmpty {
+                    Text(emptyText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                } else {
+                    ForEach(previewTasks(bucketTasks, maxCount: maxCount, bucket: bucket)) { task in
+                        taskListRow(task, in: bucket)
+                    }
+                }
+            } header: {
+                sectionHeader(bucket: bucket, count: bucketTasks.count, maxCount: maxCount)
+            }
+        }
+    }
 
-        return TaskListUpcomingView(
-            tasks: sorted,
-            row: { task in AnyView(taskListRow(task, in: .upcoming)) }
-        )
+    private func sectionHeader(bucket: TaskBucket, count: Int, maxCount: Int?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(bucket.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                if let subtitle = bucketSubtitle(for: bucket) {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if let maxCount, count > maxCount {
+                NavigationLink(value: bucket) {
+                    Text("More")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .textCase(nil)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .padding(.horizontal, 16)
+    }
+
+    private func tasksForBucket(_ bucket: TaskBucket) -> [TaskItem] {
+        if bucket == .upcoming {
+            return TaskListLogic.sortUpcomingTasks(TaskListLogic.filteredTasks(tasks, for: .upcoming))
+        }
+        return TaskListLogic.filteredTasks(tasks, for: bucket)
+    }
+
+    private func previewTasks(_ tasks: [TaskItem], maxCount: Int?, bucket: TaskBucket) -> [TaskItem] {
+        if bucket == .today {
+            return tasks
+        }
+        guard let maxCount else { return tasks }
+        return Array(tasks.prefix(maxCount))
     }
 
     private func taskRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
@@ -95,58 +144,26 @@ struct TaskListBucketScreenView: View {
         let normalizedTitle = normalizedCaptureTitle(captureTitle)
         guard !normalizedTitle.isEmpty else { return }
 
-        let task = TaskItem(taskTitle: normalizedTitle, dueDate: dueDateForCreate(in: bucket))
+        let task = TaskItem(taskTitle: normalizedTitle, dueDate: dueDateForCreate())
         modelContext.insert(task)
-
         captureTitle = ""
-    }
-
-    private func emptyStateRow(for bucket: TaskBucket) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(emptyStateTitle(for: bucket))
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(AppTheme.colors.textPrimary)
-            Text(emptyStateSubtitle(for: bucket))
-                .font(AppTheme.fonts.body)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-        .listRowBackground(Color.clear)
     }
 }
 
-private extension TaskListBucketScreenView {
+private extension TaskListGroupedScreenView {
     func normalizedCaptureTitle(_ rawTitle: String) -> String {
         let withSpacesForNewlines = rawTitle
             .components(separatedBy: .newlines)
             .joined(separator: " ")
         return withSpacesForNewlines.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+    func effectiveCaptureDueSelection() -> CaptureDueSelection {
+        captureDueSelection ?? .today
     }
 
-    func effectiveCaptureDueSelection(for bucket: TaskBucket) -> CaptureDueSelection {
-        captureDueSelection ?? defaultCaptureDueSelection(for: bucket)
-    }
-
-    func defaultCaptureDueSelection(for bucket: TaskBucket) -> CaptureDueSelection {
-        let calendar = Calendar.current
-        switch bucket {
-        case .today:
-            return .today
-        case .tomorrow:
-            return .tomorrow
-        case .someday:
-            return .someday
-        case .upcoming:
-            let todayStart = calendar.startOfDay(for: Date())
-            let dayAfterTomorrow = calendar.date(byAdding: .day, value: 2, to: todayStart) ?? todayStart
-            return .chooseDay(dayAfterTomorrow)
-        }
-    }
-
-    func dueDateForCreate(in bucket: TaskBucket) -> Date? {
-        switch effectiveCaptureDueSelection(for: bucket) {
+    func dueDateForCreate() -> Date? {
+        switch effectiveCaptureDueSelection() {
         case .today:
             return Date()
         case .tomorrow:
@@ -166,8 +183,6 @@ private extension TaskListBucketScreenView {
         }
     }
 
-    // Upcoming section expansion removed for MVP simplicity.
-
     func bucketSubtitle(for bucket: TaskBucket) -> String? {
         switch bucket {
         case .today:
@@ -175,49 +190,8 @@ private extension TaskListBucketScreenView {
         case .tomorrow:
             let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
             return TaskListView.tabDateFormatter.string(from: tomorrow)
-        case .upcoming:
+        case .upcoming, .someday:
             return nil
-        case .someday:
-            return "No date set"
-        }
-    }
-
-    func screenTitle(for bucket: TaskBucket) -> String {
-        switch bucket {
-        case .today:
-            return "Today"
-        case .tomorrow:
-            return "Tomorrow"
-        case .upcoming:
-            return "Upcoming"
-        case .someday:
-            return "Later"
-        }
-    }
-
-    func emptyStateTitle(for bucket: TaskBucket) -> String {
-        switch bucket {
-        case .today:
-            return "No tasks for today"
-        case .tomorrow:
-            return "Nothing for tomorrow"
-        case .upcoming:
-            return "Nothing in Upcoming"
-        case .someday:
-            return "No tasks in Later"
-        }
-    }
-
-    func emptyStateSubtitle(for bucket: TaskBucket) -> String {
-        switch bucket {
-        case .today:
-            return "Capture a task below and it will show up here."
-        case .tomorrow:
-            return "Schedule something for tomorrow and it will appear here."
-        case .upcoming:
-            return "Future tasks will appear here when you schedule them."
-        case .someday:
-            return "Tasks without a date live here until you schedule them."
         }
     }
 
