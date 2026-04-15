@@ -15,6 +15,7 @@ struct TaskListView: View {
     @State private var captureDueSelection: CaptureDueSelection?
     @State private var isCaptureDatePickerPresented = false
     @State private var captureChosenDate = Calendar.current.startOfDay(for: Date())
+    @FocusState private var isCaptureFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -23,7 +24,8 @@ struct TaskListView: View {
                 captureTitle: $captureTitle,
                 captureDueSelection: $captureDueSelection,
                 isCaptureDatePickerPresented: $isCaptureDatePickerPresented,
-                captureChosenDate: $captureChosenDate
+                captureChosenDate: $captureChosenDate,
+                captureFocused: $isCaptureFocused
             )
             .navigationDestination(for: TaskBucket.self) { bucket in
                 TaskListBucketScreenView(
@@ -32,12 +34,19 @@ struct TaskListView: View {
                     captureTitle: $captureTitle,
                     captureDueSelection: $captureDueSelection,
                     isCaptureDatePickerPresented: $isCaptureDatePickerPresented,
-                    captureChosenDate: $captureChosenDate
+                    captureChosenDate: $captureChosenDate,
+                    captureFocused: $isCaptureFocused
                 )
             }
         }
         .onAppear {
             applyDefaultCaptureDueSelectionForUpcomingIfNeeded()
+        }
+        .onChange(of: isCaptureFocused) { _, isFocused in
+            // Avoid "sticky" date selection when the user leaves capture.
+            if !isFocused && captureTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                captureDueSelection = nil
+            }
         }
         .sheet(isPresented: $isCaptureDatePickerPresented) {
             TaskCaptureDatePickerSheet(

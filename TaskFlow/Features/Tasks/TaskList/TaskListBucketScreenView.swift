@@ -10,8 +10,11 @@ struct TaskListBucketScreenView: View {
     @Binding var captureDueSelection: CaptureDueSelection?
     @Binding var isCaptureDatePickerPresented: Bool
     @Binding var captureChosenDate: Date
+    let captureFocused: FocusState<Bool>.Binding
 
-    @FocusState var captureFocused: Bool
+    @State private var taskBeingScheduled: TaskItem?
+    @State private var isTaskScheduleSheetPresented = false
+    @State private var taskScheduleChosenDate = Calendar.current.startOfDay(for: Date())
 
     var body: some View {
         List {
@@ -26,9 +29,7 @@ struct TaskListBucketScreenView: View {
                 upcomingContent
             } else {
                 let bucketTasks = TaskListLogic.filteredTasks(tasks, for: bucket)
-                if bucketTasks.isEmpty {
-                    emptyStateRow(for: bucket)
-                } else {
+                if !bucketTasks.isEmpty {
                     ForEach(bucketTasks) { task in
                         taskListRow(task, in: bucket)
                     }
@@ -41,15 +42,14 @@ struct TaskListBucketScreenView: View {
         .animation(.easeInOut, value: TaskListLogic.filteredTasks(tasks, for: bucket).count)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom, spacing: 12) {
-            TaskCaptureBarView(
-                title: $captureTitle,
-                dueSelection: $captureDueSelection,
-                isDatePickerPresented: $isCaptureDatePickerPresented,
-                chosenDate: $captureChosenDate,
-                selectedBucket: bucket,
-                onSubmit: submitFromCapture,
-                captureFocused: $captureFocused
+        .toolbar { TaskCaptureBottomBarToolbar(title: $captureTitle, onSubmit: submitFromCapture, captureFocused: captureFocused) }
+        .sheet(isPresented: $isTaskScheduleSheetPresented) {
+            TaskScheduleDatePickerSheet(
+                isPresented: $isTaskScheduleSheetPresented,
+                chosenDate: $taskScheduleChosenDate,
+                onChooseDate: { chosen in
+                    taskBeingScheduled?.dueDate = chosen
+                }
             )
         }
     }
@@ -72,9 +72,15 @@ struct TaskListBucketScreenView: View {
             onMoveToToday: bucket == .tomorrow || bucket == .upcoming || bucket == .someday ? { rescheduleTaskToToday(task) } : nil,
             onMoveToTomorrow: bucket == .today || bucket == .upcoming || bucket == .someday ? { rescheduleTaskToTomorrow(task) } : nil,
             onMoveToLater: bucket == .tomorrow ? { rescheduleTaskToLater(task) } : nil,
-            onSchedule: nil,
+            onSchedule: { presentScheduleSheet(for: task) },
             showsDueDate: bucket == .upcoming
         )
+    }
+
+    private func presentScheduleSheet(for task: TaskItem) {
+        taskBeingScheduled = task
+        taskScheduleChosenDate = Calendar.current.startOfDay(for: task.dueDate ?? Date())
+        isTaskScheduleSheetPresented = true
     }
 
     private func taskListRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
@@ -99,22 +105,9 @@ struct TaskListBucketScreenView: View {
         modelContext.insert(task)
 
         captureTitle = ""
+        captureDueSelection = nil
     }
 
-    private func emptyStateRow(for bucket: TaskBucket) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(emptyStateTitle(for: bucket))
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(AppTheme.colors.textPrimary)
-            Text(emptyStateSubtitle(for: bucket))
-                .font(AppTheme.fonts.body)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
-        .listRowBackground(Color.clear)
-    }
 }
 
 private extension TaskListBucketScreenView {
@@ -192,32 +185,6 @@ private extension TaskListBucketScreenView {
             return "Upcoming"
         case .someday:
             return "Later"
-        }
-    }
-
-    func emptyStateTitle(for bucket: TaskBucket) -> String {
-        switch bucket {
-        case .today:
-            return "No tasks for today"
-        case .tomorrow:
-            return "Nothing for tomorrow"
-        case .upcoming:
-            return "Nothing in Upcoming"
-        case .someday:
-            return "No tasks in Later"
-        }
-    }
-
-    func emptyStateSubtitle(for bucket: TaskBucket) -> String {
-        switch bucket {
-        case .today:
-            return "Capture a task below and it will show up here."
-        case .tomorrow:
-            return "Schedule something for tomorrow and it will appear here."
-        case .upcoming:
-            return "Future tasks will appear here when you schedule them."
-        case .someday:
-            return "Tasks without a date live here until you schedule them."
         }
     }
 

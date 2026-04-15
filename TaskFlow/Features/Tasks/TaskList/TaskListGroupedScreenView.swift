@@ -9,8 +9,13 @@ struct TaskListGroupedScreenView: View {
     @Binding var captureDueSelection: CaptureDueSelection?
     @Binding var isCaptureDatePickerPresented: Bool
     @Binding var captureChosenDate: Date
+    let captureFocused: FocusState<Bool>.Binding
 
-    @FocusState private var captureFocused: Bool
+    @State private var taskBeingScheduled: TaskItem?
+    @State private var isTaskScheduleSheetPresented = false
+    @State private var taskScheduleChosenDate = Calendar.current.startOfDay(for: Date())
+    @State private var isOverdueExpanded = false
+    @State private var isLaterExpanded = false
 
     var body: some View {
         List {
@@ -21,60 +26,75 @@ struct TaskListGroupedScreenView: View {
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
-            bucketSection(.today, alwaysVisible: true, maxCount: nil, emptyText: "No tasks for today.")
-            bucketSection(.tomorrow, alwaysVisible: true, maxCount: 5, emptyText: "No tasks for tomorrow yet.")
-            bucketSection(.upcoming, alwaysVisible: true, maxCount: 5, emptyText: "No upcoming tasks yet.")
-            bucketSection(.someday, alwaysVisible: false, maxCount: 5, emptyText: "No tasks in Later.")
+            ForEach(TaskListLogic.datedSections(from: tasks)) { section in
+                Section {
+                    if section.kind != .overdue || isOverdueExpanded {
+                        ForEach(section.tasks) { task in
+                            taskListRow(task, in: .dated(section.kind))
+                        }
+                    }
+                } header: {
+                    sectionHeader(
+                        title: section.title,
+                        subtitle: section.subtitle,
+                        kind: .dated(section.kind),
+                        isExpandable: section.kind == .overdue,
+                        isExpanded: isOverdueExpanded,
+                        onToggleExpanded: { isOverdueExpanded.toggle() }
+                    )
+                }
+            }
+
+            let laterTasks = tasks.filter { $0.dueDate == nil }
+            Section {
+                if isLaterExpanded {
+                    ForEach(laterTasks) { task in
+                        taskListRow(task, in: .later)
+                    }
+                }
+            } header: {
+                sectionHeader(
+                    title: "Later",
+                    subtitle: nil,
+                    kind: .later,
+                    isExpandable: true,
+                    isExpanded: isLaterExpanded,
+                    onToggleExpanded: { isLaterExpanded.toggle() }
+                )
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom, spacing: 12) {
-            TaskCaptureBarView(
-                title: $captureTitle,
-                dueSelection: $captureDueSelection,
-                isDatePickerPresented: $isCaptureDatePickerPresented,
-                chosenDate: $captureChosenDate,
-                selectedBucket: .today,
-                onSubmit: submitFromCapture,
-                captureFocused: $captureFocused
+        .toolbar { TaskCaptureBottomBarToolbar(title: $captureTitle, onSubmit: submitFromCapture, captureFocused: captureFocused) }
+        .sheet(isPresented: $isTaskScheduleSheetPresented) {
+            TaskScheduleDatePickerSheet(
+                isPresented: $isTaskScheduleSheetPresented,
+                chosenDate: $taskScheduleChosenDate,
+                onChooseDate: { chosen in
+                    taskBeingScheduled?.dueDate = chosen
+                }
             )
         }
     }
 
-    @ViewBuilder
-    private func bucketSection(_ bucket: TaskBucket, alwaysVisible: Bool, maxCount: Int?, emptyText: String) -> some View {
-        let bucketTasks = tasksForBucket(bucket)
-        if alwaysVisible || !bucketTasks.isEmpty {
-            Section {
-                if bucketTasks.isEmpty {
-                    Text(emptyText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                        .listRowBackground(Color.clear)
-                } else {
-                    ForEach(previewTasks(bucketTasks, maxCount: maxCount, bucket: bucket)) { task in
-                        taskListRow(task, in: bucket)
-                    }
-                }
-            } header: {
-                sectionHeader(bucket: bucket, count: bucketTasks.count, maxCount: maxCount)
-            }
-        }
-    }
-
-    private func sectionHeader(bucket: TaskBucket, count: Int, maxCount: Int?) -> some View {
+    private func sectionHeader(
+        title: String,
+        subtitle: String?,
+        kind: GroupKind,
+        isExpandable: Bool = false,
+        isExpanded: Bool = true,
+        onToggleExpanded: (() -> Void)? = nil
+    ) -> some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(bucket.title)
+                Text(title)
                     .font(.headline)
                     .foregroundStyle(.primary)
 
-                if let subtitle = bucketSubtitle(for: bucket) {
+                if let subtitle {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -83,11 +103,15 @@ struct TaskListGroupedScreenView: View {
 
             Spacer()
 
-            if let maxCount, count > maxCount {
-                NavigationLink(value: bucket) {
-                    Text("More")
-                        .font(.subheadline)
+            if isExpandable, let onToggleExpanded {
+                Button {
+                    onToggleExpanded()
+                } label: {
+                    Image(systemName: "chevron.\(isExpanded ? "down" : "right")")
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .padding(.leading, 8)
+                        .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
             }
@@ -96,38 +120,92 @@ struct TaskListGroupedScreenView: View {
         .padding(.top, 8)
         .padding(.bottom, 6)
         .padding(.horizontal, 16)
+        .contentShape(Rectangle())
+        .onTapGesture { onTapSection(kind) }
     }
 
-    private func tasksForBucket(_ bucket: TaskBucket) -> [TaskItem] {
-        if bucket == .upcoming {
-            return TaskListLogic.sortUpcomingTasks(TaskListLogic.filteredTasks(tasks, for: .upcoming))
-        }
-        return TaskListLogic.filteredTasks(tasks, for: bucket)
+    private enum GroupKind: Hashable {
+        case dated(TaskListLogic.DatedSection.Kind)
+        case later
     }
 
-    private func previewTasks(_ tasks: [TaskItem], maxCount: Int?, bucket: TaskBucket) -> [TaskItem] {
-        if bucket == .today {
-            return tasks
-        }
-        guard let maxCount else { return tasks }
-        return Array(tasks.prefix(maxCount))
-    }
+    private func taskRow(_ task: TaskItem, in kind: GroupKind) -> some View {
+        let calendar = Calendar.current
+        let isLater = (kind == .later)
+        let isToday: Bool = {
+            guard case .dated(.day(let dayStart)) = kind else { return false }
+            return calendar.isDateInToday(dayStart)
+        }()
+        let isTomorrow: Bool = {
+            guard case .dated(.day(let dayStart)) = kind else { return false }
+            return calendar.isDateInTomorrow(dayStart)
+        }()
+        let hasDueDate = task.dueDate != nil
+        let showsDueDate: Bool = {
+            switch kind {
+            case .later:
+                return false
+            case .dated(let sectionKind):
+                switch sectionKind {
+                case .overdue:
+                    return true
+                case .day(let dayStart):
+                    // For the next-5-days window we already show the day in the section header.
+                    let todayStart = calendar.startOfDay(for: Date())
+                    let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: todayStart) ?? todayStart
+                    return dayStart >= windowEndExclusive
+                case .month, .future:
+                    return true
+                }
+            }
+        }()
 
-    private func taskRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
-        TaskRowView(
+        return TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
             onToggleCompletion: { toggleCompletion(for: task) },
-            onMoveToToday: bucket == .tomorrow || bucket == .upcoming || bucket == .someday ? { rescheduleTaskToToday(task) } : nil,
-            onMoveToTomorrow: bucket == .today || bucket == .upcoming || bucket == .someday ? { rescheduleTaskToTomorrow(task) } : nil,
-            onMoveToLater: bucket == .tomorrow ? { rescheduleTaskToLater(task) } : nil,
-            onSchedule: nil,
-            showsDueDate: bucket == .upcoming
+            onMoveToToday: isToday ? nil : { rescheduleTaskToToday(task) },
+            onMoveToTomorrow: isTomorrow ? nil : { rescheduleTaskToTomorrow(task) },
+            onMoveToLater: (isLater || !hasDueDate) ? nil : { rescheduleTaskToLater(task) },
+            onSchedule: { presentScheduleSheet(for: task) },
+            showsDueDate: showsDueDate
         )
     }
 
-    private func taskListRow(_ task: TaskItem, in bucket: TaskBucket) -> some View {
-        taskRow(task, in: bucket)
+    private func onTapSection(_ kind: GroupKind) {
+        let calendar = Calendar.current
+        switch kind {
+        case .later:
+            captureDueSelection = .someday
+            captureFocused.wrappedValue = true
+        case .dated(let sectionKind):
+            switch sectionKind {
+            case .overdue:
+                captureDueSelection = .today
+                captureFocused.wrappedValue = true
+            case .day(let dayStart):
+                if calendar.isDateInToday(dayStart) {
+                    captureDueSelection = .today
+                } else if calendar.isDateInTomorrow(dayStart) {
+                    captureDueSelection = .tomorrow
+                } else {
+                    captureChosenDate = dayStart
+                    captureDueSelection = .chooseDay(dayStart)
+                }
+                captureFocused.wrappedValue = true
+            case .month(let monthStart):
+                let normalizedMonthStart = calendar.startOfDay(for: monthStart)
+                captureChosenDate = normalizedMonthStart
+                captureDueSelection = .chooseDay(normalizedMonthStart)
+                captureFocused.wrappedValue = true
+            case .future:
+                captureFocused.wrappedValue = true
+            }
+        }
+    }
+
+    private func taskListRow(_ task: TaskItem, in kind: GroupKind) -> some View {
+        taskRow(task, in: kind)
             .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
@@ -147,7 +225,15 @@ struct TaskListGroupedScreenView: View {
         let task = TaskItem(taskTitle: normalizedTitle, dueDate: dueDateForCreate())
         modelContext.insert(task)
         captureTitle = ""
+        captureDueSelection = nil
     }
+
+    private func presentScheduleSheet(for task: TaskItem) {
+        taskBeingScheduled = task
+        taskScheduleChosenDate = Calendar.current.startOfDay(for: task.dueDate ?? Date())
+        isTaskScheduleSheetPresented = true
+    }
+
 }
 
 private extension TaskListGroupedScreenView {
@@ -180,18 +266,6 @@ private extension TaskListGroupedScreenView {
             let next = !(task.isCompleted ?? false)
             task.isCompleted = next
             task.completionDate = next ? Date() : nil
-        }
-    }
-
-    func bucketSubtitle(for bucket: TaskBucket) -> String? {
-        switch bucket {
-        case .today:
-            return TaskListView.tabDateFormatter.string(from: Date())
-        case .tomorrow:
-            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
-            return TaskListView.tabDateFormatter.string(from: tomorrow)
-        case .upcoming, .someday:
-            return nil
         }
     }
 
