@@ -44,6 +44,7 @@ TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors
 - Never use raw hex values in views.
 - Use only semantic tokens (`primaryAction`, `appBackground`, `surface`, `textPrimary`, `border`, etc.).
 - Avoid opacity-based text coloring; use `textPrimary`, `textSecondary`, and `textDisabled`.
+- See `Docs/DesignSystem.md` for the full palette and roles.
 
 ## Getting Started
 

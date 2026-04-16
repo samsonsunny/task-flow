@@ -58,7 +58,7 @@ struct TaskRowView: View {
         .padding(.vertical, 10)
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.secondarySystemFill).opacity(isRowPressed ? 0.3 : 0))
+                .fill(AppTheme.colors.fillSubtle.opacity(isRowPressed ? 1 : 0))
         }
         .animation(.easeInOut(duration: 0.12), value: isRowPressed)
         .onLongPressGesture(minimumDuration: 0.01, maximumDistance: 30, pressing: { pressing in
@@ -128,17 +128,17 @@ struct TaskRowView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
-                        .stroke(isCompletedVisualState ? Color.accentColor : Color(.systemGray4), lineWidth: 1.5)
+                        .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
                         .background(
                             Circle()
-                                .fill(isCompletedVisualState ? Color.accentColor : Color(.secondarySystemBackground))
+                                .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
                         )
                         .frame(width: 20, height: 20)
                         .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
                         .opacity(isCompletedVisualState ? 1 : 0)
                         .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
                         .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)

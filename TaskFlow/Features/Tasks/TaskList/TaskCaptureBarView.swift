@@ -21,7 +21,7 @@ struct TaskCaptureBarView: View {
                     if !hasNonWhitespaceText {
                         Image(systemName: "plus")
                             .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Color(.secondaryLabel))
+                            .foregroundStyle(AppTheme.colors.textSecondary)
                             .transition(.opacity)
                     }
 
@@ -30,16 +30,16 @@ struct TaskCaptureBarView: View {
                     text: $title,
                     prompt: Text("What's on your mind?")
                         .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(Color(.secondaryLabel)),
+                        .foregroundStyle(AppTheme.colors.textSecondary),
                     axis: .vertical
                 )
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .multilineTextAlignment(.leading)
                     .focused(captureFocused)
-                    .tint(Color(.systemBlue))
+                    .tint(AppTheme.colors.primaryAction)
                     .frame(minHeight: 48, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.trailing, shouldShowProgressiveControls ? 44 : 0)
@@ -53,7 +53,7 @@ struct TaskCaptureBarView: View {
                             .font(.system(size: 20, weight: .semibold))
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color(.systemBlue))
+                    .foregroundStyle(AppTheme.colors.primaryAction)
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
                     .transition(.opacity)
@@ -64,11 +64,11 @@ struct TaskCaptureBarView: View {
             .frame(minHeight: 56, alignment: .top)
             .background(
                 RoundedRectangle(cornerRadius: TaskListCaptureMetrics.cornerRadius, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(AppTheme.colors.surface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: TaskListCaptureMetrics.cornerRadius, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                    .stroke(AppTheme.colors.borderSubtle, lineWidth: 1)
             )
         }
         .animation(.easeInOut(duration: 0.14), value: shouldShowProgressiveControls)
@@ -100,17 +100,17 @@ struct TaskCaptureBarView: View {
             HStack(spacing: 6) {
                 Text(scheduleLabel)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(.secondaryLabel))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
             }
             .padding(.vertical, 4)
             .padding(.horizontal, 10)
-            .background(Color(.tertiarySystemFill))
+            .background(AppTheme.colors.secondaryBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.3), lineWidth: 0.5)
+                    .stroke(AppTheme.colors.borderSubtle, lineWidth: 0.5)
             )
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .frame(maxWidth: .infinity, alignment: .leading)

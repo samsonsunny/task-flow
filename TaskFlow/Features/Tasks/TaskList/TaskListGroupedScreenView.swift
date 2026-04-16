@@ -66,6 +66,7 @@ struct TaskListGroupedScreenView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.immediately)
+        .background(AppTheme.colors.appBackground)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { TaskCaptureBottomBarToolbar(title: $captureTitle, onSubmit: submitFromCapture, captureFocused: captureFocused) }
@@ -92,12 +93,12 @@ struct TaskListGroupedScreenView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppTheme.colors.textPrimary)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.colors.textSecondary)
                 }
             }
 
@@ -109,7 +110,7 @@ struct TaskListGroupedScreenView: View {
                 } label: {
                     Image(systemName: "chevron.\(isExpanded ? "down" : "right")")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.colors.textSecondary)
                         .padding(.leading, 8)
                         .padding(.vertical, 4)
                 }
