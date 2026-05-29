@@ -1,5 +1,18 @@
 # Decisions
 
+## Decision: Defer Strict Reminder URL And Attachment Semantics
+
+**Date:** 2026-05-23
+
+**Decision:** Reminder authoring will store URL text, contact assignment, and image attachment references additively without enforcing strict URL validation rules or a final attachment/contact persistence format in this iteration.
+
+**Rationale:** The authoring expansion depends on unresolved product decisions called out in the source reminder specs. Shipping the migration-safe persistence foundation and draft-based editor now keeps existing reminders safe and allows richer authoring to land without blocking on policy details that need separate product sign-off.
+
+**Impact:**
+- `ReminderEditorView.swift` accepts URL, contact, and image reference input but does not reject malformed URLs.
+- `TaskItem.swift` stores contact and image fields as optional lightweight references rather than a finalized external integration model.
+- Future reminder iterations will need to lock URL validation behavior and attachment/contact identifier semantics before tightening the UI or persistence contracts.
+
 ## Decision: Lock Task List Iteration 1 Contract
 
 **Date:** 2026-02-14

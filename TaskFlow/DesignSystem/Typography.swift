@@ -52,7 +52,7 @@ struct AppFont {
         .caption.weight(.semibold)
     }
     
-    static var caption2: Font { // Added for TaskListView
+    static var caption2: Font {
         .caption2
     }
     

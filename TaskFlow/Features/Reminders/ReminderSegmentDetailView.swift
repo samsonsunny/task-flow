@@ -1,0 +1,473 @@
+import Combine
+import SwiftUI
+import SwiftData
+
+private struct NewReminderConfig: Identifiable {
+    let id = UUID()
+    let initialDate: Date?
+}
+
+struct ReminderSegmentDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TaskItem.createdAt, order: .reverse) private var tasks: [TaskItem]
+
+    let segment: ReminderSegment
+
+    @State private var now = Date()
+    @State private var taskBeingScheduled: TaskItem?
+    @State private var isTaskScheduleSheetPresented = false
+    @State private var taskScheduleChosenDate = Calendar.current.startOfDay(for: Date())
+    @State private var newReminderConfig: NewReminderConfig?
+    @State private var editingTask: TaskItem?
+
+    private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    private var filteredTasks: [TaskItem] {
+        ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
+    }
+
+    private var groupedSections: [TaskUIModel.DatedSection] {
+        ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
+    }
+
+    private var upcomingGroups: [TaskUIModel.UpcomingGroup] {
+        ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
+    }
+
+    private var laterTasks: [TaskItem] {
+        ReminderSegmentLogic.laterTasks(from: tasks, for: segment, now: now)
+    }
+
+    private var sortedFlatTasks: [TaskItem] {
+        ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
+    }
+
+    private var overdueCount: Int {
+        ReminderSegmentLogic.count(for: .overdue, tasks: tasks, now: now)
+    }
+
+    var body: some View {
+        List {
+            if segment == .today || segment == .tomorrow || segment == .later {
+                if let subtitle = segment.subtitle(now: now), !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.subheadline)
+                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 4)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+            }
+
+            if segment == .today && overdueCount > 0 {
+                overdueSection
+            }
+
+            if segment == .upcoming {
+                upcomingContent
+            } else if filteredTasks.isEmpty && !segment.usesGroupedSections {
+                emptyState
+            } else if segment.usesGroupedSections {
+                groupedContent
+            } else {
+                flatContent
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(AppTheme.colors.appBackground)
+        .navigationTitle(segment.title)
+        .navigationBarTitleDisplayMode(.large)
+        .animation(.easeInOut, value: filteredTasks.count)
+        .overlay(alignment: .bottomTrailing) {
+            ReminderFloatingAddButton {
+                let calendar = Calendar.current
+                let todayStart = calendar.startOfDay(for: now)
+                let date: Date? = {
+                    switch segment {
+                    case .today: return todayStart
+                    case .tomorrow: return calendar.date(byAdding: .day, value: 1, to: todayStart)
+                    case .upcoming: return ReminderSegmentLogic.upcomingStart(now: now, calendar: calendar)
+                    default: return nil
+                    }
+                }()
+                newReminderConfig = NewReminderConfig(initialDate: date)
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 24)
+        }
+        .onReceive(refreshTimer) { fireDate in
+            now = fireDate
+        }
+        .sheet(isPresented: $isTaskScheduleSheetPresented) {
+            TaskScheduleDatePickerSheet(
+                isPresented: $isTaskScheduleSheetPresented,
+                chosenDate: $taskScheduleChosenDate,
+                onChooseDate: { chosen in
+                    taskBeingScheduled?.dueDate = chosen
+                }
+            )
+        }
+        .sheet(item: $newReminderConfig) { config in
+            ReminderEditorView(initialDate: config.initialDate)
+        }
+        .sheet(item: $editingTask) { task in
+            ReminderEditorView(task: task)
+        }
+    }
+
+    @ViewBuilder
+    private var overdueSection: some View {
+        NavigationLink(value: ReminderRoute.segment(.overdue)) {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.error)
+
+                Text("Overdue")
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+
+                Spacer()
+
+                Text("\(overdueCount)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(AppTheme.colors.fillSubtle)
+                    .clipShape(Capsule())
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    @ViewBuilder
+    private var groupedContent: some View {
+        ForEach(groupedSections) { section in
+            Section {
+                ForEach(section.tasks) { task in
+                    taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+                }
+            } header: {
+                sectionHeader(
+                    title: section.title,
+                    subtitle: section.subtitle,
+                    kind: section.kind
+                )
+            }
+        }
+
+        if segment.includesLaterSection && !laterTasks.isEmpty {
+            Section {
+                ForEach(laterTasks) { task in
+                    taskListRow(task, showsDueDate: false)
+                }
+            } header: {
+                sectionHeader(title: "Later", subtitle: nil, kind: nil)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var flatContent: some View {
+        ForEach(sortedFlatTasks) { task in
+            taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(segment.emptyTitle)
+                .font(.headline)
+                .foregroundStyle(AppTheme.colors.textPrimary)
+
+            Text(segment.emptyMessage)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.colors.textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var upcomingContent: some View {
+        let groups = upcomingGroups
+
+        if !groups.isEmpty {
+            ForEach(groups) { group in
+                switch group {
+                case .categoryHeader(_, let title):
+                    categoryHeaderRow(title: title)
+
+                case .daySection(let id, let date, let title, let tasks, let isInHorizon):
+                    if tasks.isEmpty {
+                        emptyDayRow(id: id, title: title, date: date)
+                    } else {
+                        Section {
+                            ForEach(tasks) { task in
+                                taskListRow(task, showsDueDate: false)
+                            }
+
+                            addReminderButton(date: date)
+                        } header: {
+                            dayHeader(title: title, date: date, isInHorizon: isInHorizon)
+                        }
+                    }
+
+                case .monthSection(_, let date, let title, let dayGroups, let isCollapsible):
+                    if dayGroups.isEmpty {
+                        emptyMonthRow(title: title, date: date)
+                    } else {
+                        monthSectionView(title: title, date: date, dayGroups: dayGroups, isCollapsible: isCollapsible)
+                    }
+                }
+            }
+        }
+    }
+
+    private func categoryHeaderRow(title: String) -> some View {
+        Section {
+            EmptyView()
+                .listRowSeparator(.hidden)
+        } header: {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(AppTheme.colors.textPrimary)
+                .textCase(nil)
+        }
+    }
+
+    private func dayHeader(title: String, date: Date, isInHorizon: Bool) -> some View {
+        Text(title)
+            .font(isInHorizon ? .headline : .subheadline)
+            .foregroundStyle(AppTheme.colors.textPrimary)
+            .textCase(nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 16)
+            .padding(.bottom, 4)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                newReminderConfig = NewReminderConfig(initialDate: date)
+            }
+    }
+
+    private func emptyDayRow(id: String, title: String, date: Date) -> some View {
+        Section {
+            EmptyView()
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+        } header: {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.colors.textTertiary)
+                .textCase(nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    newReminderConfig = NewReminderConfig(initialDate: date)
+                }
+        }
+    }
+
+    private func emptyMonthRow(title: String, date: Date) -> some View {
+        Section {
+            EmptyView()
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+        } header: {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.colors.textTertiary)
+                .textCase(nil)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    newReminderConfig = NewReminderConfig(initialDate: date)
+                }
+        }
+    }
+
+    private func addReminderButton(date: Date) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                .frame(width: 20, height: 20)
+
+            Text("Add Reminder")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            newReminderConfig = NewReminderConfig(initialDate: date)
+        }
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+        .accessibilityIdentifier("upcoming-add-reminder-\(date)")
+    }
+
+    private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], isCollapsible: Bool) -> some View {
+        Section {
+            ForEach(dayGroups) { dayGroup in
+                Section {
+                    ForEach(dayGroup.tasks) { task in
+                        taskListRow(task, showsDueDate: false)
+                            .listRowInsets(EdgeInsets(top: 3, leading: 32, bottom: 3, trailing: 16))
+                    }
+
+                    if !dayGroup.tasks.isEmpty {
+                        addReminderButton(date: dayGroup.date)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 16))
+                    }
+                } header: {
+                    Text(dayGroup.title)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.colors.textPrimary)
+                        .textCase(nil)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            newReminderConfig = NewReminderConfig(initialDate: dayGroup.date)
+                        }
+                        .listRowBackground(Color.clear)
+                }
+            }
+        } header: {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(AppTheme.colors.textPrimary)
+                .textCase(nil)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    newReminderConfig = NewReminderConfig(initialDate: date)
+                }
+        }
+    }
+
+    private func sectionHeader(title: String, subtitle: String?, kind: TaskUIModel.DatedSection.Kind?) -> some View {
+        let isMonth: Bool
+        let date: Date?
+        switch kind {
+        case .day(let d):
+            isMonth = false
+            date = d
+        case .month:
+            isMonth = true
+            date = nil
+        default:
+            isMonth = false
+            date = nil
+        }
+
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(isMonth ? .headline : .subheadline)
+                .foregroundStyle(isMonth ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
+        }
+        .textCase(nil)
+        .padding(.top, isMonth ? 16 : 8)
+        .padding(.bottom, isMonth ? 4 : 6)
+        .padding(.horizontal, 16)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let date = date {
+                newReminderConfig = NewReminderConfig(initialDate: date)
+            }
+        }
+    }
+
+    private func taskListRow(_ task: TaskItem, showsDueDate: Bool) -> some View {
+        TaskRowView(
+            task: task,
+            isCompletedVisualState: task.isCompleted == true,
+            onToggleCompletion: { toggleCompletion(for: task) },
+            onMoveToToday: canMoveToToday(task) ? { rescheduleTaskToToday(task) } : nil,
+            onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
+            onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
+            onSchedule: { presentScheduleSheet(for: task) },
+            onTap: { editingTask = task },
+            showsDueDate: showsDueDate
+        )
+        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                modelContext.delete(task)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    private func presentScheduleSheet(for task: TaskItem) {
+        taskBeingScheduled = task
+        taskScheduleChosenDate = Calendar.current.startOfDay(for: task.dueDate ?? now)
+        isTaskScheduleSheetPresented = true
+    }
+
+    private func toggleCompletion(for task: TaskItem) {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            let next = !(task.isCompleted ?? false)
+            task.isCompleted = next
+            task.completionDate = next ? Date() : nil
+        }
+    }
+
+    private func rescheduleTaskToToday(_ task: TaskItem) {
+        task.dueDate = Calendar.current.startOfDay(for: now)
+    }
+
+    private func rescheduleTaskToTomorrow(_ task: TaskItem) {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+    }
+
+    private func rescheduleTaskToLater(_ task: TaskItem) {
+        task.dueDate = nil
+    }
+
+    private func canMoveToToday(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        return !Calendar.current.isDateInToday(dueDate)
+    }
+
+    private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        return !Calendar.current.isDateInTomorrow(dueDate)
+    }
+
+    private func shouldShowDueDate(for segment: ReminderSegment) -> Bool {
+        switch segment {
+        case .today, .tomorrow, .allReminders, .later:
+            return false
+        case .upcoming, .scheduled, .completed, .overdue:
+            return true
+        }
+    }
+}
+                                                                                                                                                                                                                                                                                                                                                                            

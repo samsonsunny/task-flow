@@ -17,6 +17,7 @@ struct TaskRowView: View {
     var onMoveToTomorrow: (() -> Void)? = nil
     var onMoveToLater: (() -> Void)? = nil
     var onSchedule: (() -> Void)? = nil
+    var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
 
     @State private var chipScale: CGFloat = 1
@@ -25,14 +26,14 @@ struct TaskRowView: View {
     var body: some View {
         rowContent
             .contextMenu {
-                if let moveTomorrow = onMoveToTomorrow {
-                    Button("Tomorrow") {
-                        moveTomorrow()
-                    }
-                }
                 if let moveToday = onMoveToToday {
                     Button("Today") {
                         moveToday()
+                    }
+                }
+                if let moveTomorrow = onMoveToTomorrow {
+                    Button("Tomorrow") {
+                        moveTomorrow()
                     }
                 }
                 if let moveLater = onMoveToLater {
@@ -46,10 +47,13 @@ struct TaskRowView: View {
                     }
                 }
             }
+            .onTapGesture {
+                onTap?()
+            }
     }
 
     private var rowContent: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             completionButton
 
             titleView
@@ -69,15 +73,17 @@ struct TaskRowView: View {
     @ViewBuilder
     private var titleView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(attributedTitle)
-                .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
-                .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
-                .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                .lineLimit(2)
-                .lineSpacing(2)
-                .multilineTextAlignment(.leading)
-                .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(attributedTitle)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
+                    .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
+                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                    .lineLimit(2)
+                    .lineSpacing(2)
+                    .multilineTextAlignment(.leading)
+                    .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+            }
 
             if let dueText, showsDueDate {
                 Text(dueText)
@@ -125,30 +131,24 @@ struct TaskRowView: View {
             animateChipTap()
             onToggleCompletion()
         } label: {
-            VStack(spacing: 0) {
-                ZStack {
-                    Circle()
-                        .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
-                        .background(
-                            Circle()
-                                .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
-                        )
-                        .frame(width: 20, height: 20)
-                        .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+            ZStack {
+                Circle()
+                    .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
+                    .background(
+                        Circle()
+                            .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
+                    )
+                    .frame(width: 20, height: 20)
+                    .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
-                        .opacity(isCompletedVisualState ? 1 : 0)
-                        .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
-                        .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
-                }
-                .padding(.top, 1)
-                .scaleEffect(chipScale)
-
-                Spacer(minLength: 0)
+                    .opacity(isCompletedVisualState ? 1 : 0)
+                    .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
+                    .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
             }
-            .frame(width: 40, height: 40, alignment: .top)
+            .scaleEffect(chipScale)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isCompletedVisualState ? "Mark active" : "Mark complete")
