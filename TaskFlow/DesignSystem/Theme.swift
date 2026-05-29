@@ -8,7 +8,6 @@ struct AppTheme {
 //    static let spacing = Spacing.self
     static let fonts = AppFont.self
     static let radius = AppRadius.self
-    static let shadows = AppShadow.self
 
     // Example of a global modifier or setup function
     static func setup() {
