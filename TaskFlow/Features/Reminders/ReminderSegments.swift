@@ -30,7 +30,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .overdue:
             return "Overdue"
         case .later:
-            return "Later"
+            return "Undated"
         }
     }
 
@@ -51,7 +51,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .overdue:
             return "exclamationmark.circle.fill"
         case .later:
-            return "tray.fill"
+            return "tray.full.fill"
         }
     }
 
@@ -135,7 +135,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .overdue:
             return "Past due reminders"
         case .later:
-            return "Reminders without a due date"
+            return "All reminders grouped by list"
         }
     }
 
@@ -156,7 +156,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .overdue:
             return "No overdue reminders"
         case .later:
-            return "No later reminders"
+            return "No reminders yet"
         }
     }
 
@@ -177,7 +177,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .overdue:
             return "Anything past its due date will surface here."
         case .later:
-            return "Reminders without a due date will appear here."
+            return "Create a reminder to start filling your lists."
         }
     }
 }
@@ -217,7 +217,7 @@ enum ReminderSegmentLogic {
                 guard !isCompleted, let dueStart else { return false }
                 return dueStart < todayStart
             case .later:
-                return !isCompleted && task.dueDate == nil
+                return !isCompleted
             }
         }
     }
