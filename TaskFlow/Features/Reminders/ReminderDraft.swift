@@ -11,6 +11,7 @@ struct ReminderDraft: Equatable {
     var assignedContactName: String
     var imageAttachmentReference: String
     var dueDate: Date?
+    var hasTime: Bool
 
     static let empty = ReminderDraft(
         title: "",
@@ -21,7 +22,8 @@ struct ReminderDraft: Equatable {
         priority: .none,
         assignedContactName: "",
         imageAttachmentReference: "",
-        dueDate: nil
+        dueDate: nil,
+        hasTime: false
     )
 
     init(
@@ -33,7 +35,8 @@ struct ReminderDraft: Equatable {
         priority: ReminderPriority,
         assignedContactName: String,
         imageAttachmentReference: String,
-        dueDate: Date?
+        dueDate: Date?,
+        hasTime: Bool = false
     ) {
         self.title = title
         self.notes = notes
@@ -44,6 +47,7 @@ struct ReminderDraft: Equatable {
         self.assignedContactName = assignedContactName
         self.imageAttachmentReference = imageAttachmentReference
         self.dueDate = dueDate
+        self.hasTime = hasTime
     }
 
     @MainActor
@@ -57,6 +61,13 @@ struct ReminderDraft: Equatable {
         self.assignedContactName = task.assignedContactName ?? ""
         self.imageAttachmentReference = task.imageAttachmentReference ?? ""
         self.dueDate = task.dueDate
+        if let date = task.dueDate {
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.hour, .minute], from: date)
+            self.hasTime = (components.hour != 0 || components.minute != 0)
+        } else {
+            self.hasTime = false
+        }
     }
 
     var hasMeaningfulContent: Bool {
@@ -119,7 +130,11 @@ enum ReminderDraftMapper {
         task.priority = draft.priority
         task.assignedContactName = draft.normalizedContactName.nilIfBlank
         task.imageAttachmentReference = draft.normalizedImageReference.nilIfBlank
-        task.dueDate = draft.dueDate.map { Calendar.current.startOfDay(for: $0) }
+        if draft.hasTime, let date = draft.dueDate {
+            task.dueDate = date
+        } else {
+            task.dueDate = draft.dueDate.map { Calendar.current.startOfDay(for: $0) }
+        }
         task.reminderList = resolvedList(
             from: draft.normalizedListName,
             availableLists: availableLists,

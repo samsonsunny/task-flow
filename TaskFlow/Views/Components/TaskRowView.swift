@@ -21,7 +21,6 @@ struct TaskRowView: View {
     var showsDueDate: Bool = false
 
     @State private var chipScale: CGFloat = 1
-    @State private var isRowPressed = false
     
     var body: some View {
         rowContent
@@ -60,14 +59,6 @@ struct TaskRowView: View {
         }
         .contentShape(Rectangle())
         .padding(.vertical, 10)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(AppTheme.colors.fillSubtle.opacity(isRowPressed ? 1 : 0))
-        }
-        .animation(.easeInOut(duration: 0.12), value: isRowPressed)
-        .onLongPressGesture(minimumDuration: 0.01, maximumDistance: 30, pressing: { pressing in
-            isRowPressed = pressing
-        }, perform: {})
     }
 
     @ViewBuilder
@@ -85,12 +76,18 @@ struct TaskRowView: View {
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
             }
 
-            if let dueText, showsDueDate {
-                Text(dueText)
+            if hasTime, let timeText = timeText {
+                Text(timeText)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(AppTheme.colors.textSecondary)
                     .lineLimit(1)
-                    .accessibilityLabel("Due \(dueText)")
+                    .accessibilityLabel("Due \(timeText)")
+            } else if let dateText, showsDueDate {
+                Text(dateText)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .lineLimit(1)
+                    .accessibilityLabel("Due \(dateText)")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,7 +118,18 @@ struct TaskRowView: View {
         return attributed
     }
 
-    private var dueText: String? {
+    private var hasTime: Bool {
+        guard let dueDate = task.dueDate else { return false }
+        let components = Calendar.current.dateComponents([.hour, .minute], from: dueDate)
+        return (components.hour != 0 || components.minute != 0)
+    }
+
+    private var timeText: String? {
+        guard let dueDate = task.dueDate else { return nil }
+        return Self.timeFormatter.string(from: dueDate)
+    }
+
+    private var dateText: String? {
         guard let dueDate = task.dueDate else { return nil }
         return Self.dueDateFormatter.string(from: dueDate)
     }
@@ -167,6 +175,12 @@ struct TaskRowView: View {
     private static let dueDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
+        return formatter
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
         return formatter
     }()
 }
