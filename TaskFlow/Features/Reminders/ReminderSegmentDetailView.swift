@@ -7,6 +7,11 @@ private struct NewReminderConfig: Identifiable {
     let initialDate: Date?
 }
 
+private struct ScheduleConfig: Identifiable {
+    let id = UUID()
+    let task: TaskItem
+}
+
 struct ReminderSegmentDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var tasks: [TaskItem]
@@ -14,9 +19,7 @@ struct ReminderSegmentDetailView: View {
     let segment: ReminderSegment
 
     @State private var now = Date()
-    @State private var taskBeingScheduled: TaskItem?
-    @State private var isTaskScheduleSheetPresented = false
-    @State private var taskScheduleChosenDate = Calendar.current.startOfDay(for: Date())
+    @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
 
@@ -101,12 +104,23 @@ struct ReminderSegmentDetailView: View {
         .onReceive(refreshTimer) { fireDate in
             now = fireDate
         }
-        .sheet(isPresented: $isTaskScheduleSheetPresented) {
+        .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
-                isPresented: $isTaskScheduleSheetPresented,
-                chosenDate: $taskScheduleChosenDate,
-                onChooseDate: { chosen in
-                    taskBeingScheduled?.dueDate = chosen
+                isPresented: Binding(
+                    get: { scheduleConfig != nil },
+                    set: { if !$0 { scheduleConfig = nil } }
+                ),
+                initialDueDate: config.task.dueDate,
+                onCommit: { dueDate, hasTime in
+                    if let date = dueDate {
+                        if hasTime {
+                            config.task.dueDate = date
+                        } else {
+                            config.task.dueDate = Calendar.current.startOfDay(for: date)
+                        }
+                    } else {
+                        config.task.dueDate = nil
+                    }
                 }
             )
         }
@@ -424,9 +438,7 @@ struct ReminderSegmentDetailView: View {
     }
 
     private func presentScheduleSheet(for task: TaskItem) {
-        taskBeingScheduled = task
-        taskScheduleChosenDate = Calendar.current.startOfDay(for: task.dueDate ?? now)
-        isTaskScheduleSheetPresented = true
+        scheduleConfig = ScheduleConfig(task: task)
     }
 
     private func toggleCompletion(for task: TaskItem) {

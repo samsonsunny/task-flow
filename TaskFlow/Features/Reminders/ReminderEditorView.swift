@@ -9,14 +9,18 @@ struct ReminderEditorView: View {
 
     private let task: TaskItem?
     private let initialDraft: ReminderDraft
+    private let initialDate: Date?
 
     @State private var draft: ReminderDraft
     @State private var isDiscardConfirmationPresented = false
+    @State private var expandedPicker: ExpandedPicker?
+    @State private var pressedRow: ExpandedPicker?
     @FocusState private var isTitleFocused: Bool
 
     @MainActor
     init(task: TaskItem? = nil, initialDate: Date? = nil) {
         self.task = task
+        self.initialDate = initialDate
         let initialDraft: ReminderDraft
         if let task = task {
             initialDraft = ReminderDraft(task: task)
@@ -38,6 +42,7 @@ struct ReminderEditorView: View {
             .navigationTitle(task == nil ? "New Reminder" : "Edit Reminder")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { isTitleFocused = true }
+            .onChange(of: expandedPicker) { _, _ in isTitleFocused = false }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -70,7 +75,7 @@ struct ReminderEditorView: View {
     private var contentSection: some View {
         Section {
             TextField("Title", text: $draft.title, axis: .vertical)
-                .lineLimit(2...4)
+                .lineLimit(1...4)
                 .font(.title3)
                 .focused($isTitleFocused)
                 .accessibilityIdentifier("reminder-editor-title")
@@ -101,34 +106,171 @@ struct ReminderEditorView: View {
     }
 
     private var scheduleSection: some View {
-        Section {
-            HStack {
-                Toggle(
-                    "Due Date",
-                    isOn: Binding(
-                        get: { draft.dueDate != nil },
-                        set: { isEnabled in
-                            draft.dueDate = isEnabled ? (draft.dueDate ?? Date()) : nil
+        Section("Date & Time") {
+            dateRow
+            if expandedPicker == .date {
+                DatePicker(
+                    "",
+                    selection: Binding(
+                        get: { draft.dueDate ?? Date() },
+                        set: { newDate in
+                            draft.dueDate = newDate
                         }
-                    )
+                    ),
+                    displayedComponents: .date
                 )
-                .accessibilityIdentifier("reminder-editor-has-date")
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .accessibilityIdentifier("reminder-editor-date-picker")
+                .transition(.push(from: .top))
+            }
 
-                if draft.dueDate != nil {
-                    DatePicker(
-                        "",
-                        selection: Binding(
-                            get: { draft.dueDate ?? Date() },
-                            set: { draft.dueDate = $0 }
-                        ),
-                        displayedComponents: .date
-                    )
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
-                    .accessibilityIdentifier("reminder-editor-date")
-                }
+            timeRow
+            if expandedPicker == .time {
+                DatePicker(
+                    "",
+                    selection: Binding(
+                        get: { draft.dueDate ?? Date() },
+                        set: { newDate in
+                            draft.dueDate = newDate
+                        }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(height: 150)
+                .clipped()
+                .accessibilityIdentifier("reminder-editor-time-picker")
+                .transition(.push(from: .top))
             }
         }
+        .animation(.smooth(duration: 0.3), value: expandedPicker)
+    }
+
+    private var dateRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Date")
+                if let date = draft.dueDate {
+                    Text(date, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.colors.textSecondary)
+                }
+            }
+
+            Spacer()
+
+            Toggle("Date", isOn: Binding(
+                get: { draft.dueDate != nil },
+                set: { isEnabled in
+                    if isEnabled {
+                        draft.dueDate = draft.dueDate ?? initialDate ?? Date()
+                        expandedPicker = .date
+                    } else {
+                        draft.dueDate = nil
+                        draft.hasTime = false
+                        expandedPicker = nil
+                    }
+                }
+            ))
+            .labelsHidden()
+            .accessibilityIdentifier("reminder-editor-has-date")
+        }
+        .contentShape(Rectangle())
+        .listRowBackground(
+            pressedRow == .date
+                ? AppTheme.colors.textSecondary.opacity(0.15)
+                : Color.white
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard draft.dueDate != nil else { return }
+                    pressedRow = .date
+                }
+                .onEnded { _ in
+                    pressedRow = nil
+                    guard draft.dueDate != nil else { return }
+                    expandedPicker = expandedPicker == .date ? nil : .date
+                }
+        )
+    }
+
+    private var timeRow: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Time")
+                if draft.hasTime, let date = draft.dueDate {
+                    Text(date, style: .time)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.colors.textSecondary)
+                }
+            }
+
+            Spacer()
+
+            Toggle("Time", isOn: Binding(
+                get: { draft.hasTime },
+                set: { isEnabled in
+                    if isEnabled {
+                        draft.hasTime = true
+                        let calendar = Calendar.current
+                        let baseDate: Date
+                        if let date = draft.dueDate {
+                            baseDate = date
+                        } else {
+                            baseDate = initialDate ?? Date()
+                        }
+                        var dayComponents = calendar.dateComponents([.year, .month, .day], from: baseDate)
+                        let rounded = nearestRoundedHour()
+                        let timeComponents = calendar.dateComponents([.hour, .minute], from: rounded)
+                        dayComponents.hour = timeComponents.hour
+                        dayComponents.minute = timeComponents.minute
+                        draft.dueDate = calendar.date(from: dayComponents) ?? rounded
+                        expandedPicker = .time
+                    } else {
+                        draft.hasTime = false
+                        expandedPicker = nil
+                    }
+                }
+            ))
+            .labelsHidden()
+            .accessibilityIdentifier("reminder-editor-has-time")
+        }
+        .contentShape(Rectangle())
+        .listRowBackground(
+            pressedRow == .time
+                ? AppTheme.colors.textSecondary.opacity(0.15)
+                : Color.white
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard draft.hasTime else { return }
+                    pressedRow = .time
+                }
+                .onEnded { _ in
+                    pressedRow = nil
+                    guard draft.hasTime else { return }
+                    expandedPicker = expandedPicker == .time ? nil : .time
+                }
+        )
+    }
+
+    private func nearestRoundedHour() -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        let totalMinutes = (components.hour ?? 0) * 60 + (components.minute ?? 0)
+        let rounded = ((totalMinutes + 29) / 30) * 30
+        let clamped = rounded % (24 * 60)
+        return calendar.date(bySettingHour: clamped / 60, minute: clamped % 60, second: 0, of: now) ?? now
+    }
+
+    private enum ExpandedPicker {
+        case date
+        case time
     }
 
     private func handleClose() {
