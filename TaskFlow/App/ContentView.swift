@@ -61,6 +61,8 @@ struct ContentView: View {
                     switch destination {
                     case .segment(let segment):
                         ReminderSegmentDetailView(segment: segment)
+                    case .list(let id):
+                        ListDetailView(listID: id)
                     }
                 }
                 .toolbar {
@@ -121,6 +123,7 @@ private enum ReminderRootTab: Hashable {
 
 enum ReminderRoute: Hashable {
     case segment(ReminderSegment)
+    case list(id: ReminderList.ID)
 }
 
 #Preview("Empty State") {

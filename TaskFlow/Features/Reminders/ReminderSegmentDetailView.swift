@@ -510,9 +510,7 @@ struct ReminderSegmentDetailView: View {
             onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
             onTap: { editingTask = task },
-            showsDueDate: showsDueDate,
-            reminderLists: reminderLists,
-            onMoveToList: { list in task.reminderList = list }
+            showsDueDate: showsDueDate
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)

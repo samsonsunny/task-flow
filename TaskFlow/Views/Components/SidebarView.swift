@@ -141,7 +141,7 @@ struct SidebarView: View {
 
     private func navigateToList(listID: ReminderList.ID) {
         appState.selectedListId = listID
-        appState.pendingNavigation = .list(listID)
+        appState.pendingNavigation = ReminderRoute.list(id: listID)
         appState.isSidebarOpen = false
     }
 }
