@@ -191,7 +191,7 @@ struct ReminderEditorView: View {
         .listRowBackground(
             pressedRow == .date
                 ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.white
+                : Color.clear
         )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
@@ -252,7 +252,7 @@ struct ReminderEditorView: View {
         .listRowBackground(
             pressedRow == .time
                 ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.white
+                : Color.clear
         )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)

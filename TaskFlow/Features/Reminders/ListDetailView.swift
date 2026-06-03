@@ -119,11 +119,7 @@ struct ListDetailView: View {
             onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
             onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
-            onTap: { editingTask = task },
-            showsDueDate: task.dueDate != nil,
-            dueDateColor: dueDateColor(for: task),
-            reminderLists: reminderLists,
-            onMoveToList: { list in task.reminderList = list }
+            onTap: { editingTask = task }
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
