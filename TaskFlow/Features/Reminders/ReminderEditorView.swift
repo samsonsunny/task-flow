@@ -15,7 +15,6 @@ struct ReminderEditorView: View {
     @State private var draft: ReminderDraft
     @State private var isDiscardConfirmationPresented = false
     @State private var expandedPicker: ExpandedPicker?
-    @State private var pressedRow: ExpandedPicker?
     @FocusState private var isTitleFocused: Bool
 
     @MainActor
@@ -188,19 +187,9 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-date")
         }
         .contentShape(Rectangle())
-        .listRowBackground(
-            pressedRow == .date
-                ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.clear
-        )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard draft.dueDate != nil else { return }
-                    pressedRow = .date
-                }
                 .onEnded { _ in
-                    pressedRow = nil
                     guard draft.dueDate != nil else { return }
                     expandedPicker = expandedPicker == .date ? nil : .date
                 }
@@ -249,19 +238,9 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-time")
         }
         .contentShape(Rectangle())
-        .listRowBackground(
-            pressedRow == .time
-                ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.clear
-        )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard draft.hasTime else { return }
-                    pressedRow = .time
-                }
                 .onEnded { _ in
-                    pressedRow = nil
                     guard draft.hasTime else { return }
                     expandedPicker = expandedPicker == .time ? nil : .time
                 }
