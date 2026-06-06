@@ -19,15 +19,18 @@ struct ListDetailView: View {
     let listID: ReminderList.ID
 
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
-    @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
+    @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
 
-    @State private var list: ReminderList?
     @State private var now = Date()
     @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    private var list: ReminderList? {
+        allLists.first { $0.persistentModelID == listID }
+    }
 
     private var tasks: [TaskItem] {
         allTasks.filter {
@@ -59,9 +62,6 @@ struct ListDetailView: View {
         }
         .onReceive(refreshTimer) { fireDate in
             now = fireDate
-        }
-        .onAppear {
-            list = try? modelContext.model(for: listID) as? ReminderList
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(

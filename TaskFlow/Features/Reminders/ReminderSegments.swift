@@ -5,111 +5,54 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
     case today
     case tomorrow
     case upcoming
-    case scheduled
-    case allReminders
-    case completed
-    case overdue
     case later
+    case overdue
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .today:
-            return "Today"
-        case .tomorrow:
-            return "Tomorrow"
-        case .upcoming:
-            return "Upcoming"
-        case .scheduled:
-            return "Scheduled"
-        case .allReminders:
-            return "All Reminders"
-        case .completed:
-            return "Completed"
-        case .overdue:
-            return "Overdue"
-        case .later:
-            return "Undated"
+        case .today: return "Today"
+        case .tomorrow: return "Tomorrow"
+        case .upcoming: return "Upcoming"
+        case .later: return "Later"
+        case .overdue: return "Overdue"
         }
     }
 
     var iconName: String {
         switch self {
-        case .today:
-            return "calendar.circle.fill"
-        case .tomorrow:
-            return "sunrise.fill"
-        case .upcoming:
-            return "calendar.badge.clock"
-        case .scheduled:
-            return "calendar"
-        case .allReminders:
-            return "tray.full.fill"
-        case .completed:
-            return "checkmark.circle.fill"
-        case .overdue:
-            return "exclamationmark.circle.fill"
-        case .later:
-            return "tray.full.fill"
+        case .today: return "calendar.circle.fill"
+        case .tomorrow: return "sunrise.fill"
+        case .upcoming: return "calendar.badge.clock"
+        case .later: return "tray"
+        case .overdue: return "exclamationmark.circle.fill"
         }
     }
 
     var tintColor: Color {
         switch self {
-        case .today:
-            return AppTheme.colors.primaryAction
-        case .tomorrow:
-            return AppTheme.colors.success
-        case .upcoming:
-            return AppTheme.colors.warning
-        case .scheduled:
-            return AppTheme.colors.primaryAction
-        case .allReminders:
-            return AppTheme.colors.textPrimary
-        case .completed:
-            return AppTheme.colors.success
-        case .overdue:
-            return AppTheme.colors.textSecondary
-        case .later:
-            return AppTheme.colors.textSecondary
-        }
-    }
-
-    var showsCount: Bool {
-        switch self {
-        case .today, .tomorrow, .completed:
-            return false
-        case .upcoming, .scheduled, .allReminders, .overdue, .later:
-            return true
+        case .today: return AppTheme.colors.primaryAction
+        case .tomorrow: return AppTheme.colors.success
+        case .upcoming: return AppTheme.colors.warning
+        case .later: return AppTheme.colors.textSecondary
+        case .overdue: return AppTheme.colors.error
         }
     }
 
     var usesGroupedSections: Bool {
         switch self {
-        case .upcoming, .scheduled, .allReminders:
-            return true
-        case .today, .tomorrow, .completed, .overdue, .later:
-            return false
+        case .upcoming: return true
+        case .today, .tomorrow, .later, .overdue: return false
         }
     }
 
     var includesLaterSection: Bool {
-        switch self {
-        case .allReminders:
-            return true
-        case .today, .tomorrow, .upcoming, .scheduled, .completed, .overdue, .later:
-            return false
-        }
+        false
     }
 
     var tabTitle: String {
-        switch self {
-        case .allReminders:
-            return "All"
-        default:
-            return title
-        }
+        title
     }
 
     var accessibilityIdentifier: String {
@@ -126,58 +69,30 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .upcoming:
             let start = ReminderSegmentLogic.upcomingStart(now: now, calendar: calendar)
             return "From \(TaskUIModel.chipDateFormatter.string(from: start))"
-        case .scheduled:
-            return "All dated reminders"
-        case .allReminders:
-            return "All active reminders"
-        case .completed:
-            return "Finished reminders"
-        case .overdue:
-            return "Past due reminders"
         case .later:
-            return "All reminders grouped by list"
+            return nil
+        case .overdue:
+            return nil
         }
     }
 
     var emptyTitle: String {
         switch self {
-        case .today:
-            return "Nothing due today"
-        case .tomorrow:
-            return "Nothing due tomorrow"
-        case .upcoming:
-            return "Nothing in Upcoming"
-        case .scheduled:
-            return "No scheduled reminders"
-        case .allReminders:
-            return "No reminders yet"
-        case .completed:
-            return "Nothing completed"
-        case .overdue:
-            return "No overdue reminders"
-        case .later:
-            return "No reminders yet"
+        case .today: return "Nothing due today"
+        case .tomorrow: return "Nothing due tomorrow"
+        case .upcoming: return "Nothing in Upcoming"
+        case .later: return "No unscheduled reminders"
+        case .overdue: return "No overdue reminders"
         }
     }
 
     var emptyMessage: String {
         switch self {
-        case .today:
-            return "Reminders due today will appear here."
-        case .tomorrow:
-            return "Reminders due tomorrow will appear here."
-        case .upcoming:
-            return "Reminders due soon will appear here."
-        case .scheduled:
-            return "Add a due date to see reminders here."
-        case .allReminders:
-            return "Create a reminder to start filling this list."
-        case .completed:
-            return "Completed reminders will collect here."
-        case .overdue:
-            return "Anything past its due date will surface here."
-        case .later:
-            return "Create a reminder to start filling your lists."
+        case .today: return "Reminders due today will appear here."
+        case .tomorrow: return "Reminders due tomorrow will appear here."
+        case .upcoming: return "Reminders due soon will appear here."
+        case .later: return "Reminders without a due date will appear here."
+        case .overdue: return "Reminders past their due date will appear here."
         }
     }
 }
@@ -207,17 +122,12 @@ enum ReminderSegmentLogic {
                 guard !isCompleted, let dueStart else { return false }
                 let start = upcomingStart(now: now, calendar: calendar)
                 return dueStart >= start
-            case .scheduled:
-                return !isCompleted && dueStart != nil
-            case .allReminders:
-                return !isCompleted
-            case .completed:
-                return isCompleted
+            case .later:
+                guard !isCompleted else { return false }
+                return task.dueDate == nil
             case .overdue:
                 guard !isCompleted, let dueStart else { return false }
                 return dueStart < todayStart
-            case .later:
-                return !isCompleted
             }
         }
     }
@@ -245,38 +155,16 @@ enum ReminderSegmentLogic {
         .filter { !$0.tasks.isEmpty }
     }
 
-    static func laterTasks(
-        from tasks: [TaskItem],
-        for segment: ReminderSegment,
-        now: Date = Date(),
-        calendar: Calendar = .current
-    ) -> [TaskItem] {
-        sortedTasks(
-            filteredTasks(tasks, for: segment, now: now, calendar: calendar).filter { $0.dueDate == nil },
-            for: segment,
-            calendar: calendar
-        )
-    }
-
     static func sortedTasks(
         _ tasks: [TaskItem],
         for segment: ReminderSegment,
         calendar: Calendar = .current
     ) -> [TaskItem] {
         tasks.sorted { lhs, rhs in
-            switch segment {
-            case .completed:
-                let lhsCompletion = lhs.completionDate ?? .distantPast
-                let rhsCompletion = rhs.completionDate ?? .distantPast
-                if lhsCompletion != rhsCompletion {
-                    return lhsCompletion > rhsCompletion
-                }
-            default:
-                let lhsDue = lhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
-                let rhsDue = rhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
-                if lhsDue != rhsDue {
-                    return lhsDue < rhsDue
-                }
+            let lhsDue = lhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
+            let rhsDue = rhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
+            if lhsDue != rhsDue {
+                return lhsDue < rhsDue
             }
 
             let lhsCreatedAt = lhs.createdAt ?? .distantPast
@@ -289,17 +177,10 @@ enum ReminderSegmentLogic {
         }
     }
 
-    static func todayDayString(now: Date, calendar: Calendar = .current) -> String {
-        let day = calendar.component(.day, from: now)
-        return String(format: "%02d", day)
-    }
-
     static func upcomingStart(now: Date, calendar: Calendar = .current) -> Date {
         let todayStart = calendar.startOfDay(for: now)
         return calendar.date(byAdding: .day, value: 2, to: todayStart) ?? todayStart
     }
-
-    // MARK: - Upcoming page groups
 
     static func upcomingGroups(
         from tasks: [TaskItem],
@@ -311,7 +192,6 @@ enum ReminderSegmentLogic {
         let todayStart = calendar.startOfDay(for: now)
         let horizonEnd = calendar.date(byAdding: .day, value: 7, to: start) ?? start
 
-        // 12-month window
         let currentMonthStart = calendar.dateInterval(of: .month, for: todayStart)?.start ?? todayStart
         let windowEnd = calendar.date(byAdding: .month, value: 12, to: currentMonthStart) ?? calendar.startOfDay(for: now)
 
@@ -328,9 +208,6 @@ enum ReminderSegmentLogic {
 
         var groups: [TaskUIModel.UpcomingGroup] = []
 
-        // ──────────────────────────────
-        // Section 1: Next 7 Days
-        // ──────────────────────────────
         for offset in 0..<7 {
             let dayStart = calendar.date(byAdding: .day, value: offset, to: start) ?? start
             let tasks = tasksOn(dayStart)
@@ -339,9 +216,6 @@ enum ReminderSegmentLogic {
             groups.append(.daySection(id: id, date: dayStart, title: title, tasks: tasks, isInHorizon: true))
         }
 
-        // ──────────────────────────────
-        // Section 2: Next 12 Months (from day 8 onwards)
-        // ──────────────────────────────
         let nextYearTasks = allUpcoming.filter { task in
             guard let due = task.dueDate else { return false }
             let dayStart = calendar.startOfDay(for: due)
@@ -388,9 +262,6 @@ enum ReminderSegmentLogic {
             monthStart = nextMonth
         }
 
-        // ──────────────────────────────
-        // Section 4: Beyond 12 Months
-        // ──────────────────────────────
         let beyondTasks = allUpcoming.filter { task in
             guard let due = task.dueDate else { return false }
             return calendar.startOfDay(for: due) >= windowEnd

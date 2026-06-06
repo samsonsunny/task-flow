@@ -3,9 +3,10 @@ import SwiftData
 
 struct SidebarView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppState.self) private var appState
     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+
+    let onSelect: (ReminderList.ID) -> Void
 
     private var sortedLists: [ReminderList] {
         let defaultName = ReminderDefaults.defaultListName
@@ -30,28 +31,7 @@ struct SidebarView: View {
                     }
 
                     if isCreatingList {
-                        HStack(spacing: 12) {
-                            Image(systemName: "list.bullet")
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppTheme.colors.textSecondary)
-                                .frame(width: 24)
-
-                            TextField("List Name", text: $newListName)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppTheme.colors.textPrimary)
-                                .onSubmit(commitNewList)
-
-                            Button {
-                                commitNewList()
-                            } label: {
-                                Text("Done")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(AppTheme.colors.primaryAction)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        newListRow
                     }
 
                     Button {
@@ -94,10 +74,9 @@ struct SidebarView: View {
 
     private func listRow(list: ReminderList) -> some View {
         let count = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID && $0.isCompleted != true }.count
-        let isSelected = appState.selectedListId == list.persistentModelID
 
         return Button {
-            navigateToList(listID: list.persistentModelID)
+            onSelect(list.persistentModelID)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "list.bullet")
@@ -123,8 +102,32 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(isSelected ? AppTheme.colors.fillSubtle : Color.clear)
         }
+    }
+
+    private var newListRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "list.bullet")
+                .font(.system(size: 16))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+                .frame(width: 24)
+
+            TextField("List Name", text: $newListName)
+                .textFieldStyle(.plain)
+                .font(.system(size: 16))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+                .onSubmit(commitNewList)
+
+            Button {
+                commitNewList()
+            } label: {
+                Text("Done")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.primaryAction)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     private func commitNewList() {
@@ -137,11 +140,5 @@ struct SidebarView: View {
         modelContext.insert(list)
         isCreatingList = false
         newListName = ""
-    }
-
-    private func navigateToList(listID: ReminderList.ID) {
-        appState.selectedListId = listID
-        appState.pendingNavigation = ReminderRoute.list(id: listID)
-        appState.isSidebarOpen = false
     }
 }

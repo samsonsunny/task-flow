@@ -16,7 +16,6 @@ private struct ScheduleConfig: Identifiable {
 
 struct ReminderSegmentDetailView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppState.self) private var appState
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var tasks: [TaskItem]
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
 
@@ -54,25 +53,13 @@ struct ReminderSegmentDetailView: View {
         ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
     }
 
-    private var laterTasks: [TaskItem] {
-        ReminderSegmentLogic.laterTasks(from: tasks, for: segment, now: now)
-    }
-
     private var sortedFlatTasks: [TaskItem] {
         ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
     }
 
-    private var completedCount: Int {
-        ReminderSegmentLogic.count(for: .completed, tasks: tasks, now: now)
-    }
-
-    private var overdueCount: Int {
-        ReminderSegmentLogic.count(for: .overdue, tasks: tasks, now: now)
-    }
-
     var body: some View {
         List {
-            if segment == .today || segment == .tomorrow || segment == .later {
+            if segment == .today || segment == .tomorrow {
                 if let subtitle = segment.subtitle(now: now), !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
@@ -85,18 +72,12 @@ struct ReminderSegmentDetailView: View {
                 }
             }
 
-            if segment == .today && overdueCount > 0 {
-                overdueSection
-            }
-
             if isQuickCapturing {
                 quickCaptureRow
             }
 
             if segment == .upcoming {
                 upcomingContent
-            } else if segment == .later {
-                inboxContent
             } else if filteredTasks.isEmpty && !segment.usesGroupedSections {
                 emptyState
             } else if segment.usesGroupedSections {
@@ -108,8 +89,6 @@ struct ReminderSegmentDetailView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .navigationTitle(segment.title)
-        .navigationBarTitleDisplayMode(.large)
         .animation(.easeInOut, value: filteredTasks.count)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
@@ -194,35 +173,6 @@ struct ReminderSegmentDetailView: View {
     }
 
     @ViewBuilder
-    private var overdueSection: some View {
-        NavigationLink(value: ReminderRoute.segment(.overdue)) {
-            HStack(spacing: 12) {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.error)
-
-                Text("Overdue")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.colors.textPrimary)
-
-                Spacer()
-
-                Text("\(overdueCount)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(AppTheme.colors.fillSubtle)
-                    .clipShape(Capsule())
-            }
-            .padding(.vertical, 4)
-        }
-        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-    }
-
-    @ViewBuilder
     private var groupedContent: some View {
         ForEach(groupedSections) { section in
             Section {
@@ -235,42 +185,6 @@ struct ReminderSegmentDetailView: View {
                     subtitle: section.subtitle,
                     kind: section.kind
                 )
-            }
-        }
-
-        if segment.includesLaterSection && !laterTasks.isEmpty {
-            Section {
-                ForEach(laterTasks) { task in
-                    taskListRow(task, showsDueDate: false)
-                }
-            } header: {
-                sectionHeader(title: "Later", subtitle: nil, kind: nil)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var inboxContent: some View {
-        if laterTasks.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("No reminders yet")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.colors.textPrimary)
-
-                Text("Create a reminder to start filling your Inbox.")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .accessibilityElement(children: .combine)
-        } else {
-            ForEach(laterTasks) { task in
-                taskListRow(task, showsDueDate: false)
             }
         }
     }
@@ -359,7 +273,7 @@ struct ReminderSegmentDetailView: View {
             .padding(.bottom, 4)
             .contentShape(Rectangle())
             .onTapGesture {
-                newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+                newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
             }
     }
 
@@ -377,7 +291,7 @@ struct ReminderSegmentDetailView: View {
                 .padding(.vertical, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
                 }
         }
     }
@@ -395,7 +309,7 @@ struct ReminderSegmentDetailView: View {
                 .padding(.vertical, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
                 }
         }
     }
@@ -416,7 +330,7 @@ struct ReminderSegmentDetailView: View {
         .padding(.vertical, 9)
         .contentShape(Rectangle())
         .onTapGesture {
-            newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+            newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
@@ -445,7 +359,7 @@ struct ReminderSegmentDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            newReminderConfig = NewReminderConfig(initialDate: dayGroup.date, initialListID: appState.selectedListId, initialTitle: "")
+                            newReminderConfig = NewReminderConfig(initialDate: dayGroup.date, initialListID: nil, initialTitle: "")
                         }
                         .listRowBackground(Color.clear)
                 }
@@ -457,7 +371,7 @@ struct ReminderSegmentDetailView: View {
                 .textCase(nil)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
                 }
         }
     }
@@ -495,7 +409,7 @@ struct ReminderSegmentDetailView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             if let date = date {
-                newReminderConfig = NewReminderConfig(initialDate: date, initialListID: appState.selectedListId, initialTitle: "")
+                newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
             }
         }
     }
@@ -544,7 +458,7 @@ struct ReminderSegmentDetailView: View {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
         newReminderConfig = NewReminderConfig(
             initialDate: contextualDate,
-            initialListID: appState.selectedListId,
+            initialListID: nil,
             initialTitle: text
         )
         quickCaptureText = ""
@@ -552,9 +466,6 @@ struct ReminderSegmentDetailView: View {
     }
 
     private func resolvedQuickCaptureList() -> ReminderList {
-        if let listID = appState.selectedListId, let list = try? modelContext.model(for: listID) as? ReminderList {
-            return list
-        }
         let defaultName = ReminderDefaults.defaultListName
         let descriptor = FetchDescriptor<ReminderList>(
             predicate: #Predicate { $0.name == defaultName }
@@ -603,16 +514,10 @@ struct ReminderSegmentDetailView: View {
         return !Calendar.current.isDateInTomorrow(dueDate)
     }
 
-    private func activeCount(for list: ReminderList) -> Int {
-        tasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID && $0.isCompleted != true }.count
-    }
-
     private func shouldShowDueDate(for segment: ReminderSegment) -> Bool {
         switch segment {
-        case .today, .tomorrow, .allReminders, .later:
-            return false
-        case .upcoming, .scheduled, .completed, .overdue:
-            return true
+        case .today, .tomorrow, .later: return false
+        case .upcoming, .overdue: return true
         }
     }
 }

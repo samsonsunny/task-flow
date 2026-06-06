@@ -1,87 +1,192 @@
-//
-//  ContentView.swift
-//  TaskFlow
-//
-//  Created by sam on 26-10-2025.
-//
-
-// ==========================================
-// MARK: - Content View
-// File: App/ContentView.swift
-// ==========================================
-
 import SwiftUI
 import SwiftData
 
+enum AppNav: Hashable {
+    case overdue
+    case today
+    case tomorrow
+    case upcoming
+    case later
+    case completed
+    case list(ReminderList.ID)
+}
+
 struct ContentView: View {
-    private let launchArguments = ProcessInfo.processInfo.arguments
-    @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
-    @State private var selectedTab = ReminderRootTab.today
-    @State private var todayPath: [ReminderRoute] = []
-    @State private var tomorrowPath: [ReminderRoute] = []
-    @State private var upcomingPath: [ReminderRoute] = []
+    @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
+    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+
+    @State private var selection: AppNav? = .today
+    @State private var isCreatingList = false
+    @State private var newListName = ""
 
     var body: some View {
-        ZStack {
-            TabView(selection: $selectedTab) {
-                reminderTab(for: .today, path: $todayPath)
-                    .tag(ReminderRootTab.today)
-
-                reminderTab(for: .tomorrow, path: $tomorrowPath)
-                    .tag(ReminderRootTab.tomorrow)
-
-                reminderTab(for: .upcoming, path: $upcomingPath)
-                    .tag(ReminderRootTab.upcoming)
-            }
-            .onAppear {
-                if launchArguments.contains("UITEST_OPEN_UPCOMING") {
-                    selectedTab = .upcoming
-                }
-                migrateOrphanedTasks()
-            }
-
-            SidebarContainer()
-        }
-        .onChange(of: appState.pendingNavigation) { _, route in
-            guard let route else { return }
-            switch selectedTab {
-            case .today: todayPath.append(route)
-            case .tomorrow: tomorrowPath.append(route)
-            case .upcoming: upcomingPath.append(route)
-            }
-            appState.pendingNavigation = nil
-        }
-    }
-
-    private func reminderTab(for segment: ReminderSegment, path: Binding<[ReminderRoute]>) -> some View {
-        NavigationStack(path: path) {
-            ReminderSegmentDetailView(segment: segment)
-                .navigationDestination(for: ReminderRoute.self) { destination in
-                    switch destination {
-                    case .segment(let segment):
-                        ReminderSegmentDetailView(segment: segment)
-                    case .list(let id):
-                        ListDetailView(listID: id)
-                    }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                                appState.isSidebarOpen.toggle()
+        NavigationSplitView {
+            List(selection: $selection) {
+                Section {
+                    let overdueCount = ReminderSegmentLogic.count(for: .overdue, tasks: allTasks)
+                    if overdueCount > 0 {
+                        NavigationLink(value: AppNav.overdue) {
+                            HStack {
+                                Label("Overdue", systemImage: "exclamationmark.circle.fill")
+                                    .foregroundStyle(AppTheme.colors.error)
+                                Spacer()
+                                Text("\(overdueCount)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.colors.error)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.colors.error.opacity(0.15))
+                                    .clipShape(Capsule())
                             }
-                        } label: {
-                            Image(systemName: appState.isSidebarOpen ? "xmark" : "sidebar.left")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(AppTheme.colors.textSecondary)
                         }
-                        .accessibilityIdentifier("sidebar-toggle-button")
+                    }
+                    NavigationLink(value: AppNav.today) {
+                        HStack {
+                            Label("Today", systemImage: "calendar.circle.fill")
+                            Spacer()
+                            let count = ReminderSegmentLogic.count(for: .today, tasks: allTasks)
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.colors.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.colors.fillSubtle)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    NavigationLink(value: AppNav.tomorrow) {
+                        HStack {
+                            Label("Tomorrow", systemImage: "sunrise.fill")
+                            Spacer()
+                            let count = ReminderSegmentLogic.count(for: .tomorrow, tasks: allTasks)
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.colors.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.colors.fillSubtle)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    NavigationLink(value: AppNav.upcoming) {
+                        HStack {
+                            Label("Upcoming", systemImage: "calendar.badge.clock")
+                            Spacer()
+                            let count = ReminderSegmentLogic.count(for: .upcoming, tasks: allTasks)
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.colors.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.colors.fillSubtle)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    NavigationLink(value: AppNav.later) {
+                        HStack {
+                            Label("Later", systemImage: "tray")
+                            Spacer()
+                            let count = ReminderSegmentLogic.count(for: .later, tasks: allTasks)
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.colors.textSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.colors.fillSubtle)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                    NavigationLink(value: AppNav.completed) {
+                        Label("Completed", systemImage: "checkmark.circle.fill")
                     }
                 }
+
+                Section("Lists") {
+                    ForEach(allLists) { list in
+                        NavigationLink(value: AppNav.list(list.persistentModelID)) {
+                            HStack {
+                                Label(list.name, systemImage: "list.bullet")
+                                Spacer()
+                                let count = allTasks.filter {
+                                    $0.reminderList?.persistentModelID == list.persistentModelID
+                                    && $0.isCompleted != true
+                                }.count
+                                if count > 0 {
+                                    Text("\(count)")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(AppTheme.colors.textSecondary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(AppTheme.colors.fillSubtle)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.colors.appBackground)
+            .navigationTitle("Reminders")
+            .toolbar {
+                ToolbarItem {
+                    Button {
+                        newListName = ""
+                        isCreatingList = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .alert("New List", isPresented: $isCreatingList) {
+                TextField("List Name", text: $newListName)
+                Button("Cancel", role: .cancel) { }
+                Button("Create") {
+                    let name = newListName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty else { return }
+                    let list = ReminderList(name: name)
+                    modelContext.insert(list)
+                }
+            }
+        } detail: {
+            switch selection {
+            case .overdue:
+                ReminderSegmentDetailView(segment: .overdue)
+                    .navigationTitle("Overdue")
+                    .navigationBarTitleDisplayMode(.large)
+            case .today:
+                FilterDetailView(segment: .today)
+            case .tomorrow:
+                FilterDetailView(segment: .tomorrow)
+            case .upcoming:
+                FilterDetailView(segment: .upcoming)
+            case .later:
+                ReminderSegmentDetailView(segment: .later)
+                    .navigationTitle("Later")
+                    .navigationBarTitleDisplayMode(.large)
+            case .completed:
+                CompletedView()
+                    .navigationTitle("Completed")
+                    .navigationBarTitleDisplayMode(.large)
+            case .list(let id):
+                ListDetailView(listID: id)
+            case nil:
+                Text("Select a list")
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
         }
-        .tabItem {
-            Label(segment.tabTitle, systemImage: segment.iconName)
+        .onAppear {
+            migrateOrphanedTasks()
         }
     }
 
@@ -115,15 +220,42 @@ struct ContentView: View {
     }
 }
 
-private enum ReminderRootTab: Hashable {
-    case today
-    case tomorrow
-    case upcoming
+struct SmartFilterTabbedView: View {
+    let initialSegment: ReminderSegment
+    @Binding var selectedTab: Int
+
+    private let tabSegments: [ReminderSegment] = [.today, .tomorrow, .upcoming]
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            ForEach(Array(tabSegments.enumerated()), id: \.element) { index, segment in
+                ReminderSegmentDetailView(segment: segment)
+                    .tabItem {
+                        Label(segment.tabTitle, systemImage: segment.iconName)
+                    }
+                    .tag(index)
+            }
+        }
+        .onAppear {
+            selectedTab = tabSegments.firstIndex(of: initialSegment) ?? 0
+        }
+    }
 }
 
-enum ReminderRoute: Hashable {
-    case segment(ReminderSegment)
-    case list(id: ReminderList.ID)
+struct FilterDetailView: View {
+    let segment: ReminderSegment
+    @State private var selectedTab: Int
+
+    init(segment: ReminderSegment) {
+        self.segment = segment
+        _selectedTab = State(initialValue: ReminderSegment.allCases.firstIndex(of: segment) ?? 0)
+    }
+
+    var body: some View {
+        SmartFilterTabbedView(initialSegment: segment, selectedTab: $selectedTab)
+            .navigationTitle(ReminderSegment.allCases[selectedTab].title)
+            .navigationBarTitleDisplayMode(.large)
+    }
 }
 
 #Preview("Empty State") {
