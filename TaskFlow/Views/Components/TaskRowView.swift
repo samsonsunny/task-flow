@@ -17,6 +17,7 @@ struct TaskRowView: View {
     var onMoveToTomorrow: (() -> Void)? = nil
     var onMoveToLater: (() -> Void)? = nil
     var onSchedule: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
 
@@ -43,6 +44,14 @@ struct TaskRowView: View {
                 if let schedule = onSchedule {
                     Button("Schedule") {
                         schedule()
+                    }
+                }
+                if let delete = onDelete {
+                    Divider()
+                    Button(role: .destructive) {
+                        delete()
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
                 }
             }

@@ -119,6 +119,7 @@ struct ListDetailView: View {
             onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
             onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
+            onDelete: { modelContext.delete(task) },
             onTap: { editingTask = task }
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))

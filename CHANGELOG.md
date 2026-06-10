@@ -1,14 +1,11 @@
 # Changelog
 
-## 26.6.10
+## 26.6.24 — What's New
 
-- Bump marketing version across all build configurations (Debug, Release, Release-Wednesday)
-- No functional changes from 2.1
-
-## 2.2 (unreleased)
-
-- Move Inbox to sidebar, reduce tab bar to Today/Tomorrow/Upcoming
-- Add contextual quick capture
+- **All-New Sidebar Navigation** — Inbox, Overdue, and Completed tasks are now just a tap away in the sidebar, keeping your tab bar focused on Today, Tomorrow, and Upcoming.
+- **Overdue & Completed Views** — Quickly review tasks past due or browse everything you've accomplished.
+- **Smarter Quick Capture** — New tasks are automatically assigned to the section you're viewing, so you spend less time organizing and more time doing.
+- **Dark Mode Polish** — Fixed date/time row backgrounds for a cleaner, more consistent look in dark mode.
 
 ## 2.1
 
