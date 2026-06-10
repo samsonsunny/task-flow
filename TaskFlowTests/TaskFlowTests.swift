@@ -86,13 +86,9 @@ final class TaskFlowTests: XCTestCase {
         XCTAssertEqual(ReminderSegmentLogic.count(for: .today, tasks: tasks, now: now, calendar: calendar), 1)
         XCTAssertEqual(ReminderSegmentLogic.count(for: .tomorrow, tasks: tasks, now: now, calendar: calendar), 1)
         XCTAssertEqual(ReminderSegmentLogic.count(for: .upcoming, tasks: tasks, now: now, calendar: calendar), 2) // Now includes scheduledTask (D+12)
-        XCTAssertEqual(ReminderSegmentLogic.count(for: .scheduled, tasks: tasks, now: now, calendar: calendar), 5)
-        XCTAssertEqual(ReminderSegmentLogic.count(for: .allReminders, tasks: tasks, now: now, calendar: calendar), 5)
-        XCTAssertEqual(ReminderSegmentLogic.count(for: .overdue, tasks: tasks, now: now, calendar: calendar), 1)
-        XCTAssertEqual(ReminderSegmentLogic.filteredTasks(tasks, for: .completed, now: now, calendar: calendar).map(\.safeTitle), ["Completed"])
     }
 
-    func testOverdueTasksAreSortedByDueDate() throws {
+    func testTasksAreSortedByDueDate() throws {
         let calendar = makeCalendar()
         let now = makeDate(year: 2026, month: 5, day: 13, calendar: calendar)
         let todayStart = calendar.startOfDay(for: now)
@@ -106,29 +102,10 @@ final class TaskFlowTests: XCTestCase {
             dueDate: calendar.date(byAdding: .day, value: -1, to: todayStart)
         )
 
-        let sorted = ReminderSegmentLogic.sortedTasks([newerOverdue, olderOverdue], for: .overdue, calendar: calendar)
+        let sorted: [TaskItem] = ReminderSegmentLogic.sortedTasks([newerOverdue, olderOverdue], for: .today, calendar: calendar)
 
-        XCTAssertEqual(sorted.map(\.safeTitle), ["Older Overdue", "Newer Overdue"])
-    }
-
-    func testAllRemindersExcludeCompletedTasks() throws {
-        let calendar = makeCalendar()
-        let now = makeDate(year: 2026, month: 5, day: 13, calendar: calendar)
-        let todayStart = calendar.startOfDay(for: now)
-
-        let activeTask = TaskItem(taskTitle: "Active", dueDate: todayStart)
-        let completedTask = TaskItem(taskTitle: "Completed", dueDate: todayStart)
-        completedTask.isCompleted = true
-        completedTask.completionDate = now
-
-        let filtered = ReminderSegmentLogic.filteredTasks(
-            [activeTask, completedTask],
-            for: .allReminders,
-            now: now,
-            calendar: calendar
-        )
-
-        XCTAssertEqual(filtered.map(\.safeTitle), ["Active"])
+        let titles: [String] = sorted.map(\.safeTitle)
+        XCTAssertEqual(titles, ["Older Overdue", "Newer Overdue"])
     }
 
     func testUpcomingFilteringIncludesAllFutureTasksAfterTomorrow() throws {

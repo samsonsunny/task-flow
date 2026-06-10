@@ -10,6 +10,7 @@ struct ReminderEditorView: View {
     private let task: TaskItem?
     private let initialDraft: ReminderDraft
     private let initialDate: Date?
+    private let initialListID: ReminderList.ID?
 
     @State private var draft: ReminderDraft
     @State private var isDiscardConfirmationPresented = false
@@ -18,15 +19,17 @@ struct ReminderEditorView: View {
     @FocusState private var isTitleFocused: Bool
 
     @MainActor
-    init(task: TaskItem? = nil, initialDate: Date? = nil) {
+    init(task: TaskItem? = nil, initialDate: Date? = nil, initialListID: ReminderList.ID? = nil, initialTitle: String = "") {
         self.task = task
         self.initialDate = initialDate
+        self.initialListID = initialListID
         let initialDraft: ReminderDraft
         if let task = task {
             initialDraft = ReminderDraft(task: task)
         } else {
             var draft = ReminderDraft.empty
             draft.dueDate = initialDate
+            draft.title = initialTitle
             initialDraft = draft
         }
         self.initialDraft = initialDraft
@@ -41,7 +44,14 @@ struct ReminderEditorView: View {
             }
             .navigationTitle(task == nil ? "New Reminder" : "Edit Reminder")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear { isTitleFocused = true }
+            .onAppear {
+                isTitleFocused = true
+                if let initialListID, draft.listName.isEmpty {
+                    if let list = try? modelContext.model(for: initialListID) as? ReminderList {
+                        draft.listName = list.name
+                    }
+                }
+            }
             .onChange(of: expandedPicker) { _, _ in isTitleFocused = false }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -181,7 +191,7 @@ struct ReminderEditorView: View {
         .listRowBackground(
             pressedRow == .date
                 ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.white
+                : Color(.secondarySystemGroupedBackground)
         )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
@@ -242,7 +252,7 @@ struct ReminderEditorView: View {
         .listRowBackground(
             pressedRow == .time
                 ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color.white
+                : Color(.secondarySystemGroupedBackground)
         )
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)

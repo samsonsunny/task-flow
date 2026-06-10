@@ -15,6 +15,8 @@ import SwiftData
 
 @main
 struct TaskFlowApp: App {
+    @State private var appState = AppState()
+
     var sharedModelContainer: ModelContainer = {
         let arguments = ProcessInfo.processInfo.arguments
 
@@ -49,6 +51,7 @@ struct TaskFlowApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(appState)
         }
         .modelContainer(sharedModelContainer)
         
