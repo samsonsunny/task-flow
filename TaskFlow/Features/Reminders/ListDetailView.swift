@@ -16,9 +16,10 @@ private struct ScheduleConfig: Identifiable {
 
 struct ListDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.editMode) private var editMode
     let listID: ReminderList.ID
 
-    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+    @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
 
     @State private var now = Date()
@@ -45,6 +46,9 @@ struct ListDetailView: View {
             } else {
                 ForEach(tasks) { task in
                     taskListRow(task)
+                }
+                .onMove { fromOffsets, toOffset in
+                    moveTasks(fromOffsets: fromOffsets, toOffset: toOffset)
                 }
             }
         }
@@ -131,6 +135,42 @@ struct ListDetailView: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+        }
+    }
+
+    private func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            var mutableTasks = tasks
+            let sortedFrom = fromOffsets.sorted()
+
+            let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
+            let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
+            let insertAt = min(adjustedTo, mutableTasks.count)
+
+            mutableTasks.insert(contentsOf: moved, at: insertAt)
+
+            var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
+            for i in insertAt..<(insertAt + moved.count) {
+                let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
+
+                if let newOrder = midpoint(between: lower, and: upper) {
+                    mutableTasks[i].sortOrder = newOrder
+                } else {
+                    if let upperStr = upper {
+                        let widened = widen(upperStr)
+                        if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
+                            upperTask.sortOrder = widened
+                        }
+                        mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+                    } else {
+                        mutableTasks[i].sortOrder = ""
+                    }
+                }
+
+                lower = mutableTasks[i].sortOrder
+            }
+
+            try? modelContext.save()
         }
     }
 

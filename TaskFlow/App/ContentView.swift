@@ -187,6 +187,7 @@ struct ContentView: View {
         }
         .onAppear {
             migrateOrphanedTasks()
+            backfillSortOrdersIfNeeded(in: modelContext)
         }
     }
 

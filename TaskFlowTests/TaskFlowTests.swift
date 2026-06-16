@@ -162,6 +162,69 @@ final class TaskFlowTests: XCTestCase {
     }
 
 
+    func testMidpointBothNil() throws {
+        let result = midpoint(between: nil, and: nil)
+        XCTAssertEqual(result, "m")
+    }
+
+    func testMidpointNoLower() throws {
+        let result = midpoint(between: nil, and: "m")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! < "m", "\(result!) should be < m")
+    }
+
+    func testMidpointNoUpper() throws {
+        let result = midpoint(between: "a", and: nil)
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "a", "\(result!) should be > a")
+    }
+
+    func testMidpointAdjacentLetters() throws {
+        let result = midpoint(between: "a", and: "b")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "a" && result! < "b", "\(result!) should be between a and b")
+    }
+
+    func testMidpointWithinWord() throws {
+        let result = midpoint(between: "a", and: "am")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "a" && result! < "am", "\(result!) should be between a and am")
+    }
+
+    func testMidpointLongerStrings() throws {
+        let result = midpoint(between: "an", and: "b")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "an" && result! < "b", "\(result!) should be between an and b")
+    }
+
+    func testMidpointPrefixEdge() throws {
+        let result = midpoint(between: "m", and: "mc")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "m" && result! < "mc", "\(result!) should be between m and mc")
+    }
+
+    func testMidpointChainProducesAscendingOrder() throws {
+        let a = midpoint(between: nil, and: nil)!
+        let b = midpoint(between: a, and: nil)!
+        let c = midpoint(between: b, and: nil)!
+        let d = midpoint(between: c, and: nil)!
+        let sorted = [d, c, b, a].sorted()
+        XCTAssertEqual(sorted, [a, b, c, d])
+    }
+
+    func testMidpointReturnsNilForImpossibleGap() throws {
+        let result = midpoint(between: "f", and: "fa")
+        XCTAssertNil(result, "should return nil when no valid string exists between bounds")
+    }
+
+    func testMidpointAfterWidenWorks() throws {
+        let widened = widen("fa")
+        XCTAssertEqual(widened, "faz")
+        let result = midpoint(between: "f", and: widened)
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! > "f" && result! < widened, "\(result!) should be between f and faz")
+    }
+
     private func makeCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_US_POSIX")
