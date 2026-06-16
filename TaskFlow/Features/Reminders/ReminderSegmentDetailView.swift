@@ -423,6 +423,8 @@ struct ReminderSegmentDetailView: View {
             onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
             onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
+            onMoveToList: { moveTask(task, to: $0) },
+            availableLists: reminderLists,
             onDelete: { modelContext.delete(task) },
             onTap: { editingTask = task },
             showsDueDate: showsDueDate
@@ -437,6 +439,21 @@ struct ReminderSegmentDetailView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+
+    private func moveTask(_ task: TaskItem, to list: ReminderList) {
+        task.reminderList = list
+        assignSortOrder(for: task, in: list)
+        try? modelContext.save()
+    }
+
+    private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
+        let listTasks = tasks.filter {
+            $0.reminderList?.persistentModelID == list.persistentModelID &&
+            $0.persistentModelID != task.persistentModelID
+        }
+        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
+        task.sortOrder = midpoint(between: lastOrder, and: nil)
     }
 
     private func commitQuickCapture() {
