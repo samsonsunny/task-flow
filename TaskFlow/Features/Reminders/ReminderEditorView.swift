@@ -311,9 +311,21 @@ struct ReminderEditorView: View {
                 target.taskId = UUID().uuidString
             }
             modelContext.insert(target)
+            assignInitialSortOrder(target)
         }
 
         dismiss()
+    }
+
+    private func assignInitialSortOrder(_ task: TaskItem) {
+        guard let list = task.reminderList else { return }
+        guard let existing = try? modelContext.fetch(FetchDescriptor<TaskItem>()) else { return }
+        let lastOrder = existing
+            .filter { $0.reminderList?.persistentModelID == list.persistentModelID && $0.persistentModelID != task.persistentModelID }
+            .compactMap { $0.sortOrder }
+            .sorted()
+            .last
+        task.sortOrder = midpoint(between: lastOrder, and: nil)
     }
 
     private var isDirty: Bool {

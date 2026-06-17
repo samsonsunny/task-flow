@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 enum AppNav: Hashable {
     case overdue
@@ -11,10 +12,82 @@ enum AppNav: Hashable {
     case list(ReminderList.ID)
 }
 
+struct CountRow: View {
+    let title: String
+    let systemImage: String
+    let count: Int?
+    let labelColor: Color?
+
+    init(title: String, systemImage: String, count: Int? = nil, labelColor: Color? = nil) {
+        self.title = title
+        self.systemImage = systemImage
+        self.count = count
+        self.labelColor = labelColor
+    }
+
+    var body: some View {
+        HStack {
+            if let labelColor {
+                Label(title, systemImage: systemImage)
+                    .foregroundStyle(labelColor)
+            } else {
+                Label(title, systemImage: systemImage)
+            }
+            Spacer()
+            if let count, count > 0 {
+                Text("\(count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(AppTheme.colors.fillSubtle)
+                    .clipShape(Capsule())
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
+    @Query private var allLists: [ReminderList]
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+
+    private var overdueCount: Int { ReminderSegmentLogic.count(for: .overdue, tasks: allTasks) }
+    private var todayCount: Int { ReminderSegmentLogic.count(for: .today, tasks: allTasks) }
+    private var tomorrowCount: Int { ReminderSegmentLogic.count(for: .tomorrow, tasks: allTasks) }
+    private var upcomingCount: Int { ReminderSegmentLogic.count(for: .upcoming, tasks: allTasks) }
+    private var laterCount: Int { ReminderSegmentLogic.count(for: .later, tasks: allTasks) }
+
+    @ViewBuilder
+    private func SidebarSmartSections() -> some View {
+        Section {
+            if overdueCount > 0 {
+                NavigationLink(value: AppNav.overdue) {
+                    CountRow(title: "Overdue", systemImage: "exclamationmark.circle.fill", count: overdueCount, labelColor: AppTheme.colors.error)
+                }
+            }
+
+            NavigationLink(value: AppNav.today) {
+                CountRow(title: "Today", systemImage: "calendar.circle.fill", count: todayCount)
+            }
+
+            NavigationLink(value: AppNav.tomorrow) {
+                CountRow(title: "Tomorrow", systemImage: "sunrise.fill", count: tomorrowCount)
+            }
+
+            NavigationLink(value: AppNav.upcoming) {
+                CountRow(title: "Upcoming", systemImage: "calendar.badge.clock", count: upcomingCount)
+            }
+
+            NavigationLink(value: AppNav.later) {
+                CountRow(title: "Later", systemImage: "tray", count: laterCount)
+            }
+
+            NavigationLink(value: AppNav.completed) {
+                Label("Completed", systemImage: "checkmark.circle.fill")
+            }
+        }
+    }
 
     @State private var selection: AppNav? = .today
     @State private var isCreatingList = false
@@ -23,116 +96,9 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                Section {
-                    let overdueCount = ReminderSegmentLogic.count(for: .overdue, tasks: allTasks)
-                    if overdueCount > 0 {
-                        NavigationLink(value: AppNav.overdue) {
-                            HStack {
-                                Label("Overdue", systemImage: "exclamationmark.circle.fill")
-                                    .foregroundStyle(AppTheme.colors.error)
-                                Spacer()
-                                Text("\(overdueCount)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.error)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(AppTheme.colors.error.opacity(0.15))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    NavigationLink(value: AppNav.today) {
-                        HStack {
-                            Label("Today", systemImage: "calendar.circle.fill")
-                            Spacer()
-                            let count = ReminderSegmentLogic.count(for: .today, tasks: allTasks)
-                            if count > 0 {
-                                Text("\(count)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.textSecondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(AppTheme.colors.fillSubtle)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    NavigationLink(value: AppNav.tomorrow) {
-                        HStack {
-                            Label("Tomorrow", systemImage: "sunrise.fill")
-                            Spacer()
-                            let count = ReminderSegmentLogic.count(for: .tomorrow, tasks: allTasks)
-                            if count > 0 {
-                                Text("\(count)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.textSecondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(AppTheme.colors.fillSubtle)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    NavigationLink(value: AppNav.upcoming) {
-                        HStack {
-                            Label("Upcoming", systemImage: "calendar.badge.clock")
-                            Spacer()
-                            let count = ReminderSegmentLogic.count(for: .upcoming, tasks: allTasks)
-                            if count > 0 {
-                                Text("\(count)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.textSecondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(AppTheme.colors.fillSubtle)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    NavigationLink(value: AppNav.later) {
-                        HStack {
-                            Label("Later", systemImage: "tray")
-                            Spacer()
-                            let count = ReminderSegmentLogic.count(for: .later, tasks: allTasks)
-                            if count > 0 {
-                                Text("\(count)")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.colors.textSecondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(AppTheme.colors.fillSubtle)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    NavigationLink(value: AppNav.completed) {
-                        Label("Completed", systemImage: "checkmark.circle.fill")
-                    }
-                }
+                SidebarSmartSections()
 
-                Section("Lists") {
-                    ForEach(allLists) { list in
-                        NavigationLink(value: AppNav.list(list.persistentModelID)) {
-                            HStack {
-                                Label(list.name, systemImage: "list.bullet")
-                                Spacer()
-                                let count = allTasks.filter {
-                                    $0.reminderList?.persistentModelID == list.persistentModelID
-                                    && $0.isCompleted != true
-                                }.count
-                                if count > 0 {
-                                    Text("\(count)")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(AppTheme.colors.textSecondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 2)
-                                        .background(AppTheme.colors.fillSubtle)
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-                    }
-                }
+                SidebarListsView(lists: allLists, tasks: allTasks)
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -187,6 +153,7 @@ struct ContentView: View {
         }
         .onAppear {
             migrateOrphanedTasks()
+            backfillSortOrdersIfNeeded(in: modelContext)
         }
     }
 
@@ -238,6 +205,53 @@ struct SmartFilterTabbedView: View {
         }
         .onAppear {
             selectedTab = tabSegments.firstIndex(of: initialSegment) ?? 0
+        }
+    }
+}
+
+struct SidebarListsView: View {
+    @Environment(\.modelContext) private var modelContext
+    let lists: [ReminderList]
+    let tasks: [TaskItem]
+    @State private var dropTargetList: ReminderList?
+
+    var body: some View {
+        Section("Lists") {
+            ForEach(lists, id: \.name) { list in
+                let count = tasks.filter {
+                    $0.reminderList?.persistentModelID == list.persistentModelID && $0.isCompleted != true
+                }.count
+                NavigationLink(value: AppNav.list(list.persistentModelID)) {
+                    CountRow(title: list.name, systemImage: "list.bullet", count: count)
+                }
+                .onDrop(of: [.text], isTargeted: nil) { providers, _ in
+                    handleDrop(providers: providers, to: list)
+                    return true
+                }
+            }
+        }
+    }
+
+    private func handleDrop(providers: [NSItemProvider], to list: ReminderList) {
+        guard let provider = providers.first else { return }
+        provider.loadObject(ofClass: NSString.self) { [modelContext, list] string, error in
+            guard let idString = string as? String else { return }
+            DispatchQueue.main.async {
+                let descriptor = FetchDescriptor<TaskItem>(
+                    predicate: #Predicate { $0.taskId == idString }
+                )
+                guard let task = try? modelContext.fetch(descriptor).first else { return }
+                guard task.reminderList?.persistentModelID != list.persistentModelID else { return }
+                task.reminderList = list
+                let all = try? modelContext.fetch(FetchDescriptor<TaskItem>())
+                let listTasks = (all ?? []).filter {
+                    $0.reminderList?.persistentModelID == list.persistentModelID &&
+                    $0.persistentModelID != task.persistentModelID
+                }
+                let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
+                task.sortOrder = midpoint(between: lastOrder, and: nil)
+                try? modelContext.save()
+            }
         }
     }
 }
