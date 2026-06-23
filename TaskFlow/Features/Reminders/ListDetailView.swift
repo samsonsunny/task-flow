@@ -29,6 +29,7 @@ struct ListDetailView: View {
     @State private var justCompleted: Set<String> = []
     @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
+    @State private var skipNextDismiss = false
     @FocusState private var isQuickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -117,9 +118,15 @@ struct ListDetailView: View {
         }
         .onChange(of: isQuickCaptureFocused) { _, focused in
             if !focused {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isQuickCapturing = false
-                    quickCaptureText = ""
+                DispatchQueue.main.async {
+                    guard !skipNextDismiss else {
+                        skipNextDismiss = false
+                        return
+                    }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isQuickCapturing = false
+                        quickCaptureText = ""
+                    }
                 }
             }
         }
@@ -350,6 +357,8 @@ struct ListDetailView: View {
     private func commitQuickCapture() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+
+        skipNextDismiss = true
 
         guard let currentList = list else { return }
 

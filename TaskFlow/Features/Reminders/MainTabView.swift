@@ -2,37 +2,35 @@ import SwiftUI
 import SwiftData
 
 struct MainTabView: View {
-    @State private var selectedTab: ReminderSegment
-
-    init(initialTab: ReminderSegment) {
-        _selectedTab = State(initialValue: initialTab)
-    }
-
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
-                ReminderSegmentDetailView(segment: .today)
-            }
-            .tabItem {
-                Label(ReminderSegment.today.tabTitle, systemImage: ReminderSegment.today.iconName)
-            }
-            .tag(ReminderSegment.today)
+        TabView {
+            TodayTabView()
+                .tabItem {
+                    Label("Today", systemImage: "calendar.circle.fill")
+                }
 
             NavigationStack {
                 ReminderSegmentDetailView(segment: .tomorrow)
+                    .navigationTitle(ReminderSegment.tomorrow.title)
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Label(ReminderSegment.tomorrow.tabTitle, systemImage: ReminderSegment.tomorrow.iconName)
+                Label("Tomorrow", systemImage: "sunrise.fill")
             }
-            .tag(ReminderSegment.tomorrow)
 
             NavigationStack {
                 ReminderSegmentDetailView(segment: .upcoming)
+                    .navigationTitle(ReminderSegment.upcoming.title)
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Label(ReminderSegment.upcoming.tabTitle, systemImage: ReminderSegment.upcoming.iconName)
+                Label("Upcoming", systemImage: "calendar.badge.clock")
             }
-            .tag(ReminderSegment.upcoming)
+
+            ListsTabView()
+                .tabItem {
+                    Label("Lists", systemImage: "list.bullet")
+                }
         }
     }
 }
@@ -40,19 +38,15 @@ struct MainTabView: View {
 #Preview("Empty State") {
     let container = TaskPreviewData.container()
     TaskPreviewData.ensureDefaultListExists(in: container.mainContext)
-    return NavigationStack {
-        MainTabView(initialTab: .today)
-    }
-    .modelContainer(container)
-    .environment(AppState())
+    return MainTabView()
+        .modelContainer(container)
+        .environment(AppState())
 }
 
 #Preview("With Tasks") {
     let container = TaskPreviewData.container()
     TaskPreviewData.seedReminderHomeFixture(into: container)
-    return NavigationStack {
-        MainTabView(initialTab: .today)
-    }
-    .modelContainer(container)
-    .environment(AppState())
+    return MainTabView()
+        .modelContainer(container)
+        .environment(AppState())
 }
