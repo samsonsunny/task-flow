@@ -22,6 +22,7 @@ struct TaskRowView: View {
     var onDelete: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
+    var showsListName: Bool = true
 
     @State private var chipScale: CGFloat = 1
     
@@ -90,24 +91,26 @@ struct TaskRowView: View {
                     .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
                     .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
                     .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                    .lineLimit(2)
                     .lineSpacing(2)
                     .multilineTextAlignment(.leading)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
             }
 
-            if hasTime, let timeText = timeText {
-                Text(timeText)
+            if !task.safeDescription.isEmpty {
+                Text(task.safeDescription)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
+                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                    .lineSpacing(2)
+                    .multilineTextAlignment(.leading)
+            }
+
+            if let metadataText {
+                Text(metadataText)
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
+                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
                     .lineLimit(1)
-                    .accessibilityLabel("Due \(timeText)")
-            } else if let dateText, showsDueDate {
-                Text(dateText)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                    .lineLimit(1)
-                    .accessibilityLabel("Due \(dateText)")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -152,6 +155,24 @@ struct TaskRowView: View {
     private var dateText: String? {
         guard let dueDate = task.dueDate else { return nil }
         return Self.dueDateFormatter.string(from: dueDate)
+    }
+
+    private var metadataText: String? {
+        var components: [String] = []
+
+        if hasTime, let timeText {
+            components.append(timeText)
+        }
+
+        if showsDueDate, let dateText {
+            components.append(dateText)
+        }
+
+        if showsListName {
+            components.append(task.listName)
+        }
+
+        return components.isEmpty ? nil : components.joined(separator: "  ·  ")
     }
 
     private var completionButton: some View {

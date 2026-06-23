@@ -27,6 +27,9 @@ struct ListDetailView: View {
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
     @State private var justCompleted: Set<String> = []
+    @State private var isQuickCapturing = false
+    @State private var quickCaptureText = ""
+    @FocusState private var isQuickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -46,6 +49,10 @@ struct ListDetailView: View {
 
     var body: some View {
         List {
+            if isQuickCapturing {
+                quickCaptureRow
+            }
+
             if tasks.isEmpty {
                 emptyState
             } else {
@@ -63,9 +70,13 @@ struct ListDetailView: View {
         .background(AppTheme.colors.appBackground)
         .navigationTitle(list?.name ?? "")
         .navigationBarTitleDisplayMode(.large)
+        .animation(.easeInOut, value: tasks.count)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
-                newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: listID, initialTitle: "")
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isQuickCapturing = true
+                }
+                isQuickCaptureFocused = true
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
@@ -103,6 +114,14 @@ struct ListDetailView: View {
         }
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
+        }
+        .onChange(of: isQuickCaptureFocused) { _, focused in
+            if !focused {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isQuickCapturing = false
+                    quickCaptureText = ""
+                }
+            }
         }
     }
 
@@ -146,7 +165,9 @@ struct ListDetailView: View {
                 }
                 modelContext.delete(task)
             },
-            onTap: { editingTask = task }
+            onTap: { editingTask = task },
+            showsDueDate: true,
+            showsListName: false
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
@@ -283,5 +304,68 @@ struct ListDetailView: View {
     private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
         guard let dueDate = task.dueDate else { return true }
         return !Calendar.current.isDateInTomorrow(dueDate)
+    }
+
+    private var quickCaptureRow: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(AppTheme.colors.primaryAction)
+                .frame(width: 20, height: 20)
+
+            TextField("New Reminder", text: $quickCaptureText)
+                .font(.system(size: 17))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+                .focused($isQuickCaptureFocused)
+                .onSubmit(commitQuickCapture)
+                .submitLabel(.done)
+                .accessibilityIdentifier("quick-capture-field")
+
+            Button {
+                openQuickCaptureEditor()
+            } label: {
+                Image(systemName: "chevron.right.circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
+            .accessibilityIdentifier("quick-capture-detail")
+        }
+        .padding(.vertical, 9)
+        .padding(.horizontal, 16)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isQuickCapturing = false
+                    quickCaptureText = ""
+                }
+            } label: {
+                Label("Cancel", systemImage: "xmark")
+            }
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private func commitQuickCapture() {
+        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+
+        guard let currentList = list else { return }
+
+        let task = TaskItem(taskTitle: text, dueDate: nil)
+        task.createdAt = Date()
+        task.reminderList = currentList
+        modelContext.insert(task)
+
+        quickCaptureText = ""
+        isQuickCaptureFocused = true
+    }
+
+    private func openQuickCaptureEditor() {
+        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: listID, initialTitle: text)
+        quickCaptureText = ""
+        isQuickCapturing = false
     }
 }
