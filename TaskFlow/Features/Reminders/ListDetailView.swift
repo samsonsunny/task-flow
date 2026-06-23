@@ -224,8 +224,11 @@ struct ListDetailView: View {
     }
 
     private func toggleCompletion(for task: TaskItem) {
+        let next = !(task.isCompleted ?? false)
+        if next {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
         withAnimation(.easeInOut(duration: 0.18)) {
-            let next = !(task.isCompleted ?? false)
             task.isCompleted = next
             task.completionDate = next ? Date() : nil
             if next, let taskId = task.taskId {
