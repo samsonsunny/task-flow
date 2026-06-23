@@ -27,6 +27,7 @@ struct ReminderSegmentDetailView: View {
     @State private var editingTask: TaskItem?
     @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
+    @State private var justCompleted: Set<String> = []
     @FocusState private var isQuickCaptureFocused: Bool
 
     private var contextualDate: Date? {
@@ -54,7 +55,9 @@ struct ReminderSegmentDetailView: View {
     }
 
     private var sortedFlatTasks: [TaskItem] {
-        ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
+        let filtered = ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
+        let recent = tasks.filter { justCompleted.contains($0.taskId ?? "") }
+        return filtered + recent
     }
 
     var body: some View {
@@ -198,6 +201,7 @@ struct ReminderSegmentDetailView: View {
     private var flatContent: some View {
         ForEach(sortedFlatTasks) { task in
             taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+                .transition(.scale.combined(with: .opacity))
         }
     }
 
@@ -517,6 +521,15 @@ struct ReminderSegmentDetailView: View {
         let next = !(task.isCompleted ?? false)
         if next {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            if let id = task.taskId {
+                justCompleted.insert(id)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
+                    guard let task, task.isCompleted == true else { return }
+                    withAnimation {
+                        justCompleted.remove(id)
+                    }
+                }
+            }
         }
         withAnimation(.easeInOut(duration: 0.18)) {
             task.isCompleted = next

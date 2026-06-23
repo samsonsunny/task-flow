@@ -26,6 +26,7 @@ struct ListDetailView: View {
     @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
+    @State private var justCompleted: Set<String> = []
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -35,7 +36,11 @@ struct ListDetailView: View {
 
     private var tasks: [TaskItem] {
         allTasks.filter {
-            $0.reminderList?.persistentModelID == listID && $0.isCompleted != true
+            guard $0.reminderList?.persistentModelID == listID else { return false }
+            if $0.isCompleted == true {
+                return justCompleted.contains($0.taskId ?? "")
+            }
+            return true
         }
     }
 
@@ -46,6 +51,7 @@ struct ListDetailView: View {
             } else {
                 ForEach(tasks) { task in
                     taskListRow(task)
+                        .transition(.scale.combined(with: .opacity))
                 }
                 .onMove { fromOffsets, toOffset in
                     moveTasks(fromOffsets: fromOffsets, toOffset: toOffset)
@@ -227,6 +233,15 @@ struct ListDetailView: View {
         let next = !(task.isCompleted ?? false)
         if next {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            if let id = task.taskId {
+                justCompleted.insert(id)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
+                    guard let task, task.isCompleted == true else { return }
+                    withAnimation {
+                        justCompleted.remove(id)
+                    }
+                }
+            }
         }
         withAnimation(.easeInOut(duration: 0.18)) {
             task.isCompleted = next
