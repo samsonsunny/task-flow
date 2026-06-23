@@ -314,6 +314,18 @@ struct ReminderEditorView: View {
             assignInitialSortOrder(target)
         }
 
+        let notif = NotificationService.shared
+        if draft.hasTime {
+            Task {
+                guard await notif.requestAuthorizationIfNeeded() else { return }
+                notif.schedule(for: target)
+            }
+        } else {
+            if let taskId = target.taskId {
+                notif.cancel(taskId: taskId)
+            }
+        }
+
         dismiss()
     }
 

@@ -52,6 +52,10 @@ struct TaskFlowApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .onAppear {
+                    let context = ModelContext(sharedModelContainer)
+                    NotificationService.shared.reschedulePendingOnLaunch(modelContext: context)
+                }
         }
         .modelContainer(sharedModelContainer)
         

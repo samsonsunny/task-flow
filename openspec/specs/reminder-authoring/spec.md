@@ -12,7 +12,7 @@ The system SHALL provide reminder create and edit flows that support title, note
 - **THEN** the authoring surface shows the reminder's persisted values for every supported field
 
 ### Requirement: Reminder save state reflects meaningful user content
-The system SHALL disable save when every authoring and scheduling field is empty, and SHALL enable save as soon as the reminder contains user-entered or user-selected content.
+The system SHALL disable save when every authoring and scheduling field is empty, and SHALL enable save as soon as the reminder contains user-entered or user-selected content. When saving a task with a time set, the system SHALL schedule a local notification as a side effect.
 
 #### Scenario: Empty reminder cannot be saved
 - **WHEN** the user opens a new reminder and leaves all fields empty
@@ -25,6 +25,10 @@ The system SHALL disable save when every authoring and scheduling field is empty
 #### Scenario: Clearing all content disables save again
 - **WHEN** the user removes all previously entered reminder content
 - **THEN** the save action returns to the disabled state
+
+#### Scenario: Save with time set schedules notification
+- **WHEN** the user saves a reminder with a time set and the `dueDate` is in the future
+- **THEN** the system saves the reminder AND schedules a local notification for the `dueDate`
 
 ### Requirement: Reminder close and discard behavior protects unsaved changes
 The system SHALL close immediately when the authoring flow contains no content, and SHALL require discard confirmation before closing when unsaved content exists.

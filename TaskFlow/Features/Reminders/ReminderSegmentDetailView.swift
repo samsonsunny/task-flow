@@ -111,9 +111,14 @@ struct ReminderSegmentDetailView: View {
                 ),
                 initialDueDate: config.task.dueDate,
                 onCommit: { dueDate, hasTime in
+                    let notif = NotificationService.shared
+                    if let taskId = config.task.taskId {
+                        notif.cancel(taskId: taskId)
+                    }
                     if let date = dueDate {
                         if hasTime {
                             config.task.dueDate = date
+                            notif.schedule(for: config.task)
                         } else {
                             config.task.dueDate = Calendar.current.startOfDay(for: date)
                         }
@@ -425,7 +430,12 @@ struct ReminderSegmentDetailView: View {
             onSchedule: { presentScheduleSheet(for: task) },
             onMoveToList: { moveTask(task, to: $0) },
             availableLists: reminderLists,
-            onDelete: { modelContext.delete(task) },
+            onDelete: {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
+                modelContext.delete(task)
+            },
             onTap: { editingTask = task },
             showsDueDate: showsDueDate
         )
@@ -434,6 +444,9 @@ struct ReminderSegmentDetailView: View {
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
                 modelContext.delete(task)
             } label: {
                 Label("Delete", systemImage: "trash")
@@ -505,20 +518,32 @@ struct ReminderSegmentDetailView: View {
             let next = !(task.isCompleted ?? false)
             task.isCompleted = next
             task.completionDate = next ? Date() : nil
+            if next, let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
         }
     }
 
     private func rescheduleTaskToToday(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         task.dueDate = Calendar.current.startOfDay(for: now)
     }
 
     private func rescheduleTaskToTomorrow(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
     }
 
     private func rescheduleTaskToLater(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         task.dueDate = nil
     }
 
