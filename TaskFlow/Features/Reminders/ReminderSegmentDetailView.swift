@@ -63,7 +63,7 @@ struct ReminderSegmentDetailView: View {
                 if let subtitle = segment.subtitle(now: now), !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                .foregroundStyle(AppTheme.colors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 4)
                         .listRowSeparator(.hidden)
@@ -205,11 +205,11 @@ struct ReminderSegmentDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(segment.emptyTitle)
                 .font(.headline)
-                .foregroundStyle(AppTheme.colors.textPrimary)
+                .foregroundStyle(AppTheme.colors.textSecondary)
 
             Text(segment.emptyMessage)
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
+                .font(.caption)
+                .foregroundStyle(AppTheme.colors.textTertiary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -359,7 +359,7 @@ struct ReminderSegmentDetailView: View {
                 } header: {
                     Text(dayGroup.title)
                         .font(.subheadline)
-                        .foregroundStyle(AppTheme.colors.textPrimary)
+                .foregroundStyle(AppTheme.colors.textSecondary)
                         .textCase(nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
