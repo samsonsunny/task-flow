@@ -61,13 +61,7 @@ struct ReminderDraft: Equatable {
         self.assignedContactName = task.assignedContactName ?? ""
         self.imageAttachmentReference = task.imageAttachmentReference ?? ""
         self.dueDate = task.dueDate
-        if let date = task.dueDate {
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.hour, .minute], from: date)
-            self.hasTime = (components.hour != 0 || components.minute != 0)
-        } else {
-            self.hasTime = false
-        }
+        self.hasTime = task.safeHasTime
     }
 
     var hasMeaningfulContent: Bool {
@@ -130,6 +124,7 @@ enum ReminderDraftMapper {
         task.priority = draft.priority
         task.assignedContactName = draft.normalizedContactName.nilIfBlank
         task.imageAttachmentReference = draft.normalizedImageReference.nilIfBlank
+        task.hasTime = draft.hasTime
         if draft.hasTime, let date = draft.dueDate {
             task.dueDate = date
         } else {

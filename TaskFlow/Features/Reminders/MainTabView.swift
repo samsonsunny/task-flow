@@ -2,9 +2,11 @@ import SwiftUI
 import SwiftData
 
 struct MainTabView: View {
+    @State private var showSettings = false
+
     var body: some View {
         TabView {
-            TodayTabView()
+            TodayTabView(onSettings: { showSettings = true })
                 .tabItem {
                     Label("Today", systemImage: "calendar.circle.fill")
                 }
@@ -13,6 +15,9 @@ struct MainTabView: View {
                 ReminderSegmentDetailView(segment: .tomorrow)
                     .navigationTitle(ReminderSegment.tomorrow.title)
                     .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        settingsToolbarItem
+                    }
             }
             .tabItem {
                 Label("Tomorrow", systemImage: "sunrise.fill")
@@ -22,15 +27,31 @@ struct MainTabView: View {
                 ReminderSegmentDetailView(segment: .upcoming)
                     .navigationTitle(ReminderSegment.upcoming.title)
                     .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        settingsToolbarItem
+                    }
             }
             .tabItem {
                 Label("Upcoming", systemImage: "calendar.badge.clock")
             }
 
-            ListsTabView()
+            ListsTabView(onSettings: { showSettings = true })
                 .tabItem {
                     Label("Lists", systemImage: "list.bullet")
                 }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+    }
+
+    private var settingsToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
         }
     }
 }

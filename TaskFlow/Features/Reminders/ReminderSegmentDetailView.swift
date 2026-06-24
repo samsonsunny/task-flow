@@ -162,9 +162,11 @@ struct ReminderSegmentDetailView: View {
                     if let date = dueDate {
                         if hasTime {
                             config.task.dueDate = date
+                            config.task.hasTime = true
                             notif.schedule(for: config.task)
                         } else {
                             config.task.dueDate = Calendar.current.startOfDay(for: date)
+                            config.task.hasTime = false
                         }
                     } else {
                         config.task.dueDate = nil
@@ -556,6 +558,7 @@ struct ReminderSegmentDetailView: View {
                     NotificationService.shared.cancel(taskId: taskId)
                 }
                 modelContext.delete(task)
+                try? modelContext.save()
             },
             onTap: { editingTask = task },
             showsDueDate: showsDueDate
@@ -569,6 +572,7 @@ struct ReminderSegmentDetailView: View {
                     NotificationService.shared.cancel(taskId: taskId)
                 }
                 modelContext.delete(task)
+                try? modelContext.save()
             } label: {
                 Label("Delete", systemImage: "trash")
             }

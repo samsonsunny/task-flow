@@ -2,11 +2,18 @@ import UserNotifications
 import SwiftData
 import Foundation
 
+enum DailyReminderKeys {
+    static let enabled = "dailyReminderEnabled"
+    static let hour = "dailyReminderHour"
+    static let minute = "dailyReminderMinute"
+}
+
 @MainActor
 final class NotificationService {
     static let shared = NotificationService()
 
     private let center = UNUserNotificationCenter.current()
+    private let defaults = UserDefaults.standard
 
     private init() {}
 
@@ -36,7 +43,8 @@ final class NotificationService {
             let dueDate = task.dueDate,
             dueDate > Date(),
             let title = task.taskTitle,
-            !title.isEmpty
+            !title.isEmpty,
+            task.safeHasTime
         else { return }
 
         // Cancel existing notification for this task first
@@ -62,18 +70,49 @@ final class NotificationService {
 
     func cancel(taskId: String) {
         center.removePendingNotificationRequests(withIdentifiers: [taskId])
+        center.removeDeliveredNotifications(withIdentifiers: [taskId])
+    }
+
+    private let dailyReminderId = "daily-morning-reminder"
+
+    func scheduleDailyReminder(hour: Int, minute: Int) {
+        var components = DateComponents()
+        components.hour = hour
+        components.minute = minute
+
+        let content = UNMutableNotificationContent()
+        content.title = "☀️ Good morning — your day is waiting"
+        content.sound = .default
+
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: components,
+            repeats: true
+        )
+
+        let request = UNNotificationRequest(
+            identifier: dailyReminderId,
+            content: content,
+            trigger: trigger
+        )
+
+        center.add(request)
+    }
+
+    func cancelDailyReminder() {
+        center.removePendingNotificationRequests(withIdentifiers: [dailyReminderId])
+        center.removeDeliveredNotifications(withIdentifiers: [dailyReminderId])
     }
 
     func reschedulePendingOnLaunch(modelContext: ModelContext) {
         let descriptor = FetchDescriptor<TaskItem>(
-            predicate: #Predicate { $0.dueDate != nil }
+            predicate: #Predicate { $0.dueDate != nil && $0.isCompleted != true }
         )
 
         guard let allTasks = try? modelContext.fetch(descriptor) else { return }
         let now = Date()
         let futureTasks = allTasks.filter { task in
             guard let dueDate = task.dueDate else { return false }
-            return dueDate > now
+            return dueDate > now && task.safeHasTime
         }
 
         Task {
@@ -83,6 +122,13 @@ final class NotificationService {
             for task in futureTasks {
                 guard let taskId = task.taskId, !pendingIds.contains(taskId) else { continue }
                 schedule(for: task)
+            }
+
+            if defaults.bool(forKey: DailyReminderKeys.enabled) {
+                guard !pendingIds.contains(dailyReminderId) else { return }
+                let hour = defaults.integer(forKey: DailyReminderKeys.hour)
+                let minute = defaults.integer(forKey: DailyReminderKeys.minute)
+                scheduleDailyReminder(hour: hour, minute: minute)
             }
         }
     }

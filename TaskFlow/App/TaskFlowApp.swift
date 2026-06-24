@@ -40,7 +40,7 @@ struct TaskFlowApp: App {
 
         do {
             return try ModelContainer(
-                for: Schema(versionedSchema: TaskFlowSchemaV3.self),
+                for: Schema(versionedSchema: TaskFlowSchemaV8.self),
                 migrationPlan: TaskFlowMigrationPlan.self
             )
         } catch {

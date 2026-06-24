@@ -12,7 +12,7 @@ enum TaskPreviewData {
     static func container() -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         return try! ModelContainer(
-            for: Schema(versionedSchema: TaskFlowSchemaV2.self),
+            for: Schema(versionedSchema: TaskFlowSchemaV8.self),
             migrationPlan: TaskFlowMigrationPlan.self,
             configurations: config
         )

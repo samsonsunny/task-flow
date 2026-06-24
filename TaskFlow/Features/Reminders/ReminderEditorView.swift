@@ -16,6 +16,8 @@ struct ReminderEditorView: View {
     @State private var isDiscardConfirmationPresented = false
     @State private var expandedPicker: ExpandedPicker?
     @State private var pressedRow: ExpandedPicker?
+    @State private var newSubtaskTitle = ""
+    @State private var editingSubtask: TaskItem?
     @FocusState private var isTitleFocused: Bool
 
     @MainActor
@@ -41,6 +43,9 @@ struct ReminderEditorView: View {
             Form {
                 contentSection
                 scheduleSection
+                if let parent = task {
+                    subtaskSection(for: parent)
+                }
             }
             .navigationTitle(task == nil ? "New Reminder" : "Edit Reminder")
             .navigationBarTitleDisplayMode(.inline)
@@ -70,6 +75,9 @@ struct ReminderEditorView: View {
                     .disabled(draft.normalizedTitle.isEmpty)
                     .accessibilityIdentifier("reminder-editor-save")
                 }
+            }
+            .sheet(item: $editingSubtask) { subtask in
+                ReminderEditorView(task: subtask)
             }
             .alert("Discard Changes?", isPresented: $isDiscardConfirmationPresented) {
                 Button("Keep Editing", role: .cancel) {}
@@ -338,6 +346,68 @@ struct ReminderEditorView: View {
             .sorted()
             .last
         task.sortOrder = midpoint(between: lastOrder, and: nil)
+    }
+
+    @ViewBuilder
+    private func subtaskSection(for parent: TaskItem) -> some View {
+        Section("Subtasks") {
+            ForEach(parent.subtasks) { subtask in
+                TaskRowView(
+                    task: subtask,
+                    isCompletedVisualState: subtask.isCompleted == true,
+                    onToggleCompletion: { toggleSubtaskCompletion(subtask) },
+                    onTap: { editingSubtask = subtask },
+                    showsDueDate: false,
+                    showsListName: false
+                )
+            }
+            .onDelete { indexSet in
+                for index in indexSet {
+                    let subtask = parent.subtasks[index]
+                    modelContext.delete(subtask)
+                }
+            }
+
+            HStack {
+                TextField("Add Subtask", text: $newSubtaskTitle)
+                    .onSubmit {
+                        addSubtask(to: parent)
+                    }
+                Button {
+                    addSubtask(to: parent)
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(AppTheme.colors.primaryAction)
+                }
+            }
+        }
+    }
+
+    private func addSubtask(to parent: TaskItem) {
+        let text = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let subtask = TaskItem(
+            taskTitle: text,
+            dueDate: nil
+        )
+        subtask.createdAt = Date()
+        subtask.reminderList = parent.reminderList
+        subtask.parentTask = parent
+        let subbies = parent.subtasks.filter { $0.persistentModelID != subtask.persistentModelID }
+            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        let lastOrder = subbies.last?.sortOrder
+        subtask.sortOrder = midpoint(between: lastOrder, and: nil)
+        modelContext.insert(subtask)
+        newSubtaskTitle = ""
+    }
+
+    private func toggleSubtaskCompletion(_ subtask: TaskItem) {
+        let next = !(subtask.isCompleted ?? false)
+        subtask.isCompleted = next
+        subtask.completionDate = next ? Date() : nil
+        if next, let taskId = subtask.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
     }
 
     private var isDirty: Bool {

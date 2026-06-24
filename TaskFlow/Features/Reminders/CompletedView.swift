@@ -67,6 +67,7 @@ struct CompletedView: View {
                                             NotificationService.shared.cancel(taskId: taskId)
                                         }
                                         modelContext.delete(task)
+                                        try? modelContext.save()
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -173,6 +174,8 @@ struct CompletedView: View {
             task.isCompleted = false
             task.completionDate = nil
         }
-        NotificationService.shared.schedule(for: task)
+        if task.safeHasTime {
+            NotificationService.shared.schedule(for: task)
+        }
     }
 }

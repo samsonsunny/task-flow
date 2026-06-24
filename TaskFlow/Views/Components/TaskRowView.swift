@@ -23,6 +23,10 @@ struct TaskRowView: View {
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
     var showsListName: Bool = true
+    var nestingDepth: Int = 0
+    var subtaskCount: Int = 0
+    var isCollapsed: Bool = false
+    var onToggleCollapse: (() -> Void)? = nil
 
     @State private var chipScale: CGFloat = 1
     
@@ -74,10 +78,15 @@ struct TaskRowView: View {
 
     private var rowContent: some View {
         HStack(alignment: .center, spacing: 12) {
+            if subtaskCount > 0 {
+                chevronButton
+            }
+
             completionButton
 
             titleView
         }
+        .padding(.leading, CGFloat(nestingDepth) * 20)
         .contentShape(Rectangle())
         .padding(.vertical, 10)
     }
@@ -172,7 +181,24 @@ struct TaskRowView: View {
             components.append(task.listName)
         }
 
+        if subtaskCount > 0 {
+            components.append("\(subtaskCount)")
+        }
+
         return components.isEmpty ? nil : components.joined(separator: "  ·  ")
+    }
+
+    private var chevronButton: some View {
+        Button {
+            onToggleCollapse?()
+        } label: {
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.colors.textSecondary)
+                .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                .frame(width: 20, height: 20)
+        }
+        .buttonStyle(.plain)
     }
 
     private var completionButton: some View {
