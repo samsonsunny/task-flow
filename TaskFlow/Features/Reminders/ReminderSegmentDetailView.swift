@@ -20,13 +20,17 @@ struct ReminderSegmentDetailView: View {
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
 
     let segment: ReminderSegment
+    var overdueTasks: [TaskItem] = []
 
+    @State private var showOverdue = true
     @State private var now = Date()
     @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
-    @State private var isQuickCapturing = false
+    @State private var activeCaptureDate: Date?
     @State private var quickCaptureText = ""
+    @State private var justCompleted: Set<String> = []
+    @State private var skipNextDismiss = false
     @FocusState private var isQuickCaptureFocused: Bool
 
     private var contextualDate: Date? {
@@ -54,16 +58,52 @@ struct ReminderSegmentDetailView: View {
     }
 
     private var sortedFlatTasks: [TaskItem] {
-        ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
+        let filtered = ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
+        let recent = tasks.filter { justCompleted.contains($0.taskId ?? "") }
+        return filtered + recent
     }
 
     var body: some View {
         List {
+            if segment == .today && !overdueTasks.isEmpty {
+                Section {
+                    if showOverdue {
+                        ForEach(overdueTasks) { task in
+                            taskListRow(task, showsDueDate: true)
+                        }
+                    }
+                } header: {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showOverdue.toggle()
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(AppTheme.colors.error)
+                                .font(.caption)
+
+                            Text("\(overdueTasks.count) Overdue")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.colors.error)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.down")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.colors.textTertiary)
+                                .rotationEffect(.degrees(showOverdue ? 0 : -90))
+                        }
+                        .padding(.vertical, 6)
+                    }
+                }
+            }
+
             if segment == .today || segment == .tomorrow {
                 if let subtitle = segment.subtitle(now: now), !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                .foregroundStyle(AppTheme.colors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 4)
                         .listRowSeparator(.hidden)
@@ -72,7 +112,7 @@ struct ReminderSegmentDetailView: View {
                 }
             }
 
-            if isQuickCapturing {
+            if activeCaptureDate != nil && segment != .upcoming {
                 quickCaptureRow
             }
 
@@ -92,10 +132,14 @@ struct ReminderSegmentDetailView: View {
         .animation(.easeInOut, value: filteredTasks.count)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isQuickCapturing = true
+                if segment == .upcoming {
+                    newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: nil, initialTitle: "")
+                } else {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeCaptureDate = Date()
+                    }
+                    isQuickCaptureFocused = true
                 }
-                isQuickCaptureFocused = true
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
@@ -111,11 +155,18 @@ struct ReminderSegmentDetailView: View {
                 ),
                 initialDueDate: config.task.dueDate,
                 onCommit: { dueDate, hasTime in
+                    let notif = NotificationService.shared
+                    if let taskId = config.task.taskId {
+                        notif.cancel(taskId: taskId)
+                    }
                     if let date = dueDate {
                         if hasTime {
                             config.task.dueDate = date
+                            config.task.hasTime = true
+                            notif.schedule(for: config.task)
                         } else {
                             config.task.dueDate = Calendar.current.startOfDay(for: date)
+                            config.task.hasTime = false
                         }
                     } else {
                         config.task.dueDate = nil
@@ -129,30 +180,53 @@ struct ReminderSegmentDetailView: View {
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
         }
+        .onChange(of: isQuickCaptureFocused) { _, focused in
+            if !focused {
+                DispatchQueue.main.async {
+                    guard !skipNextDismiss else {
+                        skipNextDismiss = false
+                        return
+                    }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeCaptureDate = nil
+                        quickCaptureText = ""
+                    }
+                }
+            }
+        }
     }
 
     private var quickCaptureRow: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(AppTheme.colors.primaryAction)
-                .frame(width: 20, height: 20)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(AppTheme.colors.primaryAction)
+                    .frame(width: 20, height: 20)
 
-            TextField("New Reminder", text: $quickCaptureText)
-                .font(.system(size: 17))
-                .foregroundStyle(AppTheme.colors.textPrimary)
-                .focused($isQuickCaptureFocused)
-                .onSubmit(commitQuickCapture)
+                TextField("New Reminder", text: $quickCaptureText)
+                    .font(.system(size: 17))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+                    .focused($isQuickCaptureFocused)
+                        .onSubmit(commitQuickCapture)
                 .submitLabel(.done)
                 .accessibilityIdentifier("quick-capture-field")
 
-            Button {
-                openQuickCaptureEditor()
-            } label: {
-                Image(systemName: "chevron.right.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Button {
+                    openQuickCaptureEditor()
+                } label: {
+                    Image(systemName: "chevron.right.circle")
+                        .font(.system(size: 18))
+                        .foregroundStyle(AppTheme.colors.textSecondary)
+                }
+                .accessibilityIdentifier("quick-capture-detail")
             }
-            .accessibilityIdentifier("quick-capture-detail")
+
+            if let hintDate = captureDateHint {
+                Text("→ \(hintDate)")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textTertiary)
+                    .padding(.leading, 32)
+            }
         }
         .padding(.vertical, 9)
         .padding(.horizontal, 16)
@@ -162,7 +236,7 @@ struct ReminderSegmentDetailView: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    isQuickCapturing = false
+                    activeCaptureDate = nil
                     quickCaptureText = ""
                 }
             } label: {
@@ -170,6 +244,23 @@ struct ReminderSegmentDetailView: View {
             }
         }
         .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private var captureDateHint: String? {
+        let date: Date?
+        if segment == .upcoming {
+            date = activeCaptureDate
+        } else {
+            date = contextualDate
+        }
+        guard let date else { return nil }
+        if Calendar.current.isDateInToday(date) {
+            return "Today"
+        }
+        if Calendar.current.isDateInTomorrow(date) {
+            return "Tomorrow"
+        }
+        return TaskUIModel.compactDayTitle(for: date)
     }
 
     @ViewBuilder
@@ -193,6 +284,7 @@ struct ReminderSegmentDetailView: View {
     private var flatContent: some View {
         ForEach(sortedFlatTasks) { task in
             taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+                .transition(.scale.combined(with: .opacity))
         }
     }
 
@@ -200,11 +292,11 @@ struct ReminderSegmentDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(segment.emptyTitle)
                 .font(.headline)
-                .foregroundStyle(AppTheme.colors.textPrimary)
+                .foregroundStyle(AppTheme.colors.textSecondary)
 
             Text(segment.emptyMessage)
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
+                .font(.caption)
+                .foregroundStyle(AppTheme.colors.textTertiary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 24)
@@ -234,7 +326,11 @@ struct ReminderSegmentDetailView: View {
                                 taskListRow(task, showsDueDate: false)
                             }
 
-                            addReminderButton(date: date)
+                            if activeCaptureDate == date {
+                                quickCaptureRow
+                            } else {
+                                addReminderButton(date: date)
+                            }
                         } header: {
                             dayHeader(title: title, date: date, isInHorizon: isInHorizon)
                         }
@@ -273,12 +369,19 @@ struct ReminderSegmentDetailView: View {
             .padding(.bottom, 4)
             .contentShape(Rectangle())
             .onTapGesture {
-                newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    activeCaptureDate = date
+                }
+                isQuickCaptureFocused = true
             }
     }
 
     private func emptyDayRow(id: String, title: String, date: Date) -> some View {
         Section {
+            if activeCaptureDate == date {
+                quickCaptureRow
+            }
+
             EmptyView()
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -291,13 +394,20 @@ struct ReminderSegmentDetailView: View {
                 .padding(.vertical, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeCaptureDate = date
+                    }
+                    isQuickCaptureFocused = true
                 }
         }
     }
 
     private func emptyMonthRow(title: String, date: Date) -> some View {
         Section {
+            if activeCaptureDate == date {
+                quickCaptureRow
+            }
+
             EmptyView()
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -309,7 +419,10 @@ struct ReminderSegmentDetailView: View {
                 .padding(.vertical, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeCaptureDate = date
+                    }
+                    isQuickCaptureFocused = true
                 }
         }
     }
@@ -330,7 +443,10 @@ struct ReminderSegmentDetailView: View {
         .padding(.vertical, 9)
         .contentShape(Rectangle())
         .onTapGesture {
-            newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
+            withAnimation(.easeInOut(duration: 0.2)) {
+                activeCaptureDate = date
+            }
+            isQuickCaptureFocused = true
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
@@ -340,6 +456,10 @@ struct ReminderSegmentDetailView: View {
 
     private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], isCollapsible: Bool) -> some View {
         Section {
+            if activeCaptureDate == date {
+                quickCaptureRow
+            }
+
             ForEach(dayGroups) { dayGroup in
                 Section {
                     ForEach(dayGroup.tasks) { task in
@@ -347,19 +467,24 @@ struct ReminderSegmentDetailView: View {
                             .listRowInsets(EdgeInsets(top: 3, leading: 32, bottom: 3, trailing: 16))
                     }
 
-                    if !dayGroup.tasks.isEmpty {
+                    if activeCaptureDate == dayGroup.date {
+                        quickCaptureRow
+                    } else if !dayGroup.tasks.isEmpty {
                         addReminderButton(date: dayGroup.date)
                             .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 16))
                     }
                 } header: {
                     Text(dayGroup.title)
                         .font(.subheadline)
-                        .foregroundStyle(AppTheme.colors.textPrimary)
+                .foregroundStyle(AppTheme.colors.textSecondary)
                         .textCase(nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            newReminderConfig = NewReminderConfig(initialDate: dayGroup.date, initialListID: nil, initialTitle: "")
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                activeCaptureDate = dayGroup.date
+                            }
+                            isQuickCaptureFocused = true
                         }
                         .listRowBackground(Color.clear)
                 }
@@ -371,7 +496,10 @@ struct ReminderSegmentDetailView: View {
                 .textCase(nil)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    newReminderConfig = NewReminderConfig(initialDate: date, initialListID: nil, initialTitle: "")
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        activeCaptureDate = date
+                    }
+                    isQuickCaptureFocused = true
                 }
         }
     }
@@ -425,7 +553,13 @@ struct ReminderSegmentDetailView: View {
             onSchedule: { presentScheduleSheet(for: task) },
             onMoveToList: { moveTask(task, to: $0) },
             availableLists: reminderLists,
-            onDelete: { modelContext.delete(task) },
+            onDelete: {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
+                modelContext.delete(task)
+                try? modelContext.save()
+            },
             onTap: { editingTask = task },
             showsDueDate: showsDueDate
         )
@@ -434,7 +568,11 @@ struct ReminderSegmentDetailView: View {
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
                 modelContext.delete(task)
+                try? modelContext.save()
             } label: {
                 Label("Delete", systemImage: "trash")
             }
@@ -460,9 +598,19 @@ struct ReminderSegmentDetailView: View {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
+        skipNextDismiss = true
+
+        let dueDate: Date?
+        if segment == .upcoming {
+            guard let captureDate = activeCaptureDate else { return }
+            dueDate = captureDate
+        } else {
+            dueDate = contextualDate
+        }
+
         let task = TaskItem(
             taskTitle: text,
-            dueDate: contextualDate
+            dueDate: dueDate
         )
         task.createdAt = Date()
         task.reminderList = resolvedQuickCaptureList()
@@ -474,13 +622,14 @@ struct ReminderSegmentDetailView: View {
 
     private func openQuickCaptureEditor() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let initialDate: Date? = segment == .upcoming ? activeCaptureDate : contextualDate
         newReminderConfig = NewReminderConfig(
-            initialDate: contextualDate,
+            initialDate: initialDate,
             initialListID: nil,
             initialTitle: text
         )
         quickCaptureText = ""
-        isQuickCapturing = false
+        activeCaptureDate = nil
     }
 
     private func resolvedQuickCaptureList() -> ReminderList {
@@ -501,24 +650,48 @@ struct ReminderSegmentDetailView: View {
     }
 
     private func toggleCompletion(for task: TaskItem) {
+        let next = !(task.isCompleted ?? false)
+        if next {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            if let id = task.taskId {
+                justCompleted.insert(id)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
+                    guard let task, task.isCompleted == true else { return }
+                    withAnimation {
+                        justCompleted.remove(id)
+                    }
+                }
+            }
+        }
         withAnimation(.easeInOut(duration: 0.18)) {
-            let next = !(task.isCompleted ?? false)
             task.isCompleted = next
             task.completionDate = next ? Date() : nil
+            if next, let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
         }
     }
 
     private func rescheduleTaskToToday(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         task.dueDate = Calendar.current.startOfDay(for: now)
     }
 
     private func rescheduleTaskToTomorrow(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
     }
 
     private func rescheduleTaskToLater(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
         task.dueDate = nil
     }
 

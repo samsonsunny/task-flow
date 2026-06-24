@@ -40,7 +40,7 @@ struct TaskFlowApp: App {
 
         do {
             return try ModelContainer(
-                for: Schema(versionedSchema: TaskFlowSchemaV3.self),
+                for: Schema(versionedSchema: TaskFlowSchemaV8.self),
                 migrationPlan: TaskFlowMigrationPlan.self
             )
         } catch {
@@ -52,6 +52,10 @@ struct TaskFlowApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .onAppear {
+                    let context = ModelContext(sharedModelContainer)
+                    NotificationService.shared.reschedulePendingOnLaunch(modelContext: context)
+                }
         }
         .modelContainer(sharedModelContainer)
         

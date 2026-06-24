@@ -63,7 +63,11 @@ struct CompletedView: View {
                             completedTaskRow(task)
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
+                                        if let taskId = task.taskId {
+                                            NotificationService.shared.cancel(taskId: taskId)
+                                        }
                                         modelContext.delete(task)
+                                        try? modelContext.save()
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -169,6 +173,9 @@ struct CompletedView: View {
         withAnimation(.easeInOut(duration: 0.18)) {
             task.isCompleted = false
             task.completionDate = nil
+        }
+        if task.safeHasTime {
+            NotificationService.shared.schedule(for: task)
         }
     }
 }

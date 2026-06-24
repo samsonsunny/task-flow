@@ -25,10 +25,11 @@ The floating + button SHALL create tasks with context-appropriate defaults based
 - **AND** if on Upcoming tab, the date is left unset
 
 ### Requirement: Quick capture row
-After tapping +, a quick capture text field SHALL appear inline at the top of the task list (similar to Reminders.app). The task SHALL be created on return/submit with the contextual defaults applied.
+After tapping +, a quick capture text field SHALL appear inline at the top of the task list (similar to Reminders.app) for all segments EXCEPT Upcoming. For the Upcoming segment, the floating + SHALL open the full editor instead. The task SHALL be created on return/submit with the contextual defaults applied.
 
 #### Scenario: Quick capture saves with defaults
 - **WHEN** user types text in the quick capture field and presses return
+- **AND** the current segment is not Upcoming
 - **THEN** a new task is created with that text and the contextual date/list defaults
 - **AND** the quick capture field clears and remains ready for the next entry
 
@@ -36,9 +37,24 @@ After tapping +, a quick capture text field SHALL appear inline at the top of th
 - **WHEN** a task is created via quick capture on the Today tab
 - **THEN** the task row shows today's date (or "Today") as a visual hint
 
+#### Scenario: Quick capture not available in Upcoming
+- **WHEN** user is on the Upcoming tab and taps the floating +
+- **THEN** the full ReminderEditorView opens
+- **AND** no inline quick capture field appears
+
 ### Requirement: Editor still available for full detail
 If user needs to set more than just the title (e.g., list, notes, priority), the quick capture SHALL support tapping a detail disclosure button to open the full editor.
 
 #### Scenario: Open editor from quick capture
 - **WHEN** user taps the detail disclosure button next to the quick capture field
 - **THEN** the full ReminderEditorView opens with the contextual defaults pre-filled
+
+### Requirement: Editor supports subtask creation
+The `ReminderEditorView` SHALL provide a "Add Subtask" control that allows creating subtasks for the task being edited. Subtask creation SHALL be available in both new-task and edit-task modes.
+
+#### Scenario: Add subtask in editor
+- **WHEN** user opens `ReminderEditorView` for a task
+- **AND** taps "Add Subtask"
+- **THEN** a text field SHALL appear for entering the subtask title
+- **AND** on submit, a new `TaskItem` is created with `parentTask` set to the current task
+- **AND** the subtask inherits the parent's `reminderList` and default date
