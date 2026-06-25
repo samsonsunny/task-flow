@@ -320,7 +320,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.samsonsunny.app.task-flow";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -365,7 +365,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.samsonsunny.app.task-flow";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -507,7 +507,7 @@
 				DEVELOPMENT_TEAM = 63W4NX9ZR9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.samsonsunny.app.TaskFlowTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -531,7 +531,7 @@
 				DEVELOPMENT_TEAM = 63W4NX9ZR9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.samsonsunny.app.TaskFlowTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -554,7 +554,7 @@
 				DEVELOPMENT_TEAM = 63W4NX9ZR9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.samsonsunny.app.TaskFlowUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -577,7 +577,7 @@
 				DEVELOPMENT_TEAM = 63W4NX9ZR9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.samsonsunny.app.TaskFlowUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
@@ -620,7 +620,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				MARKETING_VERSION = 26.7.1;
+				MARKETING_VERSION = 26.7.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.samson.wednesday;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
