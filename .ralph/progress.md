@@ -57,10 +57,36 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760
   - justCompleted set with toggleCompletion(for:) including 0.6s delayed removal
   - Removed duplicate FlatTaskNode declaration from ListDetailView.swift to fix redeclaration error
 - **Learnings for future iterations:**
-  - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
-  - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
-   - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
+   - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
+   - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
+    - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
 ---
+## [2026-06-27 00:59] - US-002: Move derived state computation to ViewModel
+Thread:
+Run: 20260627-005411-15148 (iteration 2)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: cc3db6f US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
+- Post-commit status: `.ralph/runs/run-20260627-005411-15148-iter-2.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift (added computed properties and helpers)
+- What was implemented:
+  - Added `contextualDate` computed property: returns today/tomorrow start based on segment (AC 2.2)
+  - Added `captureDateHint(activeCaptureDate:)` method: formats hint text based on segment and optional capture date (AC 2.2)
+  - Added `resolvedQuickCaptureList()` method: fetches or creates the default "Reminders" list (AC 2.3)
+  - Added `shouldShowDueDate(for:)` method: returns whether due date should be shown for given segment (AC 2.3)
+  - Added `otherLists` computed property: returns all stored lists (AC 2.4)
+  - Stored `lists` parameter from `update()` for use by `otherLists`
+- **Learnings for future iterations:**
+  - Patterns discovered: `captureDateHint` depends on UI-only state (`activeCaptureDate`) so it's a method, not a computed property; `otherLists` in segment context just returns all lists (no exclusion needed)
+  - Gotchas encountered: Need to unstage PRD JSON to avoid committing it; temp `.ralph/.tmp/` files should not be committed
+  - Useful context: ViewModel now has all derived state helpers needed for view refactoring in US-004
+---
+
 ## [2026-06-27 00:17] - US-002: Move data mutations to ViewModel
 Thread:
 Run: 20260627-001202-9760 (iteration 2)
