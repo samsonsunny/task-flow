@@ -6,7 +6,7 @@ import SwiftData
 final class ReminderSegmentViewModel {
     private let modelContext: ModelContext
     let segment: ReminderSegment
-    let overdueTasks: [TaskItem]
+    private(set) var overdueTasks: [TaskItem]
 
     private(set) var now: Date = Date()
     private(set) var showOverdue: Bool = true
@@ -29,9 +29,16 @@ final class ReminderSegmentViewModel {
         now = Date()
     }
 
-    func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date()) {
+    func toggleShowOverdue() {
+        showOverdue.toggle()
+    }
+
+    func update(tasks: [TaskItem], lists: [ReminderList], overdueTasks: [TaskItem]? = nil, now: Date = Date()) {
         self.now = now
         self.lists = lists
+        if let overdueTasks {
+            self.overdueTasks = overdueTasks
+        }
         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)

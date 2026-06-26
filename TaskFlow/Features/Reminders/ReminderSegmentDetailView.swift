@@ -22,60 +22,30 @@ struct ReminderSegmentDetailView: View {
     let segment: ReminderSegment
     var overdueTasks: [TaskItem] = []
 
-    @State private var showOverdue = true
-    @State private var now = Date()
+    @State private var viewModel: ReminderSegmentViewModel?
     @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
     @State private var activeCaptureDate: Date?
     @State private var quickCaptureText = ""
-    @State private var justCompleted: Set<String> = []
     @State private var skipNextDismiss = false
     @FocusState private var isQuickCaptureFocused: Bool
 
-    private var contextualDate: Date? {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        switch segment {
-        case .today: return todayStart
-        case .tomorrow: return calendar.date(byAdding: .day, value: 1, to: todayStart)
-        default: return nil
-        }
-    }
-
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-
-    private var filteredTasks: [TaskItem] {
-        ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
-    }
-
-    private var groupedSections: [TaskUIModel.DatedSection] {
-        ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
-    }
-
-    private var upcomingGroups: [TaskUIModel.UpcomingGroup] {
-        ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
-    }
-
-    private var sortedFlatTasks: [TaskItem] {
-        let filtered = ReminderSegmentLogic.sortedTasks(filteredTasks, for: segment)
-        let recent = tasks.filter { justCompleted.contains($0.taskId ?? "") }
-        return filtered + recent
-    }
 
     var body: some View {
         List {
-            if segment == .today && !overdueTasks.isEmpty {
+            if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
                 Section {
-                    if showOverdue {
-                        ForEach(overdueTasks) { task in
+                    if viewModel?.showOverdue ?? true {
+                        ForEach(viewModel?.overdueTasks ?? []) { task in
                             taskListRow(task, showsDueDate: true)
                         }
                     }
                 } header: {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            showOverdue.toggle()
+                            viewModel?.toggleShowOverdue()
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -83,7 +53,7 @@ struct ReminderSegmentDetailView: View {
                                 .foregroundStyle(AppTheme.colors.error)
                                 .font(.caption)
 
-                            Text("\(overdueTasks.count) Overdue")
+                            Text("\(viewModel?.overdueTasks.count ?? 0) Overdue")
                                 .font(.subheadline)
                                 .foregroundStyle(AppTheme.colors.error)
 
@@ -92,7 +62,7 @@ struct ReminderSegmentDetailView: View {
                             Image(systemName: "chevron.down")
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.colors.textTertiary)
-                                .rotationEffect(.degrees(showOverdue ? 0 : -90))
+                                .rotationEffect(.degrees((viewModel?.showOverdue ?? true) ? 0 : -90))
                         }
                         .padding(.vertical, 6)
                     }
@@ -100,10 +70,10 @@ struct ReminderSegmentDetailView: View {
             }
 
             if segment == .today || segment == .tomorrow {
-                if let subtitle = segment.subtitle(now: now), !subtitle.isEmpty {
+                if let subtitle = segment.subtitle(now: viewModel?.now ?? Date()), !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textPrimary)
+                        .foregroundStyle(AppTheme.colors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 4)
                         .listRowSeparator(.hidden)
@@ -116,20 +86,22 @@ struct ReminderSegmentDetailView: View {
                 quickCaptureRow
             }
 
-            if segment == .upcoming {
-                upcomingContent
-            } else if filteredTasks.isEmpty && !segment.usesGroupedSections {
-                emptyState
-            } else if segment.usesGroupedSections {
-                groupedContent
-            } else {
-                flatContent
+            if let vm = viewModel {
+                if segment == .upcoming {
+                    upcomingContent(with: vm)
+                } else if vm.filteredTasks.isEmpty && !segment.usesGroupedSections {
+                    emptyState
+                } else if segment.usesGroupedSections {
+                    groupedContent(with: vm)
+                } else {
+                    flatContent(with: vm)
+                }
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .animation(.easeInOut, value: filteredTasks.count)
+        .animation(.easeInOut, value: viewModel?.filteredTasks.count ?? 0)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 if segment == .upcoming {
@@ -144,8 +116,8 @@ struct ReminderSegmentDetailView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 24)
         }
-        .onReceive(refreshTimer) { fireDate in
-            now = fireDate
+        .onReceive(refreshTimer) { _ in
+            viewModel?.refreshNow()
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
@@ -155,22 +127,7 @@ struct ReminderSegmentDetailView: View {
                 ),
                 initialDueDate: config.task.dueDate,
                 onCommit: { dueDate, hasTime in
-                    let notif = NotificationService.shared
-                    if let taskId = config.task.taskId {
-                        notif.cancel(taskId: taskId)
-                    }
-                    if let date = dueDate {
-                        if hasTime {
-                            config.task.dueDate = date
-                            config.task.hasTime = true
-                            notif.schedule(for: config.task)
-                        } else {
-                            config.task.dueDate = Calendar.current.startOfDay(for: date)
-                            config.task.hasTime = false
-                        }
-                    } else {
-                        config.task.dueDate = nil
-                    }
+                    viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
                 }
             )
         }
@@ -194,6 +151,16 @@ struct ReminderSegmentDetailView: View {
                 }
             }
         }
+        .onAppear {
+            viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment, overdueTasks: overdueTasks)
+            viewModel?.update(tasks: tasks, lists: reminderLists, overdueTasks: overdueTasks, now: Date())
+        }
+        .onChange(of: tasks) { _, newTasks in
+            viewModel?.update(tasks: newTasks, lists: reminderLists, overdueTasks: overdueTasks)
+        }
+        .onChange(of: reminderLists) { _, newLists in
+            viewModel?.update(tasks: tasks, lists: newLists, overdueTasks: overdueTasks)
+        }
     }
 
     private var quickCaptureRow: some View {
@@ -207,9 +174,9 @@ struct ReminderSegmentDetailView: View {
                     .font(.system(size: 17))
                     .foregroundStyle(AppTheme.colors.textPrimary)
                     .focused($isQuickCaptureFocused)
-                        .onSubmit(commitQuickCapture)
-                .submitLabel(.done)
-                .accessibilityIdentifier("quick-capture-field")
+                    .onSubmit(commitQuickCapture)
+                    .submitLabel(.done)
+                    .accessibilityIdentifier("quick-capture-field")
 
                 Button {
                     openQuickCaptureEditor()
@@ -221,7 +188,7 @@ struct ReminderSegmentDetailView: View {
                 .accessibilityIdentifier("quick-capture-detail")
             }
 
-            if let hintDate = captureDateHint {
+            if let hintDate = viewModel?.captureDateHint(activeCaptureDate: activeCaptureDate) {
                 Text("→ \(hintDate)")
                     .font(.caption)
                     .foregroundStyle(AppTheme.colors.textTertiary)
@@ -246,29 +213,12 @@ struct ReminderSegmentDetailView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
-    private var captureDateHint: String? {
-        let date: Date?
-        if segment == .upcoming {
-            date = activeCaptureDate
-        } else {
-            date = contextualDate
-        }
-        guard let date else { return nil }
-        if Calendar.current.isDateInToday(date) {
-            return "Today"
-        }
-        if Calendar.current.isDateInTomorrow(date) {
-            return "Tomorrow"
-        }
-        return TaskUIModel.compactDayTitle(for: date)
-    }
-
     @ViewBuilder
-    private var groupedContent: some View {
-        ForEach(groupedSections) { section in
+    private func groupedContent(with vm: ReminderSegmentViewModel) -> some View {
+        ForEach(vm.groupedSections) { section in
             Section {
                 ForEach(section.tasks) { task in
-                    taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+                    taskListRow(task, showsDueDate: vm.shouldShowDueDate(for: segment))
                 }
             } header: {
                 sectionHeader(
@@ -281,9 +231,9 @@ struct ReminderSegmentDetailView: View {
     }
 
     @ViewBuilder
-    private var flatContent: some View {
-        ForEach(sortedFlatTasks) { task in
-            taskListRow(task, showsDueDate: shouldShowDueDate(for: segment))
+    private func flatContent(with vm: ReminderSegmentViewModel) -> some View {
+        ForEach(vm.sortedFlatTasks) { task in
+            taskListRow(task, showsDueDate: vm.shouldShowDueDate(for: segment))
                 .transition(.scale.combined(with: .opacity))
         }
     }
@@ -308,8 +258,8 @@ struct ReminderSegmentDetailView: View {
     }
 
     @ViewBuilder
-    private var upcomingContent: some View {
-        let groups = upcomingGroups
+    private func upcomingContent(with vm: ReminderSegmentViewModel) -> some View {
+        let groups = vm.upcomingGroups
 
         if !groups.isEmpty {
             ForEach(groups) { group in
@@ -476,7 +426,7 @@ struct ReminderSegmentDetailView: View {
                 } header: {
                     Text(dayGroup.title)
                         .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
+                        .foregroundStyle(AppTheme.colors.textSecondary)
                         .textCase(nil)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
@@ -546,20 +496,14 @@ struct ReminderSegmentDetailView: View {
         TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
-            onToggleCompletion: { toggleCompletion(for: task) },
-            onMoveToToday: canMoveToToday(task) ? { rescheduleTaskToToday(task) } : nil,
-            onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
-            onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
+            onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
+            onMoveToToday: (viewModel?.canMoveToToday(task) == true) ? { viewModel?.rescheduleToToday(task) } : nil,
+            onMoveToTomorrow: (viewModel?.canMoveToTomorrow(task) == true) ? { viewModel?.rescheduleToTomorrow(task) } : nil,
+            onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
-            onMoveToList: { moveTask(task, to: $0) },
-            availableLists: reminderLists,
-            onDelete: {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-                try? modelContext.save()
-            },
+            onMoveToList: { viewModel?.moveTask(task, to: $0) },
+            availableLists: viewModel?.otherLists ?? [],
+            onDelete: { viewModel?.delete(task: task) },
             onTap: { editingTask = task },
             showsDueDate: showsDueDate
         )
@@ -568,147 +512,35 @@ struct ReminderSegmentDetailView: View {
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-                try? modelContext.save()
+                viewModel?.delete(task: task)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
     }
 
-    private func moveTask(_ task: TaskItem, to list: ReminderList) {
-        task.reminderList = list
-        assignSortOrder(for: task, in: list)
-        try? modelContext.save()
-    }
-
-    private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
-        let listTasks = tasks.filter {
-            $0.reminderList?.persistentModelID == list.persistentModelID &&
-            $0.persistentModelID != task.persistentModelID
-        }
-        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
-    }
-
     private func commitQuickCapture() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-
         skipNextDismiss = true
-
-        let dueDate: Date?
-        if segment == .upcoming {
-            guard let captureDate = activeCaptureDate else { return }
-            dueDate = captureDate
-        } else {
-            dueDate = contextualDate
-        }
-
-        let task = TaskItem(
-            taskTitle: text,
-            dueDate: dueDate
-        )
-        task.createdAt = Date()
-        task.reminderList = resolvedQuickCaptureList()
-        modelContext.insert(task)
-
+        viewModel?.commitQuickCapture(text: text, captureDate: activeCaptureDate)
         quickCaptureText = ""
         isQuickCaptureFocused = true
     }
 
     private func openQuickCaptureEditor() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let initialDate: Date? = segment == .upcoming ? activeCaptureDate : contextualDate
+        let (initialDate, initialTitle) = viewModel?.openQuickCaptureEditor(text: text, captureDate: activeCaptureDate) ?? (nil, "")
         newReminderConfig = NewReminderConfig(
             initialDate: initialDate,
             initialListID: nil,
-            initialTitle: text
+            initialTitle: initialTitle
         )
         quickCaptureText = ""
         activeCaptureDate = nil
     }
 
-    private func resolvedQuickCaptureList() -> ReminderList {
-        let defaultName = ReminderDefaults.defaultListName
-        let descriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == defaultName }
-        )
-        if let existing = try? modelContext.fetch(descriptor).first {
-            return existing
-        }
-        let list = ReminderList(name: ReminderDefaults.defaultListName)
-        modelContext.insert(list)
-        return list
-    }
-
     private func presentScheduleSheet(for task: TaskItem) {
         scheduleConfig = ScheduleConfig(task: task)
-    }
-
-    private func toggleCompletion(for task: TaskItem) {
-        let next = !(task.isCompleted ?? false)
-        if next {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            if let id = task.taskId {
-                justCompleted.insert(id)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
-                    guard let task, task.isCompleted == true else { return }
-                    withAnimation {
-                        justCompleted.remove(id)
-                    }
-                }
-            }
-        }
-        withAnimation(.easeInOut(duration: 0.18)) {
-            task.isCompleted = next
-            task.completionDate = next ? Date() : nil
-            if next, let taskId = task.taskId {
-                NotificationService.shared.cancel(taskId: taskId)
-            }
-        }
-    }
-
-    private func rescheduleTaskToToday(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = Calendar.current.startOfDay(for: now)
-    }
-
-    private func rescheduleTaskToTomorrow(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
-    }
-
-    private func rescheduleTaskToLater(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = nil
-    }
-
-    private func canMoveToToday(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInToday(dueDate)
-    }
-
-    private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInTomorrow(dueDate)
-    }
-
-    private func shouldShowDueDate(for segment: ReminderSegment) -> Bool {
-        switch segment {
-        case .today, .tomorrow, .later: return false
-        case .upcoming, .overdue: return true
-        }
     }
 }
