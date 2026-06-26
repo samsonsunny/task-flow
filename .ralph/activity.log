@@ -1,6 +1,7 @@
 # Activity Log
 
 ## Run Summary
+- 2026-06-27 01:39:46 | run=20260627-012239-22694 | iter=5 | mode=build | story=US-005 | duration=398s | status=success
 - 2026-06-27 01:33:06 | run=20260627-012239-22694 | iter=4 | mode=build | story=US-004 | duration=182s | status=success
 - 2026-06-27 01:30:02 | run=20260627-012239-22694 | iter=3 | mode=build | story=US-003 | duration=121s | status=success
 - 2026-06-27 01:27:58 | run=20260627-012239-22694 | iter=2 | mode=build | story=US-002 | duration=177s | status=success
@@ -87,3 +88,7 @@
 [2026-06-27 01:33:06] ITERATION 4 end (duration=182s)
 [2026-06-27 01:33:08] ITERATION 5 start (mode=build story=US-005)
 [2026-06-27 01:36:00] US-005: Refactored ListsTabView to use ListsTabViewModel (removed @State dialog, computed properties, mutation methods; wired 6 alert bindings, context menus, reorder, expand/collapse via VM). Build PASS.
+[2026-06-27 01:39:46] ITERATION 5 end (duration=398s)
+[2026-06-27 01:39:49] ITERATION 6 start (mode=build story=US-006)
+[2026-06-27 01:42:00] US-006: Verified ListsTabView refactor - build succeeds with no warnings, all 12 ACs confirmed wired correctly. No code changes needed. COMMIT.
+[2026-06-27 01:42:00] ITERATION 6 end (duration=~120s)

@@ -592,3 +592,37 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-2269
   - Gotchas encountered: The Swift compiler cannot type-check 6+ `.alert()` + 3 `.onChange()` + other modifiers in a single chain; must break `body` into intermediate computed properties
   - Useful context: Animation wrappers (withAnimation) are a UI concern and must stay in the view layer, not in the VM
 ---
+
+## [2026-06-27 01:42] - US-006: Verify ListsTabView refactor
+Thread:
+Run: 20260627-012239-22694 (iteration 6)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: (pending)
+- Post-commit status: `clean`
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+- Files changed:
+  - No source files changed (verification-only story)
+- What was verified:
+  - Build succeeds with no warnings
+  - All 12 acceptance criteria reviewed and confirmed properly wired:
+  - ✅ 6.1 Build succeeds with no warnings — PASS (no code warnings, only destination picker info)
+  - ✅ 6.2 Create list via FAB — FAB sets isCreatingList; "New List" alert creates list with sort order via VM.createList(name:)
+  - ✅ 6.3 Rename list via context menu — "Rename" sets isRenamePresented; alert calls VM.renameList(_:to:)
+  - ✅ 6.4 Delete list with 'Move to Reminders' — context menu calls VM.requestDeleteList; alert calls VM.deleteList(moveTasksToDefault: true)
+  - ✅ 6.5 Delete list with 'Delete All Tasks' — alert calls VM.deleteList(moveTasksToDefault: false); cancels notifications
+  - ✅ 6.6 Create group with optional source list — context menu sets groupSourceList; alert calls VM.createGroup(name:sourceList:) 
+  - ✅ 6.7 Rename group — group context menu sets isGroupRenamePresented; alert calls VM.renameGroup(_:to:)
+  - ✅ 6.8 Delete group with cascade — group context menu sets deleteGroup; alert calls VM.deleteGroup(_:)
+  - ✅ 6.9 Drag reorder within ungrouped section — .onMove calls VM.moveLists(fromOffsets:toOffset:in:) with no group
+  - ✅ 6.10 Drag reorder within group — .onMove calls VM.moveLists(fromOffsets:toOffset:in:group:)
+  - ✅ 6.11 Move list to group via context menu — "Move to Group" submenu calls VM.assignListToGroup(_:group:)
+  - ✅ 6.12 Group expand/collapse persists across restarts — DisclosureGroup binding uses VM isGroupExpanded/toggleGroupExpanded; VM persists to/restores from UserDefaults
+- **Learnings for future iterations:**
+  - No source changes needed for verification-only stories when implementation is complete
+  - All 6 alert dialogs, context menus, drag reorder, and expand/collapse are properly delegated to ListsTabViewModel
+  - No @Environment(\.modelContext) direct mutations remain in ListsTabView
+---
