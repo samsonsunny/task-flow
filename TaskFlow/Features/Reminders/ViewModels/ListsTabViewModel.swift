@@ -10,6 +10,11 @@ final class ListsTabViewModel {
     private(set) var groups: [ReminderListGroup] = []
     private(set) var allTasks: [TaskItem] = []
 
+    // MARK: - Group Expand/Collapse
+
+    var expandedGroupIDs: Set<PersistentIdentifier> = []
+    private let expandedDefaultsPrefix = "group-expanded-"
+
     // MARK: - Dialog State
 
     var isCreatingList = false
@@ -32,12 +37,41 @@ final class ListsTabViewModel {
         self.modelContext = modelContext
     }
 
+    // MARK: - Group Expand/Collapse
+
+    func isGroupExpanded(_ group: ReminderListGroup) -> Bool {
+        expandedGroupIDs.contains(group.persistentModelID)
+    }
+
+    func toggleGroupExpanded(_ group: ReminderListGroup) {
+        let key = expandedDefaultsPrefix + group.persistentModelID.hashValue.description
+        if expandedGroupIDs.contains(group.persistentModelID) {
+            expandedGroupIDs.remove(group.persistentModelID)
+            UserDefaults.standard.set(false, forKey: key)
+        } else {
+            expandedGroupIDs.insert(group.persistentModelID)
+            UserDefaults.standard.set(true, forKey: key)
+        }
+    }
+
+    private func restoreExpandedState() {
+        var ids = Set<PersistentIdentifier>()
+        for group in groups {
+            let key = expandedDefaultsPrefix + group.persistentModelID.hashValue.description
+            if UserDefaults.standard.bool(forKey: key) {
+                ids.insert(group.persistentModelID)
+            }
+        }
+        expandedGroupIDs = ids
+    }
+
     // MARK: - Update Entry Point
 
     func update(lists: [ReminderList], groups: [ReminderListGroup], allTasks: [TaskItem]) {
         self.lists = lists
         self.groups = groups
         self.allTasks = allTasks
+        restoreExpandedState()
     }
 
     // MARK: - Derived Properties
@@ -92,6 +126,48 @@ final class ListsTabViewModel {
 
     func listsInGroup(_ group: ReminderListGroup) -> [ReminderList] {
         lists.filter { $0.group?.persistentModelID == group.persistentModelID }
+    }
+
+    // MARK: - Reorder
+
+    func moveLists(fromOffsets: IndexSet, toOffset: Int, in source: [ReminderList], group: ReminderListGroup? = nil) {
+        var mutableLists = source
+        let sortedFrom = fromOffsets.sorted()
+
+        let moved = sortedFrom.reversed().map { mutableLists.remove(at: $0) }
+        let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
+        let insertAt = min(adjustedTo, mutableLists.count)
+
+        mutableLists.insert(contentsOf: moved, at: insertAt)
+
+        var lower = insertAt > 0 ? mutableLists[insertAt - 1].sortOrder : nil
+        for i in insertAt..<(insertAt + moved.count) {
+            let upper = (i + 1) < mutableLists.count ? mutableLists[i + 1].sortOrder : nil
+
+            if let newOrder = midpoint(between: lower, and: upper) {
+                mutableLists[i].sortOrder = newOrder
+            } else {
+                if let upperStr = upper {
+                    let widened = widen(upperStr)
+                    if let upperList = mutableLists.first(where: { $0.sortOrder == upperStr }) {
+                        upperList.sortOrder = widened
+                    }
+                    mutableLists[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+                } else {
+                    mutableLists[i].sortOrder = ""
+                }
+            }
+
+            lower = mutableLists[i].sortOrder
+        }
+
+        if let group {
+            for list in mutableLists {
+                list.group = group
+            }
+        }
+
+        try? modelContext.save()
     }
 
     // MARK: - Group CRUD

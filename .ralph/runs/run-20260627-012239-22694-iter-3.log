@@ -208,3 +208,18 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
 +---
 
 [0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git add -A && git commit -m "US-003: update progress log with group CRUD implementation details"
+[base-26.7.8 462a5cb] US-003: update progress log with group CRUD implementation details
+ 2 files changed, 85 insertions(+)
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-3.log
+[0m
+All acceptance criteria met:
+- ✅ AC 3.1: `createGroup(name:sourceList:)` — inserts group with sort order, optional sourceList assignment
+- ✅ AC 3.2: `renameGroup(_:to:)` — updates group name with trimming
+- ✅ AC 3.3: `deleteGroup(_:)` — cascades: deletes all tasks (with notification cancellation) and lists in group, then deletes group
+
+Build verified: `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build` -> PASS
+
+<promise>COMPLETE</promise>
