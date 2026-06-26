@@ -1,6 +1,7 @@
 # Activity Log
 
 ## Run Summary
+- 2026-06-27 00:57:05 | run=20260627-005411-15148 | iter=1 | mode=build | story=US-001 | duration=173s | status=success
 - 2026-06-27 00:53:55 | run=20260627-004234-12390 | iter=2 | mode=build | story=US-004 | duration=321s | status=success
 - 2026-06-27 00:48:32 | run=20260627-004234-12390 | iter=1 | mode=build | story=US-003 | duration=358s | status=success
 - 2026-06-27 00:18:36 | run=20260627-001202-9760 | iter=2 | mode=build | story=US-002 | duration=164s | status=success
@@ -33,3 +34,6 @@
 - 2026-06-27 00:54:00 | run=20260627-004234-12390 | iter=2 | mode=verify | story=US-004 | status=in_progress | Build verified. Fixed completion animation regression (recompute missing in async block).
 [2026-06-27 00:53:55] ITERATION 2 end (duration=321s)
 [2026-06-27 00:54:11] ITERATION 1 start (mode=build story=US-001)
+[2026-06-27 00:57:04] ITERATION 1 end (duration=173s)
+[2026-06-27 00:57:07] ITERATION 2 start (mode=build story=US-002)
+[2026-06-27 00:58:32] US-002: Added contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
