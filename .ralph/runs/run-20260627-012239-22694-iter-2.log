@@ -213,3 +213,51 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
 M .ralph/activity.log
  M .ralph/runs/run-20260627-012239-22694-iter-2.log
 [0m
+[0m$ [0mgit add -A && git commit -m "US-002: log progress and activity for list CRUD ViewModel methods"
+[base-26.7.8 e89473c] US-002: log progress and activity for list CRUD ViewModel methods
+ 2 files changed, 63 insertions(+)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -474,4 +474,33 @@
+   - Patterns discovered: Dialog state booleans are `var` (not private(set)) so view can bind with `$viewModel.property`
+   - Gotchas encountered: None
+   - Useful context: expandedGroupIDs and defaultsKeyPrefix are for US-004 (group expand/collapse with UserDefaults persistence)
+ ---
++## [2026-06-27 01:31] - US-002: Move list CRUD to ViewModel
++Thread:
++Run: 20260627-012239-22694 (iteration 2)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-2.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-2.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: dc184e3 US-002: Add list CRUD methods to ListsTabViewModel
++         e89473c US-002: log progress and activity for list CRUD ViewModel methods
++- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-2.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift (added 4 methods)
++- What was implemented:
++  - Added `createList(name:)` — trims name, creates ReminderList, inserts, assigns initial sort order via midpoint (AC 2.1)
++  - Added `renameList(_:to:)` — trims new name, updates list.name, saves (AC 2.2)
++  - Added `deleteList(_:moveTasksToDefault:)` — cascade: moves tasks to default list when true, deletes all tasks (with notification cancellation) when false, then deletes list (AC 2.3)
++  - Added `listsInGroup(_:)` — filters lists by group.persistentModelID (AC 2.4)
++- Acceptance criteria verified:
++  - ✅ 2.1 createList(name:) inserts list with sort order
++  - ✅ 2.2 renameList(_:to:) updates list name
++  - ✅ 2.3 deleteList(_:moveTasksToDefault:) with cascade logic
++  - ✅ 2.4 listsInGroup(_:) helper
++- **Learnings for future iterations:**
++  - Patterns discovered: deleteList matches the view's handleDelete(moveTasks:) exactly — uses allTasks to find list's tasks, cancels notifications when deleting tasks, moves to defaultList when moveTasksToDefault is true
++  - Gotchas encountered: NotificationService is referenced directly (static shared singleton) — matches existing pattern in ListDetailViewModel and ReminderSegmentViewModel
++  - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
++---
+
+[0m
