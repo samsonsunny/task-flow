@@ -657,3 +657,37 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-2860
   - Gotchas encountered: Private method and public function have the same base name; removing private method first allows the public one to resolve via default parameter
   - Useful context: TaskScheduleDatePickerSheet still has its own private copy (US-003 will handle in a future story)
 ---
+
+## [2026-06-27 01:47] - US-002: Create TaskScheduleDatePickerViewModel
+Thread:
+Run: 20260627-014339-28602 (iteration 2)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-2.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 27e4e95 US-002: Create TaskScheduleDatePickerViewModel with @Observable class, init, and date/time toggle methods
+- Post-commit status: `.ralph/runs/run-20260627-014339-28602-iter-2.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift (new)
+- What was implemented:
+  - Created @Observable TaskScheduleDatePickerViewModel with:
+    - dueDate: Date?, hasTime: Bool, expandedPicker: ExpandedPicker? stored properties (AC 2.2)
+    - init(initialDueDate:) — computes hasTime from non-midnight hour/minute components; sets expandedPicker to .date when initialDueDate is non-nil (AC 2.3)
+    - toggleDate(isEnabled:) — enables date with Date() default and .date picker state; disables resets dueDate=nil, hasTime=false, expandedPicker=nil (AC 2.4)
+    - toggleTime(isEnabled:) — enables time with nearestRoundedHour() rounding via shared utility from DateRounding.swift; disables resets hasTime=false, expandedPicker=nil (AC 2.5)
+    - ExpandedPicker enum nested inside class (.date, .time cases)
+  - No modelContext needed (purely UI state)
+  - Uses shared nearestRoundedHour() utility (no private duplicate)
+- Acceptance criteria:
+  - ✅ 2.1 File exists with @Observable class
+  - ✅ 2.2 dueDate, hasTime, expandedPicker properties added
+  - ✅ 2.3 init(initialDueDate:) matching current view init logic
+  - ✅ 2.4 toggleDate(isEnabled:) with date defaulting and picker state
+  - ✅ 2.5 toggleTime(isEnabled:) with rounding via shared utility
+- **Learnings for future iterations:**
+  - Patterns discovered: ViewModel for schedule picker doesn't need modelContext — it's purely UI state management
+  - Gotchas encountered: None
+  - Useful context: Shared nearestRoundedHour() from DateRounding.swift resolves correctly without import (same module)
+---

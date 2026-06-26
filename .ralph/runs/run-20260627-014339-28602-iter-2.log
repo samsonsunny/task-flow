@@ -444,3 +444,104 @@ index 2df79f1..9a88555 100644
 +
 +<promise>COMPLETE</promise>
 [0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .agents/tasks/mvvm-schedule-picker.json
+A  .ralph/.tmp/prompt-20260627-014339-28602-2.md
+A  .ralph/.tmp/story-20260627-014339-28602-2.json
+A  .ralph/.tmp/story-20260627-014339-28602-2.md
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-014339-28602-iter-1.log
+A  .ralph/runs/run-20260627-014339-28602-iter-1.md
+A  .ralph/runs/run-20260627-014339-28602-iter-2.log
+A  TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift
+[0m
+[0m$ [0mgit restore --staged .ralph/.tmp/ && git status --porcelain
+M  .agents/tasks/mvvm-schedule-picker.json
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-014339-28602-iter-1.log
+A  .ralph/runs/run-20260627-014339-28602-iter-1.md
+AM .ralph/runs/run-20260627-014339-28602-iter-2.log
+A  TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift
+?? .ralph/.tmp/prompt-20260627-014339-28602-2.md
+?? .ralph/.tmp/story-20260627-014339-28602-2.json
+?? .ralph/.tmp/story-20260627-014339-28602-2.md
+[0m
+[0m$ [0mgit commit -m "US-002: Create TaskScheduleDatePickerViewModel with @Observable class, init, and date/time toggle methods"
+[base-26.7.8 27e4e95] US-002: Create TaskScheduleDatePickerViewModel with @Observable class, init, and date/time toggle methods
+ 8 files changed, 652 insertions(+), 5 deletions(-)
+ create mode 100644 .ralph/runs/run-20260627-014339-28602-iter-1.md
+ create mode 100644 .ralph/runs/run-20260627-014339-28602-iter-2.log
+ create mode 100644 TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-014339-28602-iter-2.log
+?? .ralph/.tmp/prompt-20260627-014339-28602-2.md
+?? .ralph/.tmp/story-20260627-014339-28602-2.json
+?? .ralph/.tmp/story-20260627-014339-28602-2.md
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD
+27e4e95 US-002: Create TaskScheduleDatePickerViewModel with @Observable class, init, and date/time toggle methods
+[0m
+[0m→ [0mRead .ralph/progress.md[90m [offset=655][0m
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -656,4 +656,38 @@
+   - Patterns discovered: Shared utility functions in Utilities/ don't need imports — same module visibility
+   - Gotchas encountered: Private method and public function have the same base name; removing private method first allows the public one to resolve via default parameter
+   - Useful context: TaskScheduleDatePickerSheet still has its own private copy (US-003 will handle in a future story)
+ ---
++
++## [2026-06-27 01:47] - US-002: Create TaskScheduleDatePickerViewModel
++Thread:
++Run: 20260627-014339-28602 (iteration 2)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-2.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-2.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 27e4e95 US-002: Create TaskScheduleDatePickerViewModel with @Observable class, init, and date/time toggle methods
++- Post-commit status: `.ralph/runs/run-20260627-014339-28602-iter-2.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift (new)
++- What was implemented:
++  - Created @Observable TaskScheduleDatePickerViewModel with:
++    - dueDate: Date?, hasTime: Bool, expandedPicker: ExpandedPicker? stored properties (AC 2.2)
++    - init(initialDueDate:) — computes hasTime from non-midnight hour/minute components; sets expandedPicker to .date when initialDueDate is non-nil (AC 2.3)
++    - toggleDate(isEnabled:) — enables date with Date() default and .date picker state; disables resets dueDate=nil, hasTime=false, expandedPicker=nil (AC 2.4)
++    - toggleTime(isEnabled:) — enables time with nearestRoundedHour() rounding via shared utility from DateRounding.swift; disables resets hasTime=false, expandedPicker=nil (AC 2.5)
++    - ExpandedPicker enum nested inside class (.date, .time cases)
++  - No modelContext needed (purely UI state)
++  - Uses shared nearestRoundedHour() utility (no private duplicate)
++- Acceptance criteria:
++  - ✅ 2.1 File exists with @Observable class
++  - ✅ 2.2 dueDate, hasTime, expandedPicker properties added
++  - ✅ 2.3 init(initialDueDate:) matching current view init logic
++  - ✅ 2.4 toggleDate(isEnabled:) with date defaulting and picker state
++  - ✅ 2.5 toggleTime(isEnabled:) with rounding via shared utility
++- **Learnings for future iterations:**
++  - Patterns discovered: ViewModel for schedule picker doesn't need modelContext — it's purely UI state management
++  - Gotchas encountered: None
++  - Useful context: Shared nearestRoundedHour() from DateRounding.swift resolves correctly without import (same module)
++---
+
+[0m
+[0m$ [0mecho "[2026-06-27 01:47:00] US-002: Complete - TaskScheduleDatePickerViewModel created, build passes, commit 27e4e95" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/activity.log
+ M .ralph/progress.md
+ M .ralph/runs/run-20260627-014339-28602-iter-2.log
+?? .ralph/.tmp/prompt-20260627-014339-28602-2.md
+?? .ralph/.tmp/story-20260627-014339-28602-2.json
+?? .ralph/.tmp/story-20260627-014339-28602-2.md
+[0m
