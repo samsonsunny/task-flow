@@ -1,0 +1,142 @@
+[0m
+> build · big-pickle
+[0m
+[0m→ [0mRead .ralph/guardrails.md
+[0m→ [0mRead .ralph/errors.log
+[0m→ [0mRead .agents/tasks/mvvm-list-detail.json
+[0m→ [0mRead AGENTS.md
+[0m→ [0mRead .ralph/progress.md
+[0m→ [0mRead TaskFlow/Features/Reminders/ListDetailView.swift
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Now let me read the source files I need to work with:
+[0m→ [0mRead TaskFlow/Features/Reminders/CompletedView.swift
+Let me check the CompletedView to follow the same pattern from US-002:
+[0m
+[0m# [0mTodos
+[•] Add refreshNow() to ListDetailViewModel
+[ ] Refactor ListDetailView to use ViewModel (remove direct mutations, computed properties)
+[ ] Add .onAppear/.onChange to call viewModel.update() and .onReceive for refreshNow()
+[ ] Build and verify with xcodebuild
+[ ] Commit changes
+[ ] Update progress log
+[0m
+I need to:
+1. Add `refreshNow()` to the VM
+2. Refactor ListDetailView to use the VM
+
+Let me start with the ViewModel and then refactor the view.
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+@@ -302,8 +302,13 @@
+     try? modelContext.save()
+     recompute()
+ }
+ 
++func refreshNow() {
++    self.now = Date()
++    recompute()
++}
++
+ // MARK: - Helpers (2.7)
+ 
+ func canMoveToToday(_ task: TaskItem) -> Bool {
+     guard let dueDate = task.dueDate else { return true }
+
+[0m
+[0m# [0mTodos
+[✓] Add refreshNow() to ListDetailViewModel
+[•] Refactor ListDetailView to use ViewModel (remove direct mutations, computed properties)
+[ ] Add .onAppear/.onChange to call viewModel.update() and .onReceive for refreshNow()
+[ ] Build and verify with xcodebuild
+[ ] Commit changes
+[ ] Update progress log
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -36,18 +36,15 @@
+ 
+ @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
+ @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
+ 
+-@State private var now = Date()
++@State private var viewModel: ListDetailViewModel?
+ @State private var scheduleConfig: ScheduleConfig?
+ @State private var newReminderConfig: NewReminderConfig?
+ @State private var editingTask: TaskItem?
+-@State private var justCompleted: Set<String> = []
+ @State private var isQuickCapturing = false
+ @State private var quickCaptureText = ""
+ @State private var skipNextDismiss = false
+-@State private var collapsedTasks: Set<PersistentIdentifier> = []
+-@State private var draggedTaskId: String?
+ @FocusState private var isQuickCaptureFocused: Bool
+ 
+ private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+ 
+
+[0m
+Now let me refactor the view state declarations:
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -47,49 +47,8 @@
+ @FocusState private var isQuickCaptureFocused: Bool
+ 
+ private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+ 
+-private var list: ReminderList? {
+-    allLists.first { $0.persistentModelID == listID }
+-}
+-
+-private var tasks: [TaskItem] {
+-    allTasks.filter {
+-        guard $0.reminderList?.persistentModelID == listID else { return false }
+-        if $0.isCompleted == true {
+-            return justCompleted.contains($0.taskId ?? "")
+-        }
+-        return true
+-    }
+-}
+-
+-private var rootTasks: [TaskItem] {
+-    tasks.filter { $0.parentTask == nil }
+-}
+-
+-private var flatNodes: [FlatTaskNode] {
+-    flattenTasks(rootTasks, collapseState: collapsedTasks)
+-}
+-
+-private func flattenTasks(_ tasks: [TaskItem], collapseState: Set<PersistentIdentifier>) -> [FlatTaskNode] {
+-    var result: [FlatTaskNode] = []
+-    for task in tasks {
+-        flattenNode(task, depth: 0, collapseState: collapseState, result: &result)
+-    }
+-    return result
+-}
+-
+-private func flattenNode(_ task: TaskItem, depth: Int, collapseState: Set<PersistentIdentifier>, result: inout [FlatTaskNode]) {
+-    let isCollapsed = collapseState.contains(task.persistentModelID)
+-    let activeSubtasks = task.subtasks.filter { !($0.isCompleted == true) }
+-    result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskCount: activeSubtasks.count))
+-    if !isCollapsed {
+-        for subtask in activeSubtasks.sorted(by: { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }) {
+-            flattenNode(subtask, depth: depth + 1, collapseState: collapseState, result: &result)
+-        }
+-    }
+-}
+-
+ var body: some View {
+     List {
+         if isQuickCapturing {
+             quickCaptureRow
+
+[0m
+Remove computed properties and flatten methods:

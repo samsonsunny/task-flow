@@ -79,7 +79,7 @@
     {
       "id": "US-002",
       "title": "Move data mutations to ViewModel",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -95,8 +95,8 @@
         "openQuickCaptureEditor(text:listID:) and commitQuickCapture(text:in:) added (2.8)"
       ],
       "startedAt": "2026-06-26T18:45:51.394025+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-06-26T18:45:51.394192+00:00"
+      "completedAt": "2026-06-26T18:48:36.062256+00:00",
+      "updatedAt": "2026-06-26T18:48:36.062104+00:00"
     },
     {
       "id": "US-003",
@@ -114,7 +114,10 @@
         ".onChange and .onAppear call viewModel.update(...) (3.5)",
         "No @Environment(\\.modelContext) usage remains in view (3.6)",
         "No direct modelContext mutations remain in view (3.7)"
-      ]
+      ],
+      "startedAt": null,
+      "completedAt": null,
+      "updatedAt": "2026-06-26T18:48:38.146734+00:00"
     },
     {
       "id": "US-004",

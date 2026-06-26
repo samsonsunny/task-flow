@@ -59,6 +59,35 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760
 - **Learnings for future iterations:**
   - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
   - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
-  - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
+   - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
+---
+## [2026-06-27 00:17] - US-002: Move data mutations to ViewModel
+Thread:
+Run: 20260627-001202-9760 (iteration 2)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760-iter-2.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 0ca4537 US-002: Add all mutation methods to ListDetailViewModel
+- Post-commit status: `.ralph/runs/run-20260627-001202-9760-iter-2.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (added mutation methods)
+- What was implemented:
+  - Added `draggedTaskId` and `scheduledTask` properties to ViewModel
+  - Added `commitQuickCapture(text:in:)` - creates TaskItem with list assignment (2.1/2.8)
+  - Added `openQuickCaptureEditor(text:listID:)` - returns trimmed text and listID (2.8)
+  - Added `delete(task:)` - cancels notification, deletes descendants, removes task (2.2)
+  - Added `moveTask(_:to:)` and `assignSortOrder(for:in:)` for list moves (2.3)
+  - Added `moveTasks(fromOffsets:toOffset:)` using midpoint/widen algorithm (2.4)
+  - Added `handleDrop(target:location:)`, `moveTaskToRoot()`, `isDescendant(_:of:)` for drag-drop nesting (2.5)
+  - Added `presentScheduleSheet(for:)`, `scheduleTask(_:dueDate:hasTime:)`, and reschedule helpers (2.6)
+  - Added `canMoveToToday(_:)`, `canMoveToTomorrow(_:)`, `otherLists` helpers (2.7)
+  - All mutation methods call `recompute()` to refresh derived state and `try? modelContext.save()` to persist
+- **Learnings for future iterations:**
+  - Patterns discovered: All mutation methods follow consistent pattern: mutate, save, recompute
+  - Gotchas encountered: `commitQuickCapture` and `openQuickCaptureEditor` appear in both AC 2.1 and 2.8
+  - Useful context: View layer (ListDetailView.swift) still has duplicate implementations of these methods; US-003 will wire view to VM calls
 ---
 
