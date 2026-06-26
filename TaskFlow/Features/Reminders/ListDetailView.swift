@@ -15,13 +15,6 @@ private struct ScheduleConfig: Identifiable {
     let task: TaskItem
 }
 
-private struct FlatTaskNode: Identifiable {
-    let id: PersistentIdentifier
-    let task: TaskItem
-    let depth: Int
-    let subtaskCount: Int
-}
-
 private struct TaskDropDelegate: DropDelegate {
     let targetTask: TaskItem
     let performDrop: (TaskItem, CGPoint) -> Void
