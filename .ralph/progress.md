@@ -128,6 +128,34 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-1239
   - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
   - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
 ---
+## [2026-06-27 00:55] - US-001: Create ReminderSegmentViewModel with core properties and update()
+Thread:
+Run: 20260627-005411-15148 (iteration 1)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-1.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-1.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 408d05f US-001: Create ReminderSegmentViewModel with core properties and update()
+- Post-commit status: `.ralph/runs/run-20260627-005411-15148-iter-1.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift (new)
+- What was implemented:
+  - Created @Observable ReminderSegmentViewModel with:
+    - private modelContext, let segment, let overdueTasks from init
+    - now Date with refreshNow() method
+    - showOverdue Bool toggle, justCompleted Set<String> for animation tracking
+    - filteredTasks, groupedSections, upcomingGroups, sortedFlatTasks computed in update()
+  - init(modelContext:segment:overdueTasks:) stores all parameters (overdueTasks defaults to [])
+  - refreshNow() sets now = Date()
+  - update(tasks:lists:now:) computes all derived state via ReminderSegmentLogic
+  - Follows same patterns as CompletedViewModel and ListDetailViewModel (@MainActor, @Observable, final)
+- **Learnings for future iterations:**
+  - Patterns discovered: ReminderSegmentLogic.filteredTasks, .datedSections, .upcomingGroups, .sortedTasks are static methods used same way in VM
+  - Gotchas encountered: PRD JSON was picked up by git add -A; important to reset HEAD first
+  - Useful context: VM follows standard pattern matching ListDetailViewModel and CompletedViewModel
+---
 ## [2026-06-27 00:55] - US-004: Verify ListDetailView refactor
 Thread:
 Run: 20260627-004234-12390 (iteration 2)
