@@ -1,0 +1,491 @@
+[0m
+> build · big-pickle
+[0m
+[0m→ [0mRead .ralph/guardrails.md
+[0m→ [0mRead .ralph/errors.log
+[0m→ [0mRead .agents/tasks/mvvm-list-detail.json
+[0m→ [0mRead .ralph/progress.md
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+[0m→ [0mRead TaskFlow/Features/Reminders/ListDetailView.swift
+[0m→ [0mRead TaskFlow/Models/TaskItem.swift
+[0m✗ [0mRead TaskFlow/Models/ReminderList.swift failed
+[91m[1mError: [0mFile not found: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Models/ReminderList.swift
+[0m✱ [0mGlob "**/ReminderEditorView.swift"[90m 1 match[0m
+[0m✱ [0mGlob "**/TaskScheduleDatePickerSheet.swift"[90m 1 match[0m
+[0m✱ [0mGrep "func midpoint|func widen"[90m 2 matches[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels
+Let me read the model files and understand the existing patterns.
+[0m→ [0mRead TaskFlow/Utilities/SortOrderMidpoint.swift
+[0m✱ [0mGrep "class NotificationService"[90m 1 match[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/CompletedViewModel.swift
+[0m
+[0m# [0mTodos
+[ ] Add commitQuickCapture(text:in:) to ViewModel
+[ ] Add delete(task:) to ViewModel
+[ ] Add moveTask(_:to:) and assignSortOrder(for:in:) to ViewModel
+[ ] Add moveTasks(fromOffsets:toOffset:) with midpoint/widen to ViewModel
+[ ] Add handleDrop(target:location:), moveTaskToRoot(), isDescendant(_:of:) to ViewModel
+[ ] Add presentScheduleSheet(for:), scheduleTask(_:dueDate:hasTime:), reschedule helpers to ViewModel
+[ ] Add canMoveToToday(_:), canMoveToTomorrow(_:), otherLists to ViewModel
+[ ] Add openQuickCaptureEditor(text:listID:) and commitQuickCapture(text:in:) to ViewModel
+[ ] Build and verify with xcodebuild
+[ ] Log progress and commit
+[0m
+[0m# [0mTodos
+[•] Add commitQuickCapture(text:in:) to ViewModel
+[•] Add delete(task:) to ViewModel
+[•] Add moveTask(_:to:) and assignSortOrder(for:in:) to ViewModel
+[•] Add moveTasks(fromOffsets:toOffset:) with midpoint/widen to ViewModel
+[•] Add handleDrop(target:location:), moveTaskToRoot(), isDescendant(_:of:) to ViewModel
+[•] Add presentScheduleSheet(for:), scheduleTask(_:dueDate:hasTime:), reschedule helpers to ViewModel
+[•] Add canMoveToToday(_:), canMoveToTomorrow(_:), otherLists to ViewModel
+[•] Add openQuickCaptureEditor(text:listID:) and commitQuickCapture(text:in:) to ViewModel
+[ ] Build and verify with xcodebuild
+[ ] Log progress and commit
+[0m
+Now I'll add all the mutation methods to `ListDetailViewModel.swift`. Let me implement them in one edit.
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+@@ -21,8 +21,10 @@
+ 
+ private(set) var collapsedTasks: Set<PersistentIdentifier> = []
+ private(set) var justCompleted: Set<String> = []
+ private(set) var now: Date = Date()
++private(set) var draggedTaskId: String?
++private(set) var scheduledTask: TaskItem?
+ 
+ private var allTasks: [TaskItem] = []
+ private var allLists: [ReminderList] = []
+ 
+
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+@@ -104,5 +104,218 @@
+                 flattenNode(subtask, depth: depth + 1, result: &result)
+             }
+         }
+     }
++
++    // MARK: - Quick Capture (2.1 / 2.8)
++
++    func commitQuickCapture(text: String, in listID: ReminderList.ID?) {
++        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !trimmed.isEmpty else { return }
++        guard let list = allLists.first(where: { $0.persistentModelID == (listID ?? self.listID) }) else { return }
++        let task = TaskItem(taskTitle: trimmed, dueDate: nil)
++        task.createdAt = Date()
++        task.reminderList = list
++        modelContext.insert(task)
++        try? modelContext.save()
++        recompute()
++    }
++
++    func openQuickCaptureEditor(text: String, listID: ReminderList.ID?) -> (String, ReminderList.ID) {
++        (text.trimmingCharacters(in: .whitespacesAndNewlines), listID ?? self.listID)
++    }
++
++    // MARK: - Delete (2.2)
++
++    func delete(task: TaskItem) {
++        if let taskId = task.taskId {
++            NotificationService.shared.cancel(taskId: taskId)
++        }
++        task.deleteDescendants()
++        modelContext.delete(task)
++        try? modelContext.save()
++        recompute()
++    }
++
++    // MARK: - List Move (2.3)
++
++    func moveTask(_ task: TaskItem, to list: ReminderList) {
++        task.reminderList = list
++        assignSortOrder(for: task, in: list)
++        try? modelContext.save()
++        recompute()
++    }
++
++    func assignSortOrder(for task: TaskItem, in list: ReminderList) {
++        let listTasks = allTasks.filter {
++            $0.reminderList?.persistentModelID == list.persistentModelID &&
++            $0.persistentModelID != task.persistentModelID
++        }
++        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
++        task.sortOrder = midpoint(between: lastOrder, and: nil)
++    }
++
++    // MARK: - Drag-Drop Reorder (2.4)
++
++    func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
++        var mutableTasks = tasks
++        let sortedFrom = fromOffsets.sorted()
++
++        let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
++        let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
++        let insertAt = min(adjustedTo, mutableTasks.count)
++
++        mutableTasks.insert(contentsOf: moved, at: insertAt)
++
++        var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
++        for i in insertAt..<(insertAt + moved.count) {
++            let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
++
++            if let newOrder = midpoint(between: lower, and: upper) {
++                mutableTasks[i].sortOrder = newOrder
++            } else {
++                if let upperStr = upper {
++                    let widened = widen(upperStr)
++                    if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
++                        upperTask.sortOrder = widened
++                    }
++                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
++                } else {
++                    mutableTasks[i].sortOrder = ""
++                }
++            }
++
++            lower = mutableTasks[i].sortOrder
++        }
++
++        try? modelContext.save()
++        recompute()
++    }
++
++    // MARK: - Drag-Drop Nesting (2.5)
++
++    func handleDrop(target: TaskItem, location: CGPoint) {
++        guard let draggedTaskId,
++              let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
++              draggedTask.persistentModelID != target.persistentModelID else { return }
++
++        guard !isDescendant(target, of: draggedTask) else { return }
++
++        let threshold: CGFloat = 22
++        if location.y < threshold {
++            draggedTask.parentTask = target.parentTask
++            let siblings: [TaskItem]
++            if let parent = target.parentTask {
++                siblings = Array(parent.subtasks)
++            } else {
++                siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
++            }
++            let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
++            if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
++                let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
++                draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
++            }
++        } else {
++            draggedTask.parentTask = target
++            let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
++                .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
++            let lastOrder = subbies.last?.sortOrder
++            draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
++        }
++        try? modelContext.save()
++        recompute()
++    }
++
++    func moveTaskToRoot() {
++        guard let draggedTaskId,
++              let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
++        task.parentTask = nil
++        let siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
++            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
++        let lastOrder = siblings.last?.sortOrder
++        task.sortOrder = midpoint(between: lastOrder, and: nil)
++        try? modelContext.save()
++        recompute()
++    }
++
++    func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
++        var current = task
++        while let parent = current.parentTask {
++            if parent.persistentModelID == potentialParent.persistentModelID {
++                return true
++            }
++            current = parent
++        }
++        return false
++    }
++
++    // MARK: - Scheduling (2.6)
++
++    func presentScheduleSheet(for task: TaskItem) {
++        scheduledTask = task
++    }
++
++    func scheduleTask(_ task: TaskItem, dueDate: Date?, hasTime: Bool) {
++        if let taskId = task.taskId {
++            NotificationService.shared.cancel(taskId: taskId)
++        }
++        if let date = dueDate {
++            if hasTime {
++                task.dueDate = date
++                task.hasTime = true
++                NotificationService.shared.schedule(for: task)
++            } else {
++                task.dueDate = Calendar.current.startOfDay(for: date)
++                task.hasTime = false
++            }
++        } else {
++            task.dueDate = nil
++        }
++        try? modelContext.save()
++        recompute()
++    }
++
++    func rescheduleTaskToToday(_ task: TaskItem) {
++        if let taskId = task.taskId {
++            NotificationService.shared.cancel(taskId: taskId)
++        }
++        task.dueDate = Calendar.current.startOfDay(for: now)
++        try? modelContext.save()
++        recompute()
++    }
++
++    func rescheduleTaskToTomorrow(_ task: TaskItem) {
++        if let taskId = task.taskId {
++            NotificationService.shared.cancel(taskId: taskId)
++        }
++        let calendar = Calendar.current
++        let todayStart = calendar.startOfDay(for: now)
++        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
++        try? modelContext.save()
++        recompute()
++    }
++
++    func rescheduleTaskToLater(_ task: TaskItem) {
++        if let taskId = task.taskId {
++            NotificationService.shared.cancel(taskId: taskId)
++        }
++        task.dueDate = nil
++        try? modelContext.save()
++        recompute()
++    }
++
++    // MARK: - Helpers (2.7)
++
++    func canMoveToToday(_ task: TaskItem) -> Bool {
++        guard let dueDate = task.dueDate else { return true }
++        return !Calendar.current.isDateInToday(dueDate)
++    }
++
++    func canMoveToTomorrow(_ task: TaskItem) -> Bool {
++        guard let dueDate = task.dueDate else { return true }
++        return !Calendar.current.isDateInTomorrow(dueDate)
++    }
++
++    var otherLists: [ReminderList] {
++        allLists.filter { $0.persistentModelID != listID }
++    }
+ }
+
+[0m
+Now add all the mutation methods:
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+[0m
+[0m# [0mTodos
+[✓] Add commitQuickCapture(text:in:) to ViewModel
+[✓] Add delete(task:) to ViewModel
+[✓] Add moveTask(_:to:) and assignSortOrder(for:in:) to ViewModel
+[✓] Add moveTasks(fromOffsets:toOffset:) with midpoint/widen to ViewModel
+[✓] Add handleDrop(target:location:), moveTaskToRoot(), isDescendant(_:of:) to ViewModel
+[✓] Add presentScheduleSheet(for:), scheduleTask(_:dueDate:hasTime:), reschedule helpers to ViewModel
+[✓] Add canMoveToToday(_:), canMoveToTomorrow(_:), otherLists to ViewModel
+[✓] Add openQuickCaptureEditor(text:listID:) and commitQuickCapture(text:in:) to ViewModel
+[•] Build and verify with xcodebuild
+[ ] Log progress and commit
+[0m
+File looks good. Now let me build to verify it compiles.
+[0m$ [0mxcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build 2>&1
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device }
+{ platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder-iphonesimulator:placeholder, name:Any iOS Simulator Device }
+{ platform:iOS Simulator, arch:arm64, id:AB67A290-A01F-49FB-93AD-733C008F6914, OS:26.0, name:iPad (A16) }
+{ platform:iOS Simulator, arch:arm64, id:6A06522D-1EF8-4991-A92A-90C2C53BDF39, OS:26.0, name:iPad Air 11-inch (M3) }
+{ platform:iOS Simulator, arch:arm64, id:B310F2E7-E076-4A12-972B-E48C6CE2BE68, OS:26.0, name:iPad Air 13-inch (M3) }
+{ platform:iOS Simulator, arch:arm64, id:52064B5C-D39F-4FCF-ABB0-9FB7CAF4CB0B, OS:26.0, name:iPad Pro 11-inch (M4) }
+{ platform:iOS Simulator, arch:arm64, id:ED598225-837D-4E45-A0E5-5791B19EC604, OS:26.0, name:iPad Pro 13-inch (M4) }
+{ platform:iOS Simulator, arch:arm64, id:56E22524-3272-4055-9BEB-FE524E7F7BB9, OS:26.0, name:iPad mini (A17 Pro) }
+{ platform:iOS Simulator, arch:arm64, id:F7B5D408-79C9-4C82-A4A3-05A258574BA4, OS:26.0, name:iPhone 16 }
+{ platform:iOS Simulator, arch:arm64, id:E8A90457-4B8E-4FDE-9BD4-1AD7E118808A, OS:26.0, name:iPhone 16 Plus }
+{ platform:iOS Simulator, arch:arm64, id:2FA853FF-D349-40E4-8C36-4B73D027BE09, OS:26.0, name:iPhone 16 Pro }
+{ platform:iOS Simulator, arch:arm64, id:F3555398-AADF-4F15-89E3-8DF2C1CB3826, OS:26.0, name:iPhone 16 Pro Max }
+{ platform:iOS Simulator, arch:arm64, id:54D3B88C-0E5E-470F-8D15-C76D9D3C7C27, OS:26.0, name:iPhone 16e }
+{ platform:iOS Simulator, arch:arm64, id:EF0B7746-F8D1-4423-B002-EC6ACB81A808, OS:26.0, name:iPhone 17 }
+{ platform:iOS Simulator, arch:arm64, id:ACE0649B-0962-474E-B73A-FF32894A62C1, OS:26.0, name:iPhone 17 Pro }
+{ platform:iOS Simulator, arch:arm64, id:91A2B537-D6B7-4AC5-84CF-BE07BC624943, OS:26.0, name:iPhone 17 Pro Max }
+{ platform:iOS Simulator, arch:arm64, id:98FF0F82-0B3C-4183-BD91-58F6ED92AB75, OS:26.0, name:iPhone Air }
+{ platform:iOS, arch:arm64, id:00008101-001A11082652001E, name:sam’s iPhone }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'TaskFlow' in project 'TaskFlow' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/sam/Desktop/TaskFlowApp/TaskFlow/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: d583a082c6d26f1157cdc6fa54e541d8
+Build description path: /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/XCBuildData/d583a082c6d26f1157cdc6fa54e541d8.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache
+    cd /Users/sam/Desktop/TaskFlowApp/TaskFlow.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -o /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache
+
+ProcessProductPackaging /Users/sam/Desktop/TaskFlowApp/TaskFlow/TaskFlow.entitlements /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Entitlements:
+    
+    {
+    "application-identifier" = "63W4NX9ZR9.com.samsonsunny.app.task-flow";
+    "aps-environment" = development;
+    "com.apple.developer.team-identifier" = 63W4NX9ZR9;
+    "get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility /Users/sam/Desktop/TaskFlowApp/TaskFlow/TaskFlow.entitlements -entitlements -format xml -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent
+
+ProcessProductPackagingDER /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent.der (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    /usr/bin/derq query -f xml -i /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent.der --raw
+
+SwiftDriver TaskFlow normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TaskFlow -Onone -enforce-exclusivity\=checked @/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -target arm64-apple-ios26.0 -g -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache -output-file-map /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_const_extract_protocols.json -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-generated-files.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-own-target-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-all-target-headers.hmap -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-project-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/include -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources-normal/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-Swift.h -working-directory /Users/sam/Desktop/TaskFlowApp -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/Info.plist /Users/sam/Desktop/TaskFlowApp/TaskFlow/Info.plist (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-infoPlistUtility /Users/sam/Desktop/TaskFlowApp/TaskFlow/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/PkgInfo -expandbuildsettings -format binary -platform iphoneos -additionalcontentfile /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/assetcatalog_generated_info.plist -requiredArchitecture arm64 -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/Info.plist
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TaskFlow (in target 'TaskFlow' from project 'TaskFlow')
+
+EmitSwiftModule normal arm64 (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+
+SwiftCompile normal arm64 Compiling\ ListDetailViewModel.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+
+SwiftCompile normal arm64 /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TaskFlow (in target 'TaskFlow' from project 'TaskFlow')
+
+SwiftDriver\ Compilation\ Requirements TaskFlow normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TaskFlow -Onone -enforce-exclusivity\=checked @/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -target arm64-apple-ios26.0 -g -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache -output-file-map /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_const_extract_protocols.json -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-generated-files.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-own-target-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-all-target-headers.hmap -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-project-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/include -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources-normal/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-Swift.h -working-directory /Users/sam/Desktop/TaskFlowApp -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver\ Compilation TaskFlow normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TaskFlow -Onone -enforce-exclusivity\=checked @/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-bare-slash-regex -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -target arm64-apple-ios26.0 -g -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache -output-file-map /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_const_extract_protocols.json -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-generated-files.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-own-target-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-all-target-headers.hmap -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-project-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/include -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources-normal/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-Swift.h -working-directory /Users/sam/Desktop/TaskFlowApp -experimental-emit-module-separately -disable-cmo
+
+Copy /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/arm64-apple-ios.abi.json /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.abi.json (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.abi.json /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/arm64-apple-ios.abi.json
+
+Copy /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/Project/arm64-apple-ios.swiftsourceinfo /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftsourceinfo (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftsourceinfo /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/Project/arm64-apple-ios.swiftsourceinfo
+
+Copy /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/arm64-apple-ios.swiftmodule /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.swiftmodule/arm64-apple-ios.swiftmodule
+
+Ld /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib normal (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -O0 -L/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphoneos -L/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphoneos -F/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -filelist /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.LinkFileList -install_name @rpath/TaskFlow.debug.dylib -Xlinker -rpath -Xlinker @executable_path/Frameworks -dead_strip -Xlinker -object_path_lto -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphoneos -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.swiftmodule @/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-ExecutorLinkFileList-normal-arm64.txt (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    construct-stub-executor-link-file-list /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'TaskFlow' from project 'TaskFlow')
+
+Ld /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow normal (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -O0 -L/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-ExecutorLinkFileList-normal-arm64.txt /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow
+
+CopySwiftLibs /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-swiftStdLibTool --copy --verbose --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --scan-executable /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib --scan-folder /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/Frameworks --scan-folder /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/PlugIns --scan-folder /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/SystemExtensions --scan-folder /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/Extensions --platform iphoneos --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name TaskFlow --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk --xcode-version 17A400 --platform-family iOS --deployment-target 26.0 --bundle-identifier com.samsonsunny.app.task-flow --output /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app --target-triple arm64-apple-ios26.0 --binary-file /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow --dependency-file /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_dependency_info.dat --stringsdata-file /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.SwiftFileList --metadata-file-list /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.DependencyMetadataFileList --static-metadata-file-list /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.DependencyStaticMetadataFileList --swift-const-vals-list /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-06-27 00:17:51.212 appintentsmetadataprocessor[11469:143558] Starting appintentsmetadataprocessor export
+2026-06-27 00:17:51.213 appintentsmetadataprocessor[11469:143558] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Signing Identity:     "Apple Development: Samson Sunny (275T8SRNG6)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.samsonsunny.app.task-flow"
+                          (ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/TaskFlow.debug.dylib
+
+CodeSign /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/__preview.dylib (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Signing Identity:     "Apple Development: Samson Sunny (275T8SRNG6)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.samsonsunny.app.task-flow"
+                          (ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/__preview.dylib
+/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/__preview.dylib: replacing existing signature
+
+CodeSign /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Signing Identity:     "Apple Development: Samson Sunny (275T8SRNG6)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.samsonsunny.app.task-flow"
+                          (ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --entitlements /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app
+
+Validate /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-validationUtility /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app -shallow-bundle -infoplist-subpath Info.plist
+
+** BUILD SUCCEEDED **
+[0m
+[0m$ [0m/Users/sam/Desktop/TaskFlowApp/ralph log "US-002: Added all mutation methods to ListDetailViewModel"
+zsh:1: no such file or directory: /Users/sam/Desktop/TaskFlowApp/ralph
+[0m
+Build succeeded. Now let me log the activity and commit.
+[0m$ [0mecho "[2026-06-27 00:17] - US-002: Added all mutation methods to ListDetailViewModel" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+Now let me commit the changes.

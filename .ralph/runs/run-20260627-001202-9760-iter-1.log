@@ -496,3 +496,35 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
  - Files changed:
 
 [0m
+[0m$ [0mgit add -A && git commit --amend --no-edit
+[base-26.7.8 0331c26] US-001: Create ListDetailViewModel with core properties and update() entry point
+ Date: Sat Jun 27 00:15:24 2026 +0530
+ 13 files changed, 1459 insertions(+), 38 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-001202-9760-1.md
+ create mode 100644 .ralph/.tmp/story-20260627-001202-9760-1.json
+ create mode 100644 .ralph/.tmp/story-20260627-001202-9760-1.md
+ create mode 100644 .ralph/runs/run-20260627-000602-8600-iter-1.md
+ create mode 100644 .ralph/runs/run-20260627-001202-9760-iter-1.log
+ create mode 100644 TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+[0m
+[0m$ [0mgit status --porcelain && git show -s --format="%h %s" HEAD
+M .ralph/runs/run-20260627-001202-9760-iter-1.log
+0331c26 US-001: Create ListDetailViewModel with core properties and update() entry point
+[0m
+[0m$ [0mecho "[2026-06-27 00:15] US-001: ViewModel created, build verified, committed (0331c26)" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m# [0mTodos
+[✓] Read all necessary files to understand task (guardrails, errors, PRD, existing code)
+[✓] Create ListDetailViewModel.swift with @Observable class, init, update(), computed properties
+[✓] Add FlatTaskNode struct and flattenTasks/flattenNode with collapse support (task 1.5)
+[✓] Add collapsedTasks set with toggleCollapse(_:) (task 1.6)
+[✓] Add justCompleted set with toggleCompletion(for:) including animation delay (task 1.7)
+[✓] Build verification with xcodebuild
+[✓] Security, performance, regression audit before commit
+[✓] Commit changes
+[✓] Append progress entry to .ralph/progress.md
+[0m
+**US-001 complete.** Created `ListDetailViewModel.swift` with `@Observable` class, `init(modelContext:listID:)`, `update(tasks:lists:allTasks:now:)`, computed `list`/`tasks`/`rootTasks`/`flatNodes` properties, `flattenTasks()`/`flattenNode()` with collapse support, `collapsedTasks` + `toggleCollapse(_:)`, `justCompleted` + `toggleCompletion(for:)` with 0.6s animation delay. Removed duplicate `FlatTaskNode` from `ListDetailView.swift`. Build verified. Committed `0331c26`.
+
+<promise>COMPLETE</promise>

@@ -22,6 +22,8 @@ final class ListDetailViewModel {
     private(set) var collapsedTasks: Set<PersistentIdentifier> = []
     private(set) var justCompleted: Set<String> = []
     private(set) var now: Date = Date()
+    private(set) var draggedTaskId: String?
+    private(set) var scheduledTask: TaskItem?
 
     private var allTasks: [TaskItem] = []
     private var allLists: [ReminderList] = []
@@ -102,5 +104,218 @@ final class ListDetailViewModel {
                 flattenNode(subtask, depth: depth + 1, result: &result)
             }
         }
+    }
+
+    // MARK: - Quick Capture (2.1 / 2.8)
+
+    func commitQuickCapture(text: String, in listID: ReminderList.ID?) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let list = allLists.first(where: { $0.persistentModelID == (listID ?? self.listID) }) else { return }
+        let task = TaskItem(taskTitle: trimmed, dueDate: nil)
+        task.createdAt = Date()
+        task.reminderList = list
+        modelContext.insert(task)
+        try? modelContext.save()
+        recompute()
+    }
+
+    func openQuickCaptureEditor(text: String, listID: ReminderList.ID?) -> (String, ReminderList.ID) {
+        (text.trimmingCharacters(in: .whitespacesAndNewlines), listID ?? self.listID)
+    }
+
+    // MARK: - Delete (2.2)
+
+    func delete(task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.deleteDescendants()
+        modelContext.delete(task)
+        try? modelContext.save()
+        recompute()
+    }
+
+    // MARK: - List Move (2.3)
+
+    func moveTask(_ task: TaskItem, to list: ReminderList) {
+        task.reminderList = list
+        assignSortOrder(for: task, in: list)
+        try? modelContext.save()
+        recompute()
+    }
+
+    func assignSortOrder(for task: TaskItem, in list: ReminderList) {
+        let listTasks = allTasks.filter {
+            $0.reminderList?.persistentModelID == list.persistentModelID &&
+            $0.persistentModelID != task.persistentModelID
+        }
+        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
+        task.sortOrder = midpoint(between: lastOrder, and: nil)
+    }
+
+    // MARK: - Drag-Drop Reorder (2.4)
+
+    func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
+        var mutableTasks = tasks
+        let sortedFrom = fromOffsets.sorted()
+
+        let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
+        let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
+        let insertAt = min(adjustedTo, mutableTasks.count)
+
+        mutableTasks.insert(contentsOf: moved, at: insertAt)
+
+        var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
+        for i in insertAt..<(insertAt + moved.count) {
+            let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
+
+            if let newOrder = midpoint(between: lower, and: upper) {
+                mutableTasks[i].sortOrder = newOrder
+            } else {
+                if let upperStr = upper {
+                    let widened = widen(upperStr)
+                    if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
+                        upperTask.sortOrder = widened
+                    }
+                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+                } else {
+                    mutableTasks[i].sortOrder = ""
+                }
+            }
+
+            lower = mutableTasks[i].sortOrder
+        }
+
+        try? modelContext.save()
+        recompute()
+    }
+
+    // MARK: - Drag-Drop Nesting (2.5)
+
+    func handleDrop(target: TaskItem, location: CGPoint) {
+        guard let draggedTaskId,
+              let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
+              draggedTask.persistentModelID != target.persistentModelID else { return }
+
+        guard !isDescendant(target, of: draggedTask) else { return }
+
+        let threshold: CGFloat = 22
+        if location.y < threshold {
+            draggedTask.parentTask = target.parentTask
+            let siblings: [TaskItem]
+            if let parent = target.parentTask {
+                siblings = Array(parent.subtasks)
+            } else {
+                siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+            }
+            let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+            if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
+                let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
+                draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
+            }
+        } else {
+            draggedTask.parentTask = target
+            let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+                .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+            let lastOrder = subbies.last?.sortOrder
+            draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
+        }
+        try? modelContext.save()
+        recompute()
+    }
+
+    func moveTaskToRoot() {
+        guard let draggedTaskId,
+              let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
+        task.parentTask = nil
+        let siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
+            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        let lastOrder = siblings.last?.sortOrder
+        task.sortOrder = midpoint(between: lastOrder, and: nil)
+        try? modelContext.save()
+        recompute()
+    }
+
+    func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
+        var current = task
+        while let parent = current.parentTask {
+            if parent.persistentModelID == potentialParent.persistentModelID {
+                return true
+            }
+            current = parent
+        }
+        return false
+    }
+
+    // MARK: - Scheduling (2.6)
+
+    func presentScheduleSheet(for task: TaskItem) {
+        scheduledTask = task
+    }
+
+    func scheduleTask(_ task: TaskItem, dueDate: Date?, hasTime: Bool) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        if let date = dueDate {
+            if hasTime {
+                task.dueDate = date
+                task.hasTime = true
+                NotificationService.shared.schedule(for: task)
+            } else {
+                task.dueDate = Calendar.current.startOfDay(for: date)
+                task.hasTime = false
+            }
+        } else {
+            task.dueDate = nil
+        }
+        try? modelContext.save()
+        recompute()
+    }
+
+    func rescheduleTaskToToday(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = Calendar.current.startOfDay(for: now)
+        try? modelContext.save()
+        recompute()
+    }
+
+    func rescheduleTaskToTomorrow(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+        try? modelContext.save()
+        recompute()
+    }
+
+    func rescheduleTaskToLater(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = nil
+        try? modelContext.save()
+        recompute()
+    }
+
+    // MARK: - Helpers (2.7)
+
+    func canMoveToToday(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        return !Calendar.current.isDateInToday(dueDate)
+    }
+
+    func canMoveToTomorrow(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        return !Calendar.current.isDateInTomorrow(dueDate)
+    }
+
+    var otherLists: [ReminderList] {
+        allLists.filter { $0.persistentModelID != listID }
     }
 }
