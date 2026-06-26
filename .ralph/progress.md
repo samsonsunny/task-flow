@@ -448,3 +448,30 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-1978
   - Gotchas encountered: The run loop's `.ralph/runs/` logs remain dirty after commit — expected behavior since the run is still active
   - Useful context: US-004 is purely verification — no source code changes needed. The implementation from US-001-003 is complete and correct.
 ---
+
+## [2026-06-27 01:23] - US-001: Create ListsTabViewModel with core properties and dialog state
+Thread:
+Run: 20260627-012239-22694 (iteration 1)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-1.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-1.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 82743c9 US-001: Create ListsTabViewModel with core properties and dialog state
+- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-1.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift (new)
+- What was implemented:
+  - Created @Observable ListsTabViewModel with:
+    - private modelContext, private(set) lists/groups/allTasks
+    - update(lists:groups:allTasks:) entry point (matches view's @Query results)
+    - defaultList computed property (first list matching ReminderDefaults.defaultListName)
+    - ungroupedLists computed property (lists with no group, excluding default list)
+    - All dialog state: isCreatingList, newListName, isRenamePresented, renameList, renameText, deleteList, isCreatingGroup, newGroupName, groupSourceList, renameGroup, isGroupRenamePresented, groupRenameText, deleteGroup
+  - Follows same pattern as other ViewModels (@MainActor, @Observable, final, private modelContext)
+- **Learnings for future iterations:**
+  - Patterns discovered: Dialog state booleans are `var` (not private(set)) so view can bind with `$viewModel.property`
+  - Gotchas encountered: None
+  - Useful context: expandedGroupIDs and defaultsKeyPrefix are for US-004 (group expand/collapse with UserDefaults persistence)
+---
