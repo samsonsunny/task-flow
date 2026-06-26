@@ -22,7 +22,7 @@ final class ListDetailViewModel {
     private(set) var collapsedTasks: Set<PersistentIdentifier> = []
     private(set) var justCompleted: Set<String> = []
     private(set) var now: Date = Date()
-    private(set) var draggedTaskId: String?
+    var draggedTaskId: String?
     private(set) var scheduledTask: TaskItem?
 
     private var allTasks: [TaskItem] = []
@@ -31,6 +31,10 @@ final class ListDetailViewModel {
     init(modelContext: ModelContext, listID: ReminderList.ID) {
         self.modelContext = modelContext
         self.listID = listID
+    }
+
+    func refreshNow() {
+        now = Date()
     }
 
     func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date()) {

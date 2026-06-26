@@ -37,60 +37,16 @@ struct ListDetailView: View {
     @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
 
-    @State private var now = Date()
+    @State private var viewModel: ListDetailViewModel?
     @State private var scheduleConfig: ScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
-    @State private var justCompleted: Set<String> = []
     @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
     @State private var skipNextDismiss = false
-    @State private var collapsedTasks: Set<PersistentIdentifier> = []
-    @State private var draggedTaskId: String?
     @FocusState private var isQuickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
-
-    private var list: ReminderList? {
-        allLists.first { $0.persistentModelID == listID }
-    }
-
-    private var tasks: [TaskItem] {
-        allTasks.filter {
-            guard $0.reminderList?.persistentModelID == listID else { return false }
-            if $0.isCompleted == true {
-                return justCompleted.contains($0.taskId ?? "")
-            }
-            return true
-        }
-    }
-
-    private var rootTasks: [TaskItem] {
-        tasks.filter { $0.parentTask == nil }
-    }
-
-    private var flatNodes: [FlatTaskNode] {
-        flattenTasks(rootTasks, collapseState: collapsedTasks)
-    }
-
-    private func flattenTasks(_ tasks: [TaskItem], collapseState: Set<PersistentIdentifier>) -> [FlatTaskNode] {
-        var result: [FlatTaskNode] = []
-        for task in tasks {
-            flattenNode(task, depth: 0, collapseState: collapseState, result: &result)
-        }
-        return result
-    }
-
-    private func flattenNode(_ task: TaskItem, depth: Int, collapseState: Set<PersistentIdentifier>, result: inout [FlatTaskNode]) {
-        let isCollapsed = collapseState.contains(task.persistentModelID)
-        let activeSubtasks = task.subtasks.filter { !($0.isCompleted == true) }
-        result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskCount: activeSubtasks.count))
-        if !isCollapsed {
-            for subtask in activeSubtasks.sorted(by: { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }) {
-                flattenNode(subtask, depth: depth + 1, collapseState: collapseState, result: &result)
-            }
-        }
-    }
 
     var body: some View {
         List {
@@ -98,28 +54,30 @@ struct ListDetailView: View {
                 quickCaptureRow
             }
 
-            if flatNodes.isEmpty {
-                emptyState
-            } else {
-                ForEach(flatNodes) { node in
-                    taskListRow(node)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                .onMove { fromOffsets, toOffset in
-                    let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
-                    let taskToOffset = flatToTaskIndex(toOffset)
-                    moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
-                }
+            if let vm = viewModel {
+                if vm.flatNodes.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(vm.flatNodes) { node in
+                        taskListRow(node)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                    .onMove { fromOffsets, toOffset in
+                        let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+                        let taskToOffset = flatToTaskIndex(toOffset)
+                        vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+                    }
 
-                rootDropZone
+                    rootDropZone
+                }
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .navigationTitle(list?.name ?? "")
+        .navigationTitle(viewModel?.list?.name ?? "")
         .navigationBarTitleDisplayMode(.large)
-        .animation(.easeInOut, value: flatNodes.count)
+        .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -130,8 +88,8 @@ struct ListDetailView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 24)
         }
-        .onReceive(refreshTimer) { fireDate in
-            now = fireDate
+        .onReceive(refreshTimer) { _ in
+            viewModel?.refreshNow()
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
@@ -141,22 +99,7 @@ struct ListDetailView: View {
                 ),
                 initialDueDate: config.task.dueDate,
                 onCommit: { dueDate, hasTime in
-                    let notif = NotificationService.shared
-                    if let taskId = config.task.taskId {
-                        notif.cancel(taskId: taskId)
-                    }
-                    if let date = dueDate {
-                        if hasTime {
-                            config.task.dueDate = date
-                            config.task.hasTime = true
-                            notif.schedule(for: config.task)
-                        } else {
-                            config.task.dueDate = Calendar.current.startOfDay(for: date)
-                            config.task.hasTime = false
-                        }
-                    } else {
-                        config.task.dueDate = nil
-                    }
+                    viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
                 }
             )
         }
@@ -180,6 +123,16 @@ struct ListDetailView: View {
                 }
             }
         }
+        .onAppear {
+            viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
+            viewModel?.update(tasks: allTasks, lists: allLists, allTasks: allTasks, now: Date())
+        }
+        .onChange(of: allTasks) { _, newTasks in
+            viewModel?.update(tasks: newTasks, lists: allLists, allTasks: newTasks)
+        }
+        .onChange(of: allLists) { _, newLists in
+            viewModel?.update(tasks: allTasks, lists: newLists, allTasks: allTasks)
+        }
     }
 
     private var rootDropZone: some View {
@@ -187,23 +140,12 @@ struct ListDetailView: View {
             .frame(height: 1)
             .contentShape(Rectangle())
             .onDrop(of: [.text], isTargeted: nil) { _ in
-                moveTaskToRoot()
+                viewModel?.moveTaskToRoot()
                 return true
             }
             .listRowInsets(EdgeInsets())
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-    }
-
-    private func moveTaskToRoot() {
-        guard let draggedTaskId,
-              let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
-        task.parentTask = nil
-        let siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
-            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        let lastOrder = siblings.last?.sortOrder
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
-        try? modelContext.save()
     }
 
     private var emptyState: some View {
@@ -225,231 +167,60 @@ struct ListDetailView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var otherLists: [ReminderList] {
-        allLists.filter { $0.persistentModelID != listID }
-    }
-
     private func taskListRow(_ node: FlatTaskNode) -> some View {
         let task = node.task
         return TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
-            onToggleCompletion: { toggleCompletion(for: task) },
-            onMoveToToday: canMoveToToday(task) ? { rescheduleTaskToToday(task) } : nil,
-            onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
-            onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
-            onSchedule: { presentScheduleSheet(for: task) },
-            onMoveToList: { moveTask(task, to: $0) },
-            availableLists: otherLists,
-            onDelete: {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
+            onToggleCompletion: {
+                if task.isCompleted == false {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
-                modelContext.delete(task)
-                try? modelContext.save()
+                viewModel?.toggleCompletion(for: task)
             },
+            onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
+            onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
+            onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
+            onSchedule: { presentScheduleSheet(for: task) },
+            onMoveToList: { viewModel?.moveTask(task, to: $0) },
+            availableLists: viewModel?.otherLists ?? [],
+            onDelete: { viewModel?.delete(task: task) },
             onTap: { editingTask = task },
             showsDueDate: true,
             showsListName: false,
             nestingDepth: node.depth,
             subtaskCount: node.subtaskCount,
-            isCollapsed: collapsedTasks.contains(task.persistentModelID),
-            onToggleCollapse: { toggleCollapse(task) }
+            isCollapsed: viewModel?.collapsedTasks.contains(task.persistentModelID) == true,
+            onToggleCollapse: { viewModel?.toggleCollapse(task) }
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .onDrag {
-            draggedTaskId = task.taskId
+            viewModel?.draggedTaskId = task.taskId
             return NSItemProvider(object: (task.taskId ?? "") as NSString)
         }
         .onDrop(of: [.text], delegate: TaskDropDelegate(targetTask: task) { target, location in
-            handleDrop(target: target, location: location)
+            viewModel?.handleDrop(target: target, location: location)
         })
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-                try? modelContext.save()
+                viewModel?.delete(task: task)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
     }
 
-    private func moveTask(_ task: TaskItem, to list: ReminderList) {
-        task.reminderList = list
-        assignSortOrder(for: task, in: list)
-        try? modelContext.save()
-    }
-
-    private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
-        let listTasks = allTasks.filter {
-            $0.reminderList?.persistentModelID == list.persistentModelID &&
-            $0.persistentModelID != task.persistentModelID
-        }
-        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
-    }
-
     private func flatToTaskIndex(_ flatIndex: Int) -> Int {
-        guard flatIndex < flatNodes.count else { return tasks.count }
-        return tasks.firstIndex(where: { $0.persistentModelID == flatNodes[flatIndex].task.persistentModelID }) ?? tasks.count
-    }
-
-    private func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
-        withAnimation(.easeInOut(duration: 0.18)) {
-            var mutableTasks = tasks
-            let sortedFrom = fromOffsets.sorted()
-
-            let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
-            let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
-            let insertAt = min(adjustedTo, mutableTasks.count)
-
-            mutableTasks.insert(contentsOf: moved, at: insertAt)
-
-            var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
-            for i in insertAt..<(insertAt + moved.count) {
-                let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
-
-                if let newOrder = midpoint(between: lower, and: upper) {
-                    mutableTasks[i].sortOrder = newOrder
-                } else {
-                    if let upperStr = upper {
-                        let widened = widen(upperStr)
-                        if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
-                            upperTask.sortOrder = widened
-                        }
-                        mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
-                    } else {
-                        mutableTasks[i].sortOrder = ""
-                    }
-                }
-
-                lower = mutableTasks[i].sortOrder
-            }
-
-            try? modelContext.save()
-        }
-    }
-
-    private func toggleCollapse(_ task: TaskItem) {
-        if collapsedTasks.contains(task.persistentModelID) {
-            collapsedTasks.remove(task.persistentModelID)
-        } else {
-            collapsedTasks.insert(task.persistentModelID)
-        }
-    }
-
-    private func handleDrop(target: TaskItem, location: CGPoint) {
-        guard let draggedTaskId,
-              let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
-              draggedTask.persistentModelID != target.persistentModelID else { return }
-
-        guard !isDescendant(target, of: draggedTask) else { return }
-
-        let threshold: CGFloat = 22
-        if location.y < threshold {
-            draggedTask.parentTask = target.parentTask
-            let siblings: [TaskItem]
-            if let parent = target.parentTask {
-                siblings = Array(parent.subtasks)
-            } else {
-                siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
-            }
-            let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-            if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
-                let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
-                draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
-            }
-        } else {
-            draggedTask.parentTask = target
-            let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
-                .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-            let lastOrder = subbies.last?.sortOrder
-            draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
-        }
-        try? modelContext.save()
-    }
-
-    private func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
-        var current = task
-        while let parent = current.parentTask {
-            if parent.persistentModelID == potentialParent.persistentModelID {
-                return true
-            }
-            current = parent
-        }
-        return false
-    }
-
-    private func dueDateColor(for task: TaskItem) -> Color? {
-        guard let dueDate = task.dueDate else { return nil }
-        return Calendar.current.startOfDay(for: dueDate) < Calendar.current.startOfDay(for: now)
-            ? AppTheme.colors.error
-            : AppTheme.colors.textSecondary
+        guard let vm = viewModel else { return 0 }
+        guard flatIndex < vm.flatNodes.count else { return vm.tasks.count }
+        return vm.tasks.firstIndex(where: { $0.persistentModelID == vm.flatNodes[flatIndex].task.persistentModelID }) ?? vm.tasks.count
     }
 
     private func presentScheduleSheet(for task: TaskItem) {
+        viewModel?.presentScheduleSheet(for: task)
         scheduleConfig = ScheduleConfig(task: task)
-    }
-
-    private func toggleCompletion(for task: TaskItem) {
-        let next = !(task.isCompleted ?? false)
-        if next {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            if let id = task.taskId {
-                justCompleted.insert(id)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
-                    guard let task, task.isCompleted == true else { return }
-                    withAnimation {
-                        justCompleted.remove(id)
-                    }
-                }
-            }
-        }
-        withAnimation(.easeInOut(duration: 0.18)) {
-            task.isCompleted = next
-            task.completionDate = next ? Date() : nil
-            if next, let taskId = task.taskId {
-                NotificationService.shared.cancel(taskId: taskId)
-            }
-        }
-    }
-
-    private func rescheduleTaskToToday(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = Calendar.current.startOfDay(for: now)
-    }
-
-    private func rescheduleTaskToTomorrow(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
-    }
-
-    private func rescheduleTaskToLater(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = nil
-    }
-
-    private func canMoveToToday(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInToday(dueDate)
-    }
-
-    private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInTomorrow(dueDate)
     }
 
     private var quickCaptureRow: some View {
@@ -496,23 +267,15 @@ struct ListDetailView: View {
     private func commitQuickCapture() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-
         skipNextDismiss = true
-
-        guard let currentList = list else { return }
-
-        let task = TaskItem(taskTitle: text, dueDate: nil)
-        task.createdAt = Date()
-        task.reminderList = currentList
-        modelContext.insert(task)
-
+        viewModel?.commitQuickCapture(text: text, in: listID)
         quickCaptureText = ""
         isQuickCaptureFocused = true
     }
 
     private func openQuickCaptureEditor() {
-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: listID, initialTitle: text)
+        let (title, targetListID) = viewModel?.openQuickCaptureEditor(text: quickCaptureText, listID: listID) ?? (quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines), listID)
+        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: targetListID, initialTitle: title)
         quickCaptureText = ""
         isQuickCapturing = false
     }

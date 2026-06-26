@@ -101,7 +101,7 @@
     {
       "id": "US-003",
       "title": "Refactor ListDetailView to use ViewModel",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-002"
       ],
@@ -115,9 +115,9 @@
         "No @Environment(\\.modelContext) usage remains in view (3.6)",
         "No direct modelContext mutations remain in view (3.7)"
       ],
-      "startedAt": null,
+      "startedAt": "2026-06-26T19:12:34.661495+00:00",
       "completedAt": null,
-      "updatedAt": "2026-06-26T18:48:38.146734+00:00"
+      "updatedAt": "2026-06-26T19:12:34.661887+00:00"
     },
     {
       "id": "US-004",
