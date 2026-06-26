@@ -291,6 +291,36 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-1514
   - Useful context: New pattern of passing vm as parameter to @ViewBuilder functions (upcomingContent(with:), groupedContent(with:), flatContent(with:)) avoids optional unwrapping boilerplate
 ---
 
+## [2026-06-27 01:13] - US-001: Create ReminderEditorViewModel
+Thread:
+Run: 20260627-011030-19782 (iteration 1)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-1.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-1.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 787c485 Create ReminderEditorViewModel with @Observable class, save/close lifecycle
+- Post-commit status: `.ralph/runs/run-20260627-011030-19782-iter-1.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ReminderEditorViewModel.swift (new)
+- What was implemented:
+  - Created @Observable ReminderEditorViewModel with:
+    - private modelContext, private(set) reminderLists/reminderTags, let task, let initialDraft, var draft, var isDiscardConfirmationPresented
+    - isDirty computed property: draft != initialDraft
+    - init(modelContext:task:reminderLists:reminderTags:initialDate:initialListID:initialTitle:) matching current view's draft-building logic
+    - init resolves list name from modelContext via initialListID (matching view's onAppear pattern)
+    - update(reminderLists:reminderTags:) to receive @Query results from view
+    - save() validates hasMeaningfulContent, applies via ReminderDraftMapper, inserts new task with sort order, schedules/cancels notifications
+    - handleClose() sets isDiscardConfirmationPresented when dirty
+    - assignInitialSortOrder private helper matching current view's algorithm
+  - Follows same patterns as ListDetailViewModel (@MainActor, @Observable, final, private modelContext)
+- **Learnings for future iterations:**
+  - Patterns discovered: ViewModel init includes list resolution from modelContext (moved from view's onAppear)
+  - Gotchas encountered: handleClose() in VM only sets flag — view still needs to call dismiss() when !isDiscardConfirmationPresented
+  - Useful context: draft is declared as `var` (not private(set)) so view can bind to it with Bindable(viewModel).draft
+---
+
 ## [2026-06-27 01:08] - US-005: Update TodayTabView and verify all segments
 Thread:
 Run: 20260627-005411-15148 (iteration 5)
