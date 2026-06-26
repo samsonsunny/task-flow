@@ -8,6 +8,8 @@ enum DailyReminderKeys {
     static let minute = "dailyReminderMinute"
 }
 
+private let didPerformNotificationMigrationKey = "didPerformNotificationMigration"
+
 @MainActor
 final class NotificationService {
     static let shared = NotificationService()
@@ -16,6 +18,10 @@ final class NotificationService {
     private let defaults = UserDefaults.standard
 
     private init() {}
+
+    private var hasRunMigration: Bool {
+        defaults.bool(forKey: didPerformNotificationMigrationKey)
+    }
 
     var isAuthorized: Bool {
         get async {
@@ -73,6 +79,12 @@ final class NotificationService {
         center.removeDeliveredNotifications(withIdentifiers: [taskId])
     }
 
+    func performMigration() {
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        defaults.set(true, forKey: didPerformNotificationMigrationKey)
+    }
+
     private let dailyReminderId = "daily-morning-reminder"
 
     func scheduleDailyReminder(hour: Int, minute: Int) {
@@ -104,6 +116,10 @@ final class NotificationService {
     }
 
     func reschedulePendingOnLaunch(modelContext: ModelContext) {
+        if !hasRunMigration {
+            performMigration()
+        }
+
         let descriptor = FetchDescriptor<TaskItem>(
             predicate: #Predicate { $0.dueDate != nil && $0.isCompleted != true }
         )
