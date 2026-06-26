@@ -151,3 +151,65 @@ Validate /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjore
 [•] Commit and log progress
 [0m
 Build succeeded. Let me do the review and commit.
+[0m$ [0mgit add -A && git status --porcelain
+M  .agents/tasks/mvvm-lists-tab.json
+A  .ralph/.tmp/prompt-20260627-012239-22694-2.md
+A  .ralph/.tmp/story-20260627-012239-22694-2.json
+A  .ralph/.tmp/story-20260627-012239-22694-2.md
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/runs/run-20260627-012239-22694-iter-1.log
+A  .ralph/runs/run-20260627-012239-22694-iter-1.md
+A  .ralph/runs/run-20260627-012239-22694-iter-2.log
+M  TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift
+[0m
+[0m$ [0mgit commit -m "US-002: Add list CRUD methods to ListsTabViewModel
+
+- createList(name:) inserts list with sort order via assignInitialSortOrder
+- renameList(_:to:) updates list name after trimming whitespace
+- deleteList(_:moveTasksToDefault:) handles cascade: moves tasks to default
+  list or deletes all tasks with notification cancellation before deleting list
+- listsInGroup(_:) helper filters lists by group persistentModelID"
+[base-26.7.8 dc184e3] US-002: Add list CRUD methods to ListsTabViewModel
+ 10 files changed, 412 insertions(+), 5 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-012239-22694-2.md
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-2.json
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-2.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-1.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD
+dc184e3 US-002: Add list CRUD methods to ListsTabViewModel
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
+[0m$ [0m/Users/sam/Desktop/TaskFlowApp/ralph log "US-002: Implemented list CRUD methods (createList, renameList, deleteList, listsInGroup) and committed dc184e3"
+zsh:1: no such file or directory: /Users/sam/Desktop/TaskFlowApp/ralph
+[0m
+[0m✱ [0mGlob "**/ralph*"[90m 1 match[0m
+[0m→ [0mRead .ralph/activity.log[90m [offset=1, limit=5][0m
+[0m
+[0m← [0mEdit .ralph/activity.log
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+@@ -1,8 +1,9 @@
+ # Activity Log
+ 
+ ## Run Summary
+ - 2026-06-27 01:24:58 | run=20260627-012239-22694 | iter=1 | mode=build | story=US-001 | duration=139s | status=success
++- 2026-06-27 01:30:00 | run=20260627-012239-22694 | iter=2 | mode=build | story=US-002 | status=success
+ - 2026-06-27 01:22:26 | run=20260627-011030-19782 | iter=4 | mode=build | story=US-004 | duration=221s | status=success
+ - 2026-06-27 01:22:00 | run=20260627-011030-19782 | iter=4 | mode=verify | story=US-004 | duration=60s | status=success
+ - 2026-06-27 01:18:42 | run=20260627-011030-19782 | iter=3 | mode=build | story=US-003 | duration=312s | status=success
+ - 2026-06-27 01:13:28 | run=20260627-011030-19782 | iter=2 | mode=build | story=US-002 | duration=53s | status=success
+
+[0m
+[0m→ [0mRead .ralph/progress.md
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/activity.log
+ M .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
