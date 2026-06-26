@@ -346,3 +346,29 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
 
 [0m
 Now let me update the progress log.
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git add -A && git commit -m "docs: update progress log for US-004"
+[base-26.7.8 a278c3d] docs: update progress log for US-004
+ 2 files changed, 103 insertions(+)
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git status --porcelain
+M .ralph/runs/run-20260627-011030-19782-iter-4.log
+[0m
+[0m# [0mTodos
+[✓] Audit code for US-004 acceptance criteria
+[✓] Verify build succeeds with no code warnings (4.1)
+[✓] Commit all changes
+[✓] Update progress log
+[0m
+All acceptance criteria for US-004 have been verified:
+
+- ✅ **4.1** Build succeeds with no code warnings
+- ✅ **4.2** New task creation: `save()` creates `TaskItem`, inserts, assigns sort order
+- ✅ **4.3** Editing existing task: `ReminderDraft(task:)` init, `save()` applies mapper  
+- ✅ **4.4** Save validates: button disabled on empty title, `hasMeaningfulContent` guard at both view and VM
+- ✅ **4.5** Dirty tracking: `isDirty` computed, `handleClose()` shows discard alert
+- ✅ **4.6** Subtask CRUD: all operations delegate to VM methods
+- ✅ **4.7** Notifications: scheduled on save when `hasTime`, cancelled otherwise
+
+Security/performance/regression audits passed. Commit: `d126a6e` (verification) + `a278c3d` (progress log update).
+
+<promise>COMPLETE</promise>
