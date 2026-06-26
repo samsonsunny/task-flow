@@ -1213,3 +1213,42 @@ index 8ce2d83..5266037 100644
          isQuickCapturing = false
      }
 [0m
+The diff is clean — no direct modelContext mutations remain in the view, all business logic lives in the VM. Let me commit.
+[0m$ [0mgit add -A && git commit -m "US-003: Refactor ListDetailView to use ListDetailViewModel
+
+- Add @State viewModel and initialize from environment modelContext
+- Remove computed properties (list, tasks, rootTasks, flatNodes, otherLists)
+- Remove all private mutation methods, delegate to viewModel calls
+- Add .onAppear / .onChange to call viewModel.update() with @Query data
+- Add viewModel.refreshNow() for refresh timer
+- Replace schedule sheet onCommit with viewModel.scheduleTask()
+- Preserve haptic feedback in view layer (UI concern)
+- Keep UI-only state (scheduleConfig, newReminderConfig, editingTask, etc.)
+- Remove @State for now, justCompleted, collapsedTasks, draggedTaskId"
+[base-26.7.8 95e2a66] US-003: Refactor ListDetailView to use ListDetailViewModel
+ 8 files changed, 1447 insertions(+), 296 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-004234-12390-1.md
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-1.json
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-1.md
+ create mode 100644 .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit status --porcelain && git show -s --format="%h %s" HEAD
+M .ralph/runs/run-20260627-004234-12390-iter-1.log
+95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
+[0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit diff .ralph/runs/run-20260627-004234-12390-iter-1.log
+diff --git a/.ralph/runs/run-20260627-004234-12390-iter-1.log b/.ralph/runs/run-20260627-004234-12390-iter-1.log
+index 7fc6e3e..bf84d07 100644
+--- a/.ralph/runs/run-20260627-004234-12390-iter-1.log
++++ b/.ralph/runs/run-20260627-004234-12390-iter-1.log
+@@ -1236,3 +1236,6 @@ The diff is clean — no direct modelContext mutations remain in the view, all b
+ M .ralph/runs/run-20260627-004234-12390-iter-1.log
+ 95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
+ [0m
++[0m$ [0mgit add -A && git status --porcelain
++M  .ralph/runs/run-20260627-004234-12390-iter-1.log
++[0m
+[0m
