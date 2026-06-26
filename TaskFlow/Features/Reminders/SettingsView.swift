@@ -1,5 +1,4 @@
 import SwiftUI
-import UserNotifications
 
 struct SettingsView: View {
     @AppStorage(DailyReminderKeys.enabled) private var isEnabled = false

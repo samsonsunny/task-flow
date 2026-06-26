@@ -1,4 +1,4 @@
-import Foundation // For CGFloat
+import Foundation
 
 /// Provides a centralized source for all corner radius values used in the application.
 /// All corner radius values MUST be sourced from here.

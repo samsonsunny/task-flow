@@ -61,12 +61,5 @@ struct AppFont {
         .system(size: 80)
     }
 
-    // You can add custom fonts here if needed
-    // Example for a custom font:
-    /*
-    static func customBody(weight: Font.Weight = .regular) -> Font {
-        .custom("YourCustomFontName", size: 16)
-            .weight(weight)
-    }
-    */
+
 }

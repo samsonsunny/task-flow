@@ -24,7 +24,6 @@ func backfillSortOrdersIfNeeded(in modelContext: ModelContext) {
         try modelContext.save()
         UserDefaults.standard.set(true, forKey: key)
     } catch {
-        print("sortOrder backfill failed: \(error)")
     }
 }
 
@@ -62,6 +61,5 @@ func backfillListSortOrdersIfNeeded(in modelContext: ModelContext) {
         try modelContext.save()
         UserDefaults.standard.set(true, forKey: key)
     } catch {
-        print("list sortOrder backfill failed: \(error)")
     }
 }

@@ -1,5 +1,5 @@
-import Combine
 import SwiftUI
+import Combine
 import SwiftData
 
 private struct NewReminderConfig: Identifiable {
