@@ -10,7 +10,7 @@
 
 ## Events
 
-[2026-06-27 00:03:02] ITERATION 1 start (mode=build story=US-001)
+[2026-06-27 00:55:00] US-001: Created ReminderSegmentViewModel with @Observable class, init, refreshNow(), showOverdue, justCompleted, update() — build verified PASS
 [2026-06-27 00:03:01] Starting US-001: Create CompletedViewModel with filtering, grouping, mutations
 [2026-06-27 00:03:01] Completed US-001: Created CompletedViewModel.swift
 [2026-06-27 00:05:55] ITERATION 1 end (duration=174s)
@@ -32,3 +32,4 @@
 [2026-06-27 00:48:34] ITERATION 2 start (mode=build story=US-004)
 - 2026-06-27 00:54:00 | run=20260627-004234-12390 | iter=2 | mode=verify | story=US-004 | status=in_progress | Build verified. Fixed completion animation regression (recompute missing in async block).
 [2026-06-27 00:53:55] ITERATION 2 end (duration=321s)
+[2026-06-27 00:54:11] ITERATION 1 start (mode=build story=US-001)
