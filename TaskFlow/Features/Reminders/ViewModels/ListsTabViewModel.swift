@@ -49,4 +49,48 @@ final class ListsTabViewModel {
     var ungroupedLists: [ReminderList] {
         lists.filter { $0.group == nil && $0.name != ReminderDefaults.defaultListName }
     }
+
+    // MARK: - List CRUD
+
+    func createList(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let list = ReminderList(name: trimmed)
+        modelContext.insert(list)
+        list.assignInitialSortOrder(in: modelContext)
+        try? modelContext.save()
+    }
+
+    func renameList(_ list: ReminderList, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        list.name = trimmed
+        try? modelContext.save()
+    }
+
+    func deleteList(_ list: ReminderList, moveTasksToDefault: Bool) {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
+
+        if moveTasksToDefault {
+            if let defaultList {
+                for task in listTasks {
+                    task.reminderList = defaultList
+                }
+            }
+        } else {
+            for task in listTasks {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
+                modelContext.delete(task)
+            }
+        }
+
+        modelContext.delete(list)
+        try? modelContext.save()
+    }
+
+    func listsInGroup(_ group: ReminderListGroup) -> [ReminderList] {
+        lists.filter { $0.group?.persistentModelID == group.persistentModelID }
+    }
 }
