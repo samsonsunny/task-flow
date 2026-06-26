@@ -57,7 +57,7 @@
     {
       "id": "US-001",
       "title": "Create ReminderEditorViewModel",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [],
       "description": "Create the ViewModel file with @Observable class, init (matching current view's draft-building logic), and core state properties.",
       "acceptanceCriteria": [
@@ -69,13 +69,13 @@
         "handleClose() shows discard confirmation if dirty (1.6)"
       ],
       "startedAt": "2026-06-26T19:40:30.797213+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-06-26T19:40:30.797372+00:00"
+      "completedAt": "2026-06-26T19:42:33.822353+00:00",
+      "updatedAt": "2026-06-26T19:42:33.822066+00:00"
     },
     {
       "id": "US-002",
       "title": "Move subtask operations to ViewModel",
-      "status": "open",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -84,12 +84,15 @@
         "addSubtask(title:to:) creates subtask with parent and sort order (2.1)",
         "deleteSubtask(_:) deletes from model context (2.2)",
         "toggleSubtaskCompletion(_:) with notification cancellation (2.3)"
-      ]
+      ],
+      "startedAt": "2026-06-26T19:42:35.904661+00:00",
+      "completedAt": "2026-06-26T19:43:28.938587+00:00",
+      "updatedAt": "2026-06-26T19:43:28.938457+00:00"
     },
     {
       "id": "US-003",
       "title": "Refactor ReminderEditorView to use ViewModel",
-      "status": "open",
+      "status": "done",
       "dependsOn": [
         "US-002"
       ],
@@ -101,12 +104,15 @@
         "handleClose() and saveReminder() replaced with VM calls (3.4)",
         "Subtask operations use VM methods (3.5)",
         "No @Environment(\\.modelContext) usage or direct mutations remain (3.6)"
-      ]
+      ],
+      "startedAt": "2026-06-26T19:43:31.022015+00:00",
+      "completedAt": "2026-06-26T19:48:42.243591+00:00",
+      "updatedAt": "2026-06-26T19:48:42.243449+00:00"
     },
     {
       "id": "US-004",
       "title": "Verify ReminderEditorView refactor",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-003"
       ],
@@ -119,7 +125,10 @@
         "Dirty tracking shows discard confirmation (4.5)",
         "Subtask add/delete/toggle works (4.6)",
         "Notifications scheduled on save with time (4.7)"
-      ]
+      ],
+      "startedAt": "2026-06-26T19:48:44.333243+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-06-26T19:48:44.333447+00:00"
     }
   ]
 }

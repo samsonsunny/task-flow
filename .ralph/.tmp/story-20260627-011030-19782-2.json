@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "total": 4,
+  "remaining": 3,
+  "quality_gates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "id": "US-002",
+  "title": "Move subtask operations to ViewModel"
+}
