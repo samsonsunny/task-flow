@@ -85,7 +85,7 @@
     {
       "id": "US-002",
       "title": "Move list CRUD to ViewModel",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -97,13 +97,13 @@
         "listsInGroup(_:) helper (2.4)"
       ],
       "startedAt": "2026-06-26T19:55:00.363996+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-06-26T19:55:00.364186+00:00"
+      "completedAt": "2026-06-26T19:57:58.148951+00:00",
+      "updatedAt": "2026-06-26T19:57:58.148622+00:00"
     },
     {
       "id": "US-003",
       "title": "Move group CRUD to ViewModel",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-002"
       ],
@@ -112,7 +112,10 @@
         "createGroup(name:sourceList:) inserts group with optional list assignment (3.1)",
         "renameGroup(_:to:) updates group name (3.2)",
         "deleteGroup(_:) cascades: deletes all tasks/lists in group, then deletes group (3.3)"
-      ]
+      ],
+      "startedAt": "2026-06-26T19:58:00.232202+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-06-26T19:58:00.232379+00:00"
     },
     {
       "id": "US-004",

@@ -93,4 +93,41 @@ final class ListsTabViewModel {
     func listsInGroup(_ group: ReminderListGroup) -> [ReminderList] {
         lists.filter { $0.group?.persistentModelID == group.persistentModelID }
     }
+
+    // MARK: - Group CRUD
+
+    func createGroup(name: String, sourceList: ReminderList?) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let group = ReminderListGroup(name: trimmed)
+        modelContext.insert(group)
+        group.assignInitialSortOrder(in: modelContext)
+        if let sourceList {
+            sourceList.group = group
+        }
+        try? modelContext.save()
+    }
+
+    func renameGroup(_ group: ReminderListGroup, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        group.name = trimmed
+        try? modelContext.save()
+    }
+
+    func deleteGroup(_ group: ReminderListGroup) {
+        let groupLists = lists.filter { $0.group?.persistentModelID == group.persistentModelID }
+        for list in groupLists {
+            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
+            for task in listTasks {
+                if let taskId = task.taskId {
+                    NotificationService.shared.cancel(taskId: taskId)
+                }
+                modelContext.delete(task)
+            }
+            modelContext.delete(list)
+        }
+        modelContext.delete(group)
+        try? modelContext.save()
+    }
 }

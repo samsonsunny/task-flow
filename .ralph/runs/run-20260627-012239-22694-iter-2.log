@@ -261,3 +261,24 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
 +---
 
 [0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
+[0m$ [0mgit commit -m "US-002: update progress log with list CRUD implementation details"
+[base-26.7.8 717f357] US-002: update progress log with list CRUD implementation details
+ 2 files changed, 77 insertions(+)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-2.log
+[0m
+[0m# [0mTodos
+[✓] Add createList(name:) method to ListsTabViewModel
+[✓] Add renameList(_:to:) method to ListsTabViewModel
+[✓] Add deleteList(_:moveTasksToDefault:) method to ListsTabViewModel
+[✓] Add listsInGroup(_:) helper to ListsTabViewModel
+[✓] Build verification (xcodebuild)
+[✓] Review security, performance, regression
+[✓] Commit and log progress
+[0m
+<promise>COMPLETE</promise>
