@@ -6,7 +6,7 @@ import SwiftData
 final class ReminderSegmentViewModel {
     private let modelContext: ModelContext
     let segment: ReminderSegment
-    private(set) var overdueTasks: [TaskItem]
+    private(set) var overdueTasks: [TaskItem] = []
 
     private(set) var now: Date = Date()
     private(set) var showOverdue: Bool = true
@@ -18,27 +18,27 @@ final class ReminderSegmentViewModel {
     private(set) var sortedFlatTasks: [TaskItem] = []
 
     private var lists: [ReminderList] = []
+    private var allTasks: [TaskItem] = []
 
-    init(modelContext: ModelContext, segment: ReminderSegment, overdueTasks: [TaskItem] = []) {
+    init(modelContext: ModelContext, segment: ReminderSegment) {
         self.modelContext = modelContext
         self.segment = segment
-        self.overdueTasks = overdueTasks
     }
 
     func refreshNow() {
         now = Date()
+        overdueTasks = ReminderSegmentLogic.filteredTasks(allTasks, for: .overdue, now: now)
     }
 
     func toggleShowOverdue() {
         showOverdue.toggle()
     }
 
-    func update(tasks: [TaskItem], lists: [ReminderList], overdueTasks: [TaskItem]? = nil, now: Date = Date()) {
+    func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date()) {
         self.now = now
         self.lists = lists
-        if let overdueTasks {
-            self.overdueTasks = overdueTasks
-        }
+        self.allTasks = tasks
+        self.overdueTasks = ReminderSegmentLogic.filteredTasks(tasks, for: .overdue, now: now)
         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)

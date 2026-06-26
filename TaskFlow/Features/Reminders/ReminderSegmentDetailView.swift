@@ -20,7 +20,6 @@ struct ReminderSegmentDetailView: View {
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
 
     let segment: ReminderSegment
-    var overdueTasks: [TaskItem] = []
 
     @State private var viewModel: ReminderSegmentViewModel?
     @State private var scheduleConfig: ScheduleConfig?
@@ -152,14 +151,14 @@ struct ReminderSegmentDetailView: View {
             }
         }
         .onAppear {
-            viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment, overdueTasks: overdueTasks)
-            viewModel?.update(tasks: tasks, lists: reminderLists, overdueTasks: overdueTasks, now: Date())
+            viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists, overdueTasks: overdueTasks)
+            viewModel?.update(tasks: newTasks, lists: reminderLists)
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists, overdueTasks: overdueTasks)
+            viewModel?.update(tasks: tasks, lists: newLists)
         }
     }
 

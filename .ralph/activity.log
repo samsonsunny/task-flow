@@ -1,6 +1,9 @@
 # Activity Log
 
 ## Run Summary
+- 2026-06-27 01:07:08 | run=20260627-005411-15148 | iter=4 | mode=build | story=US-004 | duration=279s | status=success
+- 2026-06-27 01:02:27 | run=20260627-005411-15148 | iter=3 | mode=build | story=US-003 | duration=158s | status=success
+- 2026-06-27 00:59:47 | run=20260627-005411-15148 | iter=2 | mode=build | story=US-002 | duration=160s | status=success
 - 2026-06-27 00:57:05 | run=20260627-005411-15148 | iter=1 | mode=build | story=US-001 | duration=173s | status=success
 - 2026-06-27 00:53:55 | run=20260627-004234-12390 | iter=2 | mode=build | story=US-004 | duration=321s | status=success
 - 2026-06-27 00:48:32 | run=20260627-004234-12390 | iter=1 | mode=build | story=US-003 | duration=358s | status=success
@@ -37,3 +40,11 @@
 [2026-06-27 00:57:04] ITERATION 1 end (duration=173s)
 [2026-06-27 00:57:07] ITERATION 2 start (mode=build story=US-002)
 [2026-06-27 00:58:32] US-002: Added contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
+[2026-06-27 00:59] US-002: Completed implementation, build passed, committed cc3db6f + 6537f99
+[2026-06-27 00:59:47] ITERATION 2 end (duration=160s)
+[2026-06-27 00:59:49] ITERATION 3 start (mode=build story=US-003)
+[2026-06-27 01:02:27] ITERATION 3 end (duration=158s)
+[2026-06-27 01:02:29] ITERATION 4 start (mode=build story=US-004)
+[2026-06-27 01:07:08] ITERATION 4 end (duration=279s)
+[2026-06-27 01:07:10] ITERATION 5 start (mode=build story=US-005)
+[2026-06-27 01:08] US-005: Movied overdueTasks computation into VM; updated TodayTabView + ReminderSegmentDetailView; build verified PASS
