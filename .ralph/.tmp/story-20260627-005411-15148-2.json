@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "total": 5,
+  "remaining": 4,
+  "quality_gates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "id": "US-002",
+  "title": "Move derived state computation to ViewModel"
+}

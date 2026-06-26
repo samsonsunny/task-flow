@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "total": 5,
+  "remaining": 3,
+  "quality_gates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "id": "US-003",
+  "title": "Move data mutations to ViewModel"
+}

@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "total": 5,
+  "remaining": 1,
+  "quality_gates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "id": "US-005",
+  "title": "Update TodayTabView and verify all segments"
+}

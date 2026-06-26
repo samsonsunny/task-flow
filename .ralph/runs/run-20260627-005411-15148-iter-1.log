@@ -313,3 +313,99 @@ index ffdb407..8879ece 100644
 [0m$ [0mgit diff .agents/tasks/mvvm-reminder-segment.json
 (no output)
 [0m
+[0m$ [0mgit add TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift .ralph/activity.log .ralph/runs/run-20260627-005411-15148-iter-1.log && git status --porcelain
+M  .ralph/activity.log
+A  .ralph/runs/run-20260627-005411-15148-iter-1.log
+A  TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+[0m
+[0m$ [0mgit commit -m "US-001: Create ReminderSegmentViewModel with core properties and update()"
+[base-26.7.8 408d05f] US-001: Create ReminderSegmentViewModel with core properties and update()
+ 3 files changed, 356 insertions(+), 1 deletion(-)
+ create mode 100644 .ralph/runs/run-20260627-005411-15148-iter-1.log
+ create mode 100644 TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-005411-15148-iter-1.log
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD
+408d05f US-001: Create ReminderSegmentViewModel with core properties and update()
+[0m
+Now update the progress log:
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -127,8 +127,36 @@
+   - Patterns discovered: flatToTaskIndex bridging must stay in view since it maps display (flat) indices to task indices
+   - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
+   - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
+ ---
++## [2026-06-27 00:55] - US-001: Create ReminderSegmentViewModel with core properties and update()
++Thread:
++Run: 20260627-005411-15148 (iteration 1)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-1.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-1.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 408d05f US-001: Create ReminderSegmentViewModel with core properties and update()
++- Post-commit status: `.ralph/runs/run-20260627-005411-15148-iter-1.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift (new)
++- What was implemented:
++  - Created @Observable ReminderSegmentViewModel with:
++    - private modelContext, let segment, let overdueTasks from init
++    - now Date with refreshNow() method
++    - showOverdue Bool toggle, justCompleted Set<String> for animation tracking
++    - filteredTasks, groupedSections, upcomingGroups, sortedFlatTasks computed in update()
++  - init(modelContext:segment:overdueTasks:) stores all parameters (overdueTasks defaults to [])
++  - refreshNow() sets now = Date()
++  - update(tasks:lists:now:) computes all derived state via ReminderSegmentLogic
++  - Follows same patterns as CompletedViewModel and ListDetailViewModel (@MainActor, @Observable, final)
++- **Learnings for future iterations:**
++  - Patterns discovered: ReminderSegmentLogic.filteredTasks, .datedSections, .upcomingGroups, .sortedTasks are static methods used same way in VM
++  - Gotchas encountered: PRD JSON was picked up by git add -A; important to reset HEAD first
++  - Useful context: VM follows standard pattern matching ListDetailViewModel and CompletedViewModel
++---
+ ## [2026-06-27 00:55] - US-004: Verify ListDetailView refactor
+ Thread:
+ Run: 20260627-004234-12390 (iteration 2)
+ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.log
+
+[0m
+[0m$ [0mgit add .ralph/progress.md && git commit -m "docs: update progress log for US-001"
+[base-26.7.8 dbd5aa2] docs: update progress log for US-001
+ 1 file changed, 28 insertions(+)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-005411-15148-iter-1.log
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+[0m
+[0m# [0mTodos
+[✓] Audit existing codebase: read ViewModel patterns, ReminderSegmentDetailView, and helpers
+[✓] Create ReminderSegmentViewModel.swift with @Observable class, init, refreshNow(), showOverdue, justCompleted, update()
+[✓] Build verification with xcodebuild
+[✓] Commit and update progress log
+[0m
+All acceptance criteria for US-001 are met:
+
+- ✅ File `TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift` exists with `@Observable` class
+- ✅ `init(modelContext:segment:overdueTasks:)` stores parameters (overdueTasks defaults to `[]`)
+- ✅ `refreshNow()` updates internal `now` date
+- ✅ `showOverdue` toggle and `overdueTasks` array added
+- ✅ `justCompleted` `Set<String>` for animation tracking added
+- ✅ `update(tasks:lists:now:)` computes all derived state (filteredTasks, groupedSections, upcomingGroups, sortedFlatTasks)
+
+Build verified: `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build` — PASS (no code warnings)
+
+<promise>COMPLETE</promise>
