@@ -27,12 +27,16 @@
   },
   "routes": [],
   "uiNotes": [
-    "No UI changes — pure refactor"
+    "No UI changes \u2014 pure refactor"
   ],
   "dataModel": [
     {
       "entity": "TaskScheduleDatePickerViewModel",
-      "fields": ["dueDate", "hasTime", "expandedPicker"]
+      "fields": [
+        "dueDate",
+        "hasTime",
+        "expandedPicker"
+      ]
     }
   ],
   "importFormat": {
@@ -44,19 +48,24 @@
     "nearestRoundedHour extracted as standalone public function",
     "Third story depends on first two due to deduplication"
   ],
-  "qualityGates": ["xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
   "stories": [
     {
       "id": "US-001",
       "title": "Extract nearestRoundedHour() shared utility",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [],
       "description": "Create DateRounding.swift with public nearestRoundedHour(from:) function. Update ReminderEditorView to use it and remove the private duplicate.",
       "acceptanceCriteria": [
         "File TaskFlow/Utilities/DateRounding.swift exists with public nearestRoundedHour(from:) function (1.1)",
         "ReminderEditorView updated to call shared utility instead of private method (1.2)",
         "Private nearestRoundedHour() removed from ReminderEditorView"
-      ]
+      ],
+      "startedAt": "2026-06-26T20:13:39.138716+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-06-26T20:13:39.138897+00:00"
     },
     {
       "id": "US-002",
@@ -76,7 +85,10 @@
       "id": "US-003",
       "title": "Refactor TaskScheduleDatePickerSheet to use ViewModel and verify",
       "status": "open",
-      "dependsOn": ["US-001", "US-002"],
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
       "description": "Wire ViewModel into the sheet and verify all workflows.",
       "acceptanceCriteria": [
         "VM created from initialDueDate (3.1)",

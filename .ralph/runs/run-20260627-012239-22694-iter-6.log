@@ -371,3 +371,101 @@ index fb1cdd3..737546b 100644
 +	modified:   .ralph/runs/run-20260627-012239-22694-iter-5.log
 +	new file:   .ralph/runs/run-20260627-012239-22694-iter-5.md
 [0m
+[0m$ [0mgit add .ralph/runs/run-20260627-012239-22694-iter-6.log
+(no output)
+[0m
+[0m$ [0mgit status --porcelain
+M .agents/tasks/mvvm-lists-tab.json
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-012239-22694-iter-5.log
+A  .ralph/runs/run-20260627-012239-22694-iter-5.md
+AM .ralph/runs/run-20260627-012239-22694-iter-6.log
+?? .ralph/.tmp/prompt-20260627-012239-22694-6.md
+?? .ralph/.tmp/story-20260627-012239-22694-6.json
+?? .ralph/.tmp/story-20260627-012239-22694-6.md
+[0m
+[0m$ [0mgit commit -m "US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed"
+[base-26.7.8 b709ad3] US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed
+ 6 files changed, 608 insertions(+)
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-5.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-6.log
+[0m
+Clean. Only the PRD JSON (managed by loop) and run log (actively written by the loop) remain dirty. Let me commit:
+[0m$ [0mgit show -s --format="%h %s" HEAD && echo "---" && git status --porcelain
+b709ad3 US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed
+---
+ M .agents/tasks/mvvm-lists-tab.json
+ M .ralph/runs/run-20260627-012239-22694-iter-6.log
+?? .ralph/.tmp/prompt-20260627-012239-22694-6.md
+?? .ralph/.tmp/story-20260627-012239-22694-6.json
+?? .ralph/.tmp/story-20260627-012239-22694-6.md
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -599,10 +599,10 @@
+ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.log
+ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.md
+ - Guardrails reviewed: yes
+ - No-commit run: false
+-- Commit: (pending)
+-- Post-commit status: `clean`
++- Commit: `b709ad3 US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed`
++- Post-commit status: `.aggregators/tasks/mvvm-lists-tab.json + .ralph/runs/run-20260627-012239-22694-iter-6.log + .ralph/.tmp/` (expected run artifacts)
+ - Verification:
+   - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+ - Files changed:
+   - No source files changed (verification-only story)
+
+[0m
+[0m$ [0mgit add .ralph/progress.md && git commit -m "US-006: Update progress entry with commit hash"
+[base-26.7.8 e22d8ba] US-006: Update progress entry with commit hash
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD && git status --porcelain
+e22d8ba US-006: Update progress entry with commit hash
+ M .agents/tasks/mvvm-lists-tab.json
+ M .ralph/runs/run-20260627-012239-22694-iter-6.log
+?? .ralph/.tmp/prompt-20260627-012239-22694-6.md
+?? .ralph/.tmp/story-20260627-012239-22694-6.json
+?? .ralph/.tmp/story-20260627-012239-22694-6.md
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -599,10 +599,12 @@
+ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.log
+ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.md
+ - Guardrails reviewed: yes
+ - No-commit run: false
+-- Commit: `b709ad3 US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed`
+-- Post-commit status: `.aggregators/tasks/mvvm-lists-tab.json + .ralph/runs/run-20260627-012239-22694-iter-6.log + .ralph/.tmp/` (expected run artifacts)
++- Commits:
++  - `b709ad3 US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed`
++  - `e22d8ba US-006: Update progress entry with commit hash`
++- Post-commit status: `.agents/tasks/mvvm-lists-tab.json + .ralph/runs/run-20260627-012239-22694-iter-6.log + .ralph/.tmp/` (expected run artifacts)
+ - Verification:
+   - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+ - Files changed:
+   - No source files changed (verification-only story)
+
+[0m
+[0m$ [0mgit add .ralph/progress.md && git commit -m "US-006: Finalize progress entry with both commit refs"
+[base-26.7.8 dedc53c] US-006: Finalize progress entry with both commit refs
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+[0m
+[0m# [0mTodos
+[✓] Build and verify ListsTabView compiles with no warnings
+[✓] Audit all 12 acceptance criteria for proper wiring
+[✓] Fix any issues found
+[✓] Re-verify build after fixes
+[✓] Security, performance, regression audit
+[✓] Commit changes and log progress
+[0m
+<promise>COMPLETE</promise>

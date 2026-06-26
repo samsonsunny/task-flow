@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "total": 3,
+  "remaining": 3,
+  "quality_gates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "id": "US-001",
+  "title": "Extract nearestRoundedHour() shared utility"
+}

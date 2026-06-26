@@ -293,16 +293,6 @@ struct ReminderEditorView: View {
         )
     }
 
-    private func nearestRoundedHour() -> Date {
-        let calendar = Calendar.current
-        let now = Date()
-        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
-        let totalMinutes = (components.hour ?? 0) * 60 + (components.minute ?? 0)
-        let rounded = ((totalMinutes + 29) / 30) * 30
-        let clamped = rounded % (24 * 60)
-        return calendar.date(bySettingHour: clamped / 60, minute: clamped % 60, second: 0, of: now) ?? now
-    }
-
     private enum ExpandedPicker {
         case date
         case time

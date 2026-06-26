@@ -136,7 +136,7 @@
     {
       "id": "US-005",
       "title": "Refactor ListsTabView to use ViewModel",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-004"
       ],
@@ -150,13 +150,13 @@
         "No @Environment(\\.modelContext) usage or direct mutations remain (5.6)"
       ],
       "startedAt": "2026-06-26T20:03:08.302136+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-06-26T20:03:08.302314+00:00"
+      "completedAt": "2026-06-26T20:09:46.875619+00:00",
+      "updatedAt": "2026-06-26T20:09:46.875459+00:00"
     },
     {
       "id": "US-006",
       "title": "Verify ListsTabView refactor",
-      "status": "open",
+      "status": "done",
       "dependsOn": [
         "US-005"
       ],
@@ -174,7 +174,10 @@
         "Drag reorder within group works (6.10)",
         "Move list to group via context menu works (6.11)",
         "Group expand/collapse persists across restarts (6.12)"
-      ]
+      ],
+      "startedAt": "2026-06-26T20:09:48.958515+00:00",
+      "completedAt": "2026-06-26T20:12:58.691408+00:00",
+      "updatedAt": "2026-06-26T20:12:58.691257+00:00"
     }
   ]
 }
