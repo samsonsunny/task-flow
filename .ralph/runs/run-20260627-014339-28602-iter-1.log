@@ -124,3 +124,56 @@ Build succeeded. Let me check for any warnings.
 [0m$ [0mecho "[2026-06-27 01:43:30] US-001: Created DateRounding.swift, updated ReminderEditorView, build succeeded" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
 (no output)
 [0m
+No code warnings. Let me do the final audit and commit.
+[0m$ [0mgit add -A && git status --porcelain
+M  .agents/tasks/mvvm-lists-tab.json
+M  .agents/tasks/mvvm-schedule-picker.json
+A  .ralph/.tmp/prompt-20260627-012239-22694-6.md
+A  .ralph/.tmp/prompt-20260627-014339-28602-1.md
+A  .ralph/.tmp/story-20260627-012239-22694-6.json
+A  .ralph/.tmp/story-20260627-012239-22694-6.md
+A  .ralph/.tmp/story-20260627-014339-28602-1.json
+A  .ralph/.tmp/story-20260627-014339-28602-1.md
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/runs/run-20260627-012239-22694-iter-6.log
+A  .ralph/runs/run-20260627-012239-22694-iter-6.md
+A  .ralph/runs/run-20260627-014339-28602-iter-1.log
+M  TaskFlow/Features/Reminders/ReminderEditorView.swift
+A  TaskFlow/Utilities/DateRounding.swift
+[0m
+[0m$ [0mgit diff --cached --stat
+.agents/tasks/mvvm-lists-tab.json                  |  13 +-
+ .agents/tasks/mvvm-schedule-picker.json            |  24 +++-
+ .ralph/.tmp/prompt-20260627-012239-22694-6.md      | 146 +++++++++++++++++++++
+ .ralph/.tmp/prompt-20260627-014339-28602-1.md      | 137 +++++++++++++++++++
+ .ralph/.tmp/story-20260627-012239-22694-6.json     |  10 ++
+ .ralph/.tmp/story-20260627-012239-22694-6.md       |  20 +++
+ .ralph/.tmp/story-20260627-014339-28602-1.json     |  10 ++
+ .ralph/.tmp/story-20260627-014339-28602-1.md       |  11 ++
+ .ralph/activity.log                                |   5 +
+ .ralph/errors.log                                  |   1 +
+ .ralph/runs/run-20260627-012239-22694-iter-6.log   |  98 ++++++++++++++
+ .ralph/runs/run-20260627-012239-22694-iter-6.md    |  37 ++++++
+ .ralph/runs/run-20260627-014339-28602-iter-1.log   | 126 ++++++++++++++++++
+ .../Features/Reminders/ReminderEditorView.swift    |  10 --
+ TaskFlow/Utilities/DateRounding.swift              |  10 ++
+ 15 files changed, 637 insertions(+), 21 deletions(-)
+[0m
+[0m$ [0mgit commit -m "US-001: Extract nearestRoundedHour() to shared DateRounding utility"
+[base-26.7.8 750fe64] US-001: Extract nearestRoundedHour() to shared DateRounding utility
+ 15 files changed, 637 insertions(+), 21 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-012239-22694-6.md
+ create mode 100644 .ralph/.tmp/prompt-20260627-014339-28602-1.md
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-6.json
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-6.md
+ create mode 100644 .ralph/.tmp/story-20260627-014339-28602-1.json
+ create mode 100644 .ralph/.tmp/story-20260627-014339-28602-1.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-6.md
+ create mode 100644 .ralph/runs/run-20260627-014339-28602-iter-1.log
+ create mode 100644 TaskFlow/Utilities/DateRounding.swift
+[0m
+[0m$ [0mgit status --porcelain && git show -s --format="%h %s" HEAD
+M .ralph/runs/run-20260627-014339-28602-iter-1.log
+750fe64 US-001: Extract nearestRoundedHour() to shared DateRounding utility
+[0m
