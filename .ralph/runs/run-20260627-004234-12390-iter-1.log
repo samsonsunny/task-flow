@@ -1333,3 +1333,16 @@ M  .ralph/runs/run-20260627-004234-12390-iter-1.log
 M .ralph/activity.log
  M .ralph/runs/run-20260627-004234-12390-iter-1.log
 [0m
+[0m$ [0mgit add -A && git commit -m "chore: update activity log for US-003" && git status --porcelain && git show -s --format="%h %s" HEAD
+[base-26.7.8 7b80db4] chore: update activity log for US-003
+ 2 files changed, 12 insertions(+)
+7b80db4 chore: update activity log for US-003
+[0m
+[0m# [0mTodos
+[✓] Audit ListDetailView and ListDetailViewModel to understand current state
+[✓] Add refreshNow() and expose draggedTaskId in ViewModel
+[✓] Wire VM into ListDetailView - replace computed properties, mutations, modelContext with viewModel calls
+[✓] Build verification
+[✓] Commit and log progress
+[0m
+<promise>COMPLETE</promise>

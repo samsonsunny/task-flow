@@ -62,6 +62,7 @@ final class ListDetailViewModel {
                     guard let self, let task, task.isCompleted == true else { return }
                     _ = withAnimation {
                         self.justCompleted.remove(id)
+                        self.recompute()
                     }
                 }
             }
