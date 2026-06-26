@@ -25,12 +25,19 @@
   },
   "routes": [],
   "uiNotes": [
-    "No UI changes — pure refactor"
+    "No UI changes \u2014 pure refactor"
   ],
   "dataModel": [
     {
       "entity": "ReminderEditorViewModel",
-      "fields": ["modelContext", "task", "draft", "initialDraft", "isDirty", "isDiscardConfirmationPresented"]
+      "fields": [
+        "modelContext",
+        "task",
+        "draft",
+        "initialDraft",
+        "isDirty",
+        "isDiscardConfirmationPresented"
+      ]
     }
   ],
   "importFormat": {
@@ -43,12 +50,14 @@
     "VM uses existing ReminderDraftMapper.apply() for save pipeline",
     "View retains @FocusState, expandedPicker, pressedRow UI state"
   ],
-  "qualityGates": ["xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
   "stories": [
     {
       "id": "US-001",
       "title": "Create ReminderEditorViewModel",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [],
       "description": "Create the ViewModel file with @Observable class, init (matching current view's draft-building logic), and core state properties.",
       "acceptanceCriteria": [
@@ -58,13 +67,18 @@
         "isDirty computed property and isDiscardConfirmationPresented state added (1.4)",
         "save() method validates, applies via ReminderDraftMapper, inserts new task, assigns sort order, schedules notification (1.5)",
         "handleClose() shows discard confirmation if dirty (1.6)"
-      ]
+      ],
+      "startedAt": "2026-06-26T19:40:30.797213+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-06-26T19:40:30.797372+00:00"
     },
     {
       "id": "US-002",
       "title": "Move subtask operations to ViewModel",
       "status": "open",
-      "dependsOn": ["US-001"],
+      "dependsOn": [
+        "US-001"
+      ],
       "description": "Add subtask CRUD methods: add, delete, toggle completion.",
       "acceptanceCriteria": [
         "addSubtask(title:to:) creates subtask with parent and sort order (2.1)",
@@ -76,7 +90,9 @@
       "id": "US-003",
       "title": "Refactor ReminderEditorView to use ViewModel",
       "status": "open",
-      "dependsOn": ["US-002"],
+      "dependsOn": [
+        "US-002"
+      ],
       "description": "Wire ViewModel into the view. Replace @State draft, isDiscardConfirmationPresented, saveReminder(), handleClose(), and subtask methods with VM calls.",
       "acceptanceCriteria": [
         "VM created from environment modelContext and @Query results (3.1)",
@@ -91,7 +107,9 @@
       "id": "US-004",
       "title": "Verify ReminderEditorView refactor",
       "status": "open",
-      "dependsOn": ["US-003"],
+      "dependsOn": [
+        "US-003"
+      ],
       "description": "Build and verify all editor workflows.",
       "acceptanceCriteria": [
         "Build succeeds with no warnings (4.1)",

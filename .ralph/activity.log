@@ -50,3 +50,6 @@
 [2026-06-27 01:07:10] ITERATION 5 start (mode=build story=US-005)
 [2026-06-27 01:08] US-005: Movied overdueTasks computation into VM; updated TodayTabView + ReminderSegmentDetailView; build verified PASS
 [2026-06-27 01:10:18] ITERATION 5 end (duration=188s)
+[2026-06-27 01:10:30] ITERATION 1 start (mode=build story=US-001)
+[2026-06-27 01:12:00] Start US-001: Creating ReminderEditorViewModel.swift
+[2026-06-27 01:13:00] US-001: Build succeeded
