@@ -1252,3 +1252,73 @@ index 7fc6e3e..bf84d07 100644
 +M  .ralph/runs/run-20260627-004234-12390-iter-1.log
 +[0m
 [0m
+[0m$ [0mgit add .ralph/runs/run-20260627-004234-12390-iter-1.log && git commit -m "docs: update run log for US-003" && git status --porcelain && git show -s --format="%h %s" HEAD
+[base-26.7.8 0d2a70b] docs: update run log for US-003
+ 1 file changed, 39 insertions(+)
+0d2a70b docs: update run log for US-003
+[0m
+[0m→ [0mRead .ralph/progress.md
+Now update the progress log:
+[0m✗ [0mEdit .ralph/progress.md failed
+[91m[1mError: [0mFound multiple matches for oldString. Provide more surrounding context to make the match unique.
+[0m→ [0mRead .ralph/progress.md[90m [offset=88][0m
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -87,7 +87,46 @@
+   - All mutation methods call `recompute()` to refresh derived state and `try? modelContext.save()` to persist
+ - **Learnings for future iterations:**
+   - Patterns discovered: All mutation methods follow consistent pattern: mutate, save, recompute
+   - Gotchas encountered: `commitQuickCapture` and `openQuickCaptureEditor` appear in both AC 2.1 and 2.8
+-  - Useful context: View layer (ListDetailView.swift) still has duplicate implementations of these methods; US-003 will wire view to VM calls
++   - Useful context: View layer (ListDetailView.swift) still has duplicate implementations of these methods; US-003 will wire view to VM calls
+ ---
++## [2026-06-27 00:42] - US-003: Refactor ListDetailView to use ViewModel
++Thread:
++Run: 20260627-004234-12390 (iteration 1)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-1.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-1.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
++          0d2a70b docs: update run log for US-003
++- Post-commit status: `clean`
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ListDetailView.swift (refactored, 519 -> 277 lines)
++  - TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (added refreshNow(), exposed draggedTaskId)
++- What was implemented:
++  - Added @State private var viewModel: ListDetailViewModel? initialized in .onAppear
++  - Removed computed properties: list, tasks, rootTasks, flatNodes, otherLists
++  - Removed @State: now, justCompleted, collapsedTasks, draggedTaskId (moved to VM)
++  - Removed all private mutation methods (moveTask, assignSortOrder, moveTasks, toggleCollapse,
++    handleDrop, isDescendant, moveTaskToRoot, toggleCompletion, reschedule helpers,
++    canMoveToToday/Tomorrow, dueDateColor, commitQuickCapture, openQuickCaptureEditor)
++  - Kept flatToTaskIndex (bridging flat indices to task indices for .onMove)
++  - Kept presentScheduleSheet (UI sheet presentation state)
++  - Added .onReceive(refreshTimer) -> viewModel?.refreshNow()
++  - Added .onAppear -> create VM + viewModel?.update(...)
++  - Added .onChange(of: allTasks) -> viewModel?.update(...)
++  - Added .onChange(of: allLists) -> viewModel?.update(...)
++  - Sheet onCommit delegates to viewModel?.scheduleTask(...)
++  - Haptic feedback preserved in view layer (UI concern)
++  - VM changes: added refreshNow() method, made draggedTaskId publicly settable
++  - No direct modelContext mutations remain in view
++  - @Environment(\.modelContext) retained only for VM initialization
++- **Learnings for future iterations:**
++  - Patterns discovered: flatToTaskIndex bridging must stay in view since it maps display (flat) indices to task indices
++  - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
++  - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
++---
+ 
++
+
+[0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
