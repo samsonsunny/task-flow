@@ -357,3 +357,64 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-1514
   - Gotchas encountered: When removing a parameter from a shared view, check ALL call sites (TodayTabView + MainTabView × 2); MainTabView callers used default `[]` so no change needed
   - Useful context: Using `refreshNow()` to also recompute `overdueTasks` makes the overdue section reactive to the 60s timer — essential for AC 6.10 (midnight rollover)
 ---
+
+## [2026-06-27 01:15] - US-002: Move subtask operations to ViewModel
+Thread:
+Run: 20260627-011030-19782 (iteration 2)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-2.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: e44fd94 US-002: Add subtask CRUD methods to ReminderEditorViewModel
+- Post-commit status: clean (only run artifacts remain uncommitted)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ReminderEditorViewModel.swift (added 3 subtask methods)
+- What was implemented:
+  - Added `addSubtask(title:to:)` — creates TaskItem with parent, reminderList, sort order via midpoint, inserts into modelContext (AC 2.1)
+  - Added `deleteSubtask(_:)` — deletes from model context (AC 2.2)
+  - Added `toggleSubtaskCompletion(_:)` — toggles isCompleted/completionDate, cancels notification on completion (AC 2.3)
+  - All methods match the current view's inline implementations exactly (no behavioral regression)
+- Acceptance criteria:
+  - ✅ 2.1 addSubtask(title:to:) creates subtask with parent and sort order
+  - ✅ 2.2 deleteSubtask(_:) deletes from model context
+  - ✅ 2.3 toggleSubtaskCompletion(_:) with notification cancellation
+- **Learnings for future iterations:**
+  - Patterns discovered: Subtask CRUD methods follow same pattern as ListDetailViewModel and ReminderSegmentViewModel mutations
+  - Gotchas encountered: None
+   - Useful context: The view still has duplicate inline implementations of these methods; US-003 will wire view to VM calls
+---
+
+## [2026-06-27 01:17] - US-003: Refactor ReminderEditorView to use ViewModel
+Thread:
+Run: 20260627-011030-19782 (iteration 3)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-3.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-3.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 5369f86 US-003: Wire ReminderEditorViewModel into ReminderEditorView
+- Post-commit status: clean (expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ReminderEditorView.swift (refactored, 424 -> 375 lines)
+- What was implemented:
+  - Removed @State private var draft, isDiscardConfirmationPresented, initialDraft
+  - Added @State private var viewModel: ReminderEditorViewModel? initialized in .onAppear
+  - Added private let initialTitle stored property for VM init
+  - VM created from environment modelContext and @Query results in .onAppear
+  - .onChange(of: reminderLists/tags) calls viewModel?.update(...)
+  - draft bindings via computed Binding<ReminderDraft> draftBinding property
+  - isDiscardConfirmationPresented via computed Binding<Bool> discardConfirmationBinding
+  - handleClose() delegates to viewModel?.handleClose() with dismiss fallback when not dirty
+  - saveReminder() delegates to viewModel?.save() with dismiss
+  - Subtask operations use viewModel?.toggleSubtaskCompletion, deleteSubtask, addSubtask
+  - Removed: assignInitialSortOrder, addSubtask (inline), toggleSubtaskCompletion (inline), isDirty computed property
+  - @Environment(\.modelContext) retained only for VM init; no direct mutations remain
+  - All accessibility identifiers preserved
+- **Learnings for future iterations:**
+  - Patterns discovered: Computed Binding<ReminderDraft> with dynamic member lookup works for struct-typed VM properties
+  - Gotchas encountered: Removed @MainActor from init (no longer needed since modelContext not accessed in init); had to add stored initialTitle property for VM param passing
+  - Useful context: Bindings to nested struct properties on @Observable VM work via Binding(get:set:) + dynamicMemberLookup without needing @Bindable wrapper
+---
