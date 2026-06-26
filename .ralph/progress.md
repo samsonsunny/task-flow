@@ -527,3 +527,26 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-2269
   - Gotchas encountered: `deleteGroup` matches view's `handleDeleteGroup()` exactly — iterates lists in group, then their tasks, cascading delete
   - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
 ---
+
+## [Sat Jun 27 01:33:00 IST 2026] - US-004: Move reorder and group expand/collapse to ViewModel
+Thread:
+Run: 20260627-012239-22694 (iteration 4)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-4.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-4.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 678c5aa US-004: Add moveLists and group expand/collapse to ListsTabViewModel
+- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-4.log` (written by outer loop, expected)
+- Verification:
+  - Command: `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build` -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift
+- What was implemented:
+  - Added `expandedGroupIDs: Set<PersistentIdentifier>` property with `isGroupExpanded(_:)` and `toggleGroupExpanded(_:)` persisted to UserDefaults on per-group basis using `hashValue.description` as key (AC 4.2)
+  - Added `restoreExpandedState()` — reads UserDefaults booleans for each group on `update()` to restore saved state (AC 4.2)
+  - Added `moveLists(fromOffsets:toOffset:in:group:)` with midpoint/widen logic — matching view's existing implementation (AC 4.1)
+- **Learnings for future iterations:**
+  - Patterns discovered: `PersistentIdentifier` has no `uriRepresentation()` on iOS 26.0 SDK; use `hashValue.description` for UserDefaults keys (matching existing view pattern)
+  - Gotchas encountered: None
+  - Useful context: View methods for reorder and expand/collapse remain in ListsTabView until US-005 wires them to VM
+---
