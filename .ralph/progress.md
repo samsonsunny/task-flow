@@ -504,3 +504,26 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-2269
   - Gotchas encountered: NotificationService is referenced directly (static shared singleton) — matches existing pattern in ListDetailViewModel and ReminderSegmentViewModel
   - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
 ---
+
+## [2026-06-27 01:31] - US-003: Move group CRUD to ViewModel
+Thread:
+Run: 20260627-012239-22694 (iteration 3)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-3.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-3.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: f2bb37c US-003: Add group CRUD methods to ListsTabViewModel
+- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-3.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift (added 3 methods)
+- What was implemented:
+  - Added `createGroup(name:sourceList:)` — trims name, creates ReminderListGroup, inserts, assigns initial sort order, optionally assigns source list to group (AC 3.1)
+  - Added `renameGroup(_:to:)` — trims new name, updates group.name, saves (AC 3.2)
+  - Added `deleteGroup(_:)` — cascades: finds all lists in group, deletes their tasks (with notification cancellation), deletes lists, then deletes group (AC 3.3)
+- **Learnings for future iterations:**
+  - Patterns discovered: Group CRUD methods follow same pattern as list CRUD — trim, guard empty, mutate, save
+  - Gotchas encountered: `deleteGroup` matches view's `handleDeleteGroup()` exactly — iterates lists in group, then their tasks, cascading delete
+  - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
+---

@@ -146,3 +146,65 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
 
 [0m
 Build succeeded with no errors. Now let me perform the pre-commit audit and log activity.
+Pre-commit audit complete:
+- **Security**: Uses same NotificationService pattern as existing code; no new vulnerabilities
+- **Performance**: Same iteration patterns as existing view code; no regressions
+- **Regression**: Methods match view's inline logic exactly; view still works independently (US-005)
+
+Now committing.
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git add -A && git commit -m "US-003: Add group CRUD methods to ListsTabViewModel
+
+- createGroup(name:sourceList:) -- inserts group with sort order, optional list assignment
+- renameGroup(_:to:) -- updates group name with trimming
+- deleteGroup(_:) -- cascades: deletes all tasks/lists in group, then deletes group"
+[base-26.7.8 f2bb37c] US-003: Add group CRUD methods to ListsTabViewModel
+ 10 files changed, 415 insertions(+), 5 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-012239-22694-3.md
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-3.json
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-3.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-2.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-3.log
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-3.log
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git show -s --format="%h %s" HEAD
+f2bb37c US-003: Add group CRUD methods to ListsTabViewModel
+[0m
+[0m→ [0mRead .ralph/progress.md[90m [offset=500][0m
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -503,4 +503,27 @@
+   - Patterns discovered: deleteList matches the view's handleDelete(moveTasks:) exactly — uses allTasks to find list's tasks, cancels notifications when deleting tasks, moves to defaultList when moveTasksToDefault is true
+   - Gotchas encountered: NotificationService is referenced directly (static shared singleton) — matches existing pattern in ListDetailViewModel and ReminderSegmentViewModel
+   - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
+ ---
++
++## [2026-06-27 01:31] - US-003: Move group CRUD to ViewModel
++Thread:
++Run: 20260627-012239-22694 (iteration 3)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-3.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-3.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: f2bb37c US-003: Add group CRUD methods to ListsTabViewModel
++- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-3.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift (added 3 methods)
++- What was implemented:
++  - Added `createGroup(name:sourceList:)` — trims name, creates ReminderListGroup, inserts, assigns initial sort order, optionally assigns source list to group (AC 3.1)
++  - Added `renameGroup(_:to:)` — trims new name, updates group.name, saves (AC 3.2)
++  - Added `deleteGroup(_:)` — cascades: finds all lists in group, deletes their tasks (with notification cancellation), deletes lists, then deletes group (AC 3.3)
++- **Learnings for future iterations:**
++  - Patterns discovered: Group CRUD methods follow same pattern as list CRUD — trim, guard empty, mutate, save
++  - Gotchas encountered: `deleteGroup` matches view's `handleDeleteGroup()` exactly — iterates lists in group, then their tasks, cascading delete
++  - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
++---
+
+[0m
