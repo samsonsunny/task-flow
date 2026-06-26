@@ -628,3 +628,32 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-2269
   - All 6 alert dialogs, context menus, drag reorder, and expand/collapse are properly delegated to ListsTabViewModel
   - No @Environment(\.modelContext) direct mutations remain in ListsTabView
 ---
+
+## [2026-06-27 01:43] - US-001: Extract nearestRoundedHour() shared utility
+Thread:
+Run: 20260627-014339-28602 (iteration 1)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-1.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-1.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 750fe64 US-001: Extract nearestRoundedHour() to shared DateRounding utility
+- Post-commit status: `.ralph/runs/run-20260627-014339-28602-iter-1.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+- Files changed:
+  - TaskFlow/Utilities/DateRounding.swift (new)
+  - TaskFlow/Features/Reminders/ReminderEditorView.swift (removed private nearestRoundedHour())
+- What was implemented:
+  - Created TaskFlow/Utilities/DateRounding.swift with public nearestRoundedHour(from:) function
+  - Function takes optional `from: Date = Date()` parameter, rounds to nearest 30 minutes
+  - Updated ReminderEditorView's time toggle to call shared utility via default parameter
+  - Removed private nearestRoundedHour() from ReminderEditorView (10 lines removed)
+- Acceptance criteria:
+  - ✅ 1.1 DateRounding.swift exists with public nearestRoundedHour(from:) function
+  - ✅ 1.2 ReminderEditorView uses shared utility instead of private method
+  - ✅ 1.3 Private nearestRoundedHour() removed from ReminderEditorView
+- **Learnings for future iterations:**
+  - Patterns discovered: Shared utility functions in Utilities/ don't need imports — same module visibility
+  - Gotchas encountered: Private method and public function have the same base name; removing private method first allows the public one to resolve via default parameter
+  - Useful context: TaskScheduleDatePickerSheet still has its own private copy (US-003 will handle in a future story)
+---
