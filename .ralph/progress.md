@@ -558,7 +558,7 @@ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-it
 Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-5.md
 - Guardrails reviewed: yes
 - No-commit run: false
-- Commit: 48fa836 US-005: Refactor ListsTabView to use ListsTabViewModel
+- Commit: 4d54fdf US-005: Refactor ListsTabView to use ListsTabViewModel
 - Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-5.log` (active run log, expected)
 - Verification:
   - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
