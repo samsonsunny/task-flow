@@ -5,79 +5,33 @@ struct CompletedView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
 
-    private static let maxAgeDays = 30
+    @State private var viewModel: CompletedViewModel?
     @State private var editingTask: TaskItem?
-
-    private var recentCompletedTasks: [TaskItem] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -Self.maxAgeDays, to: Date()) ?? Date()
-        return allTasks.filter { task in
-            guard task.isCompleted == true else { return false }
-            let completionDate = task.completionDate ?? task.createdAt ?? Date()
-            return completionDate >= cutoff
-        }
-    }
-
-    private var groupedTasks: [(String, [TaskItem])] {
-        let calendar = Calendar.current
-        let now = Date()
-        let todayStart = calendar.startOfDay(for: now)
-        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
-        let weekStart = calendar.date(byAdding: .day, value: -6, to: todayStart)!
-
-        var today: [TaskItem] = []
-        var yesterday: [TaskItem] = []
-        var thisWeek: [TaskItem] = []
-        var earlier: [TaskItem] = []
-
-        for task in recentCompletedTasks {
-            let date = task.completionDate ?? task.createdAt ?? Date()
-            let dayStart = calendar.startOfDay(for: date)
-
-            if calendar.isDate(dayStart, inSameDayAs: todayStart) {
-                today.append(task)
-            } else if calendar.isDate(dayStart, inSameDayAs: yesterdayStart) {
-                yesterday.append(task)
-            } else if dayStart >= weekStart {
-                thisWeek.append(task)
-            } else {
-                earlier.append(task)
-            }
-        }
-
-        var result: [(String, [TaskItem])] = []
-        if !today.isEmpty { result.append(("Today", today)) }
-        if !yesterday.isEmpty { result.append(("Yesterday", yesterday)) }
-        if !thisWeek.isEmpty { result.append(("This Week", thisWeek)) }
-        if !earlier.isEmpty { result.append(("Earlier", earlier)) }
-        return result
-    }
 
     var body: some View {
         List {
-            if recentCompletedTasks.isEmpty {
-                emptyState
-            } else {
-                ForEach(groupedTasks, id: \.0) { sectionTitle, tasks in
-                    Section {
-                        ForEach(tasks) { task in
-                            completedTaskRow(task)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        if let taskId = task.taskId {
-                                            NotificationService.shared.cancel(taskId: taskId)
+            if let vm = viewModel {
+                if vm.recentCompletedTasks.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(vm.groupedTasks, id: \.0) { sectionTitle, tasks in
+                        Section {
+                            ForEach(tasks) { task in
+                                completedTaskRow(task)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            viewModel?.delete(task)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
                                         }
-                                        modelContext.delete(task)
-                                        try? modelContext.save()
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
                                     }
-                                }
+                            }
+                        } header: {
+                            Text(sectionTitle)
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.colors.textSecondary)
+                                .textCase(nil)
                         }
-                    } header: {
-                        Text(sectionTitle)
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                            .textCase(nil)
                     }
                 }
             }
@@ -87,6 +41,13 @@ struct CompletedView: View {
         .background(AppTheme.colors.appBackground)
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
+        }
+        .onAppear {
+            viewModel = CompletedViewModel(modelContext: modelContext)
+            viewModel?.update(tasks: allTasks)
+        }
+        .onChange(of: allTasks) { _, newTasks in
+            viewModel?.update(tasks: newTasks)
         }
     }
 
@@ -110,7 +71,9 @@ struct CompletedView: View {
     private func completedTaskRow(_ task: TaskItem) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Button {
-                uncomplete(task)
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    viewModel?.uncomplete(task)
+                }
             } label: {
                 ZStack {
                     Circle()
@@ -135,7 +98,7 @@ struct CompletedView: View {
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(destinationLabel(for: task))
+                Text(CompletedViewModel.destinationLabel(for: task))
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(AppTheme.colors.textSecondary)
                     .lineLimit(1)
@@ -145,37 +108,6 @@ struct CompletedView: View {
         .padding(.vertical, 8)
         .onTapGesture {
             editingTask = task
-        }
-    }
-
-    private func destinationLabel(for task: TaskItem) -> String {
-        let calendar = Calendar.current
-        let now = Date()
-        let todayStart = calendar.startOfDay(for: now)
-
-        guard let dueDate = task.dueDate else {
-            return "Will reappear in Later"
-        }
-
-        let dueStart = calendar.startOfDay(for: dueDate)
-        if dueStart < todayStart {
-            return "Was overdue"
-        } else if calendar.isDate(dueStart, inSameDayAs: todayStart) {
-            return "Will reappear in Today"
-        } else if calendar.isDateInTomorrow(dueStart) {
-            return "Will reappear in Tomorrow"
-        } else {
-            return "Will reappear in Upcoming"
-        }
-    }
-
-    private func uncomplete(_ task: TaskItem) {
-        withAnimation(.easeInOut(duration: 0.18)) {
-            task.isCompleted = false
-            task.completionDate = nil
-        }
-        if task.safeHasTime {
-            NotificationService.shared.schedule(for: task)
         }
     }
 }

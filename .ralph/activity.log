@@ -1,0 +1,13 @@
+# Activity Log
+
+## Run Summary
+- 2026-06-27 00:05:55 | run=20260627-000301-7665 | iter=1 | mode=build | story=US-001 | duration=174s | status=success
+
+## Events
+
+[2026-06-27 00:03:02] ITERATION 1 start (mode=build story=US-001)
+[2026-06-27 00:03:01] Starting US-001: Create CompletedViewModel with filtering, grouping, mutations
+[2026-06-27 00:03:01] Completed US-001: Created CompletedViewModel.swift
+[2026-06-27 00:05:55] ITERATION 1 end (duration=174s)
+[2026-06-27 00:06:02] ITERATION 1 start (mode=build story=US-002)
+[2026-06-27 00:08:00] US-002: Refactored CompletedView to use CompletedViewModel (viewModel? optional, update() in onAppear+onChange, removed inline business logic). Build succeeded.
