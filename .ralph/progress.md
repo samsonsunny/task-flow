@@ -128,5 +128,31 @@ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-1239
   - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
   - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
 ---
-
-
+## [2026-06-27 00:55] - US-004: Verify ListDetailView refactor
+Thread:
+Run: 20260627-004234-12390 (iteration 2)
+Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.log
+Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 842be8a US-004: Fix completion animation regression and verify build
+- Post-commit status: `.ralph/runs/run-20260627-004234-12390-iter-2.log` (active run log, expected)
+- Verification:
+  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
+- Files changed:
+  - TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (fixed completion animation)
+- What was implemented:
+  - Build verified: no code warnings, all ACs properly wired
+  - Fixed regression: toggleCompletion async block now calls recompute() after justCompleted
+    removal, restoring the fade-out transition animation when a completed task disappears
+  - Reviewed all ACs (4.2-4.9): task completion, drag-drop reorder, drag-drop nesting,
+    quick capture, swipe-to-delete, schedule sheet, move-to-list, collapse/expand all
+    correctly delegate to ViewModel
+- **Learnings for future iterations:**
+  - Patterns discovered: @Observable stored properties (like flatNodes) must be explicitly
+    updated when async mutations to dependent state occur — computed properties or explicit
+    recompute() calls are needed
+  - Gotchas encountered: withAnimation requires explicit self. when inside a weak-self closure;
+    line 65 needed `self.recompute()` not just `recompute()`
+  - Useful context: The run-log file remains dirty after commit as the run is still active
+---
