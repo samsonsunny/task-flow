@@ -600,8 +600,8 @@ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-it
 Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.md
 - Guardrails reviewed: yes
 - No-commit run: false
-- Commit: (pending)
-- Post-commit status: `clean`
+- Commit: `b709ad3 US-006: Verify ListsTabView refactor - build passes with no warnings, all 12 ACs confirmed`
+- Post-commit status: `.aggregators/tasks/mvvm-lists-tab.json + .ralph/runs/run-20260627-012239-22694-iter-6.log + .ralph/.tmp/` (expected run artifacts)
 - Verification:
   - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
 - Files changed:
