@@ -1,6 +1,7 @@
 # Activity Log
 
 ## Run Summary
+- 2026-06-27 00:53:55 | run=20260627-004234-12390 | iter=2 | mode=build | story=US-004 | duration=321s | status=success
 - 2026-06-27 00:48:32 | run=20260627-004234-12390 | iter=1 | mode=build | story=US-003 | duration=358s | status=success
 - 2026-06-27 00:18:36 | run=20260627-001202-9760 | iter=2 | mode=build | story=US-002 | duration=164s | status=success
 - 2026-06-27 00:15:49 | run=20260627-001202-9760 | iter=1 | mode=build | story=US-001 | duration=227s | status=success
@@ -30,3 +31,4 @@
 [2026-06-27 00:48:32] ITERATION 1 end (duration=358s)
 [2026-06-27 00:48:34] ITERATION 2 start (mode=build story=US-004)
 - 2026-06-27 00:54:00 | run=20260627-004234-12390 | iter=2 | mode=verify | story=US-004 | status=in_progress | Build verified. Fixed completion animation regression (recompute missing in async block).
+[2026-06-27 00:53:55] ITERATION 2 end (duration=321s)

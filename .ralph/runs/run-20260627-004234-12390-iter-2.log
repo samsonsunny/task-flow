@@ -263,3 +263,100 @@ Let me log this activity and prepare to commit.
 [0m$ [0mecho "- 2026-06-27 00:54:00 | run=20260627-004234-12390 | iter=2 | mode=verify | story=US-004 | status=in_progress | Build verified. Fixed completion animation regression (recompute missing in async block)." >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
 (no output)
 [0m
+Now let me commit the changes:
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git add -A && git commit -m "US-004: Fix completion animation regression and verify build
+
+- Fix: toggleCompletion async block now calls recompute() so flatNodes
+  updates after justCompleted removal, restoring the fade-out animation
+- Verified: build succeeds with no code warnings
+- Verified: all AC wiring is correct via code review"
+[base-26.7.8 842be8a] US-004: Fix completion animation regression and verify build
+ 10 files changed, 500 insertions(+), 5 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-004234-12390-2.md
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-2.json
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-2.md
+ create mode 100644 .ralph/runs/run-20260627-004234-12390-iter-1.md
+ create mode 100644 .ralph/runs/run-20260627-004234-12390-iter-2.log
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git status --porcelain && git show -s --format="%h %s" HEAD
+M .ralph/runs/run-20260627-004234-12390-iter-2.log
+842be8a US-004: Fix completion animation regression and verify build
+[0m
+[0m→ [0mRead .ralph/progress.md[90m [offset=125][0m
+[0m✗ [0mEdit .ralph/progress.md failed
+[91m[1mError: [0mCould not find oldString in the file. It must match exactly, including whitespace, indentation, and line endings.
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && tail -10 .ralph/progress.md
+- VM changes: added refreshNow() method, made draggedTaskId publicly settable
+  - No direct modelContext mutations remain in view
+  - @Environment(\.modelContext) retained only for VM initialization
+- **Learnings for future iterations:**
+  - Patterns discovered: flatToTaskIndex bridging must stay in view since it maps display (flat) indices to task indices
+  - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
+  - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
+---
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -127,6 +127,32 @@
+   - Patterns discovered: flatToTaskIndex bridging must stay in view since it maps display (flat) indices to task indices
+   - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
+   - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
+ ---
+-
+-
++## [2026-06-27 00:55] - US-004: Verify ListDetailView refactor
++Thread:
++Run: 20260627-004234-12390 (iteration 2)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 842be8a US-004: Fix completion animation regression and verify build
++- Post-commit status: `.ralph/runs/run-20260627-004234-12390-iter-2.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS (no code warnings)
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (fixed completion animation)
++- What was implemented:
++  - Build verified: no code warnings, all ACs properly wired
++  - Fixed regression: toggleCompletion async block now calls recompute() after justCompleted
++    removal, restoring the fade-out transition animation when a completed task disappears
++  - Reviewed all ACs (4.2-4.9): task completion, drag-drop reorder, drag-drop nesting,
++    quick capture, swipe-to-delete, schedule sheet, move-to-list, collapse/expand all
++    correctly delegate to ViewModel
++- **Learnings for future iterations:**
++  - Patterns discovered: @Observable stored properties (like flatNodes) must be explicitly
++    updated when async mutations to dependent state occur — computed properties or explicit
++    recompute() calls are needed
++  - Gotchas encountered: withAnimation requires explicit self. when inside a weak-self closure;
++    line 65 needed `self.recompute()` not just `recompute()`
++  - Useful context: The run-log file remains dirty after commit as the run is still active
++---
+
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git add .ralph/progress.md .ralph/activity.log && git commit -m "docs: update progress and activity log for US-004"
+[base-26.7.8 0476e2f] docs: update progress and activity log for US-004
+ 1 file changed, 28 insertions(+), 2 deletions(-)
+[0m
+[0m$ [0mcd /Users/sam/Desktop/TaskFlowApp && git status --porcelain
+M .ralph/runs/run-20260627-004234-12390-iter-2.log
+[0m
+[0m# [0mTodos
+[✓] Audit current state: read ListDetailView.swift and ListDetailViewModel.swift
+[✓] Run build (xcodebuild) and check for warnings
+[✓] Review code for potential regressions across all AC (4.2-4.9)
+[✓] Fix completion animation regression: add recompute() in async block
+[✓] Final build verification and commit
+[0m
+US-004 complete. Summary of what was done:
+
+- **Build verified**: xcodebuild passes with zero code warnings (AC 4.1 ✅)
+- **Code review**: All ACs (4.2-4.9) properly wired — completion toggling, drag-drop reorder, nesting, quick capture, swipe-to-delete, scheduling, move-to-list, collapse/expand all correctly delegate to `ListDetailViewModel`
+- **Bug fix found & fixed**: `toggleCompletion` async block removed task from `justCompleted` after 0.6s but never called `recompute()`, causing the completed task to stay visible forever (fade-out animation never played). Added `self.recompute()` inside `withAnimation` to restore the transition
+- **Commits**: `842be8a` (fix + build verification), `0476e2f` (progress/activity logs)
+
+<promise>COMPLETE</promise>
