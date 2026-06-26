@@ -8,159 +8,165 @@ struct ListsTabView: View {
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
     let onSettings: () -> Void
 
-    @State private var isCreatingList = false
-    @State private var newListName = ""
-
-    @State private var isRenamePresented = false
-    @State private var renameList: ReminderList?
-    @State private var renameText = ""
-
-    @State private var deleteList: ReminderList?
-
-    @State private var isCreatingGroup = false
-    @State private var newGroupName = ""
-    @State private var groupSourceList: ReminderList?
-
-    @State private var renameGroup: ReminderListGroup?
-    @State private var isGroupRenamePresented = false
-    @State private var groupRenameText = ""
-
-    @State private var deleteGroup: ReminderListGroup?
-
-    @State private var expandedGroupIDs: Set<PersistentIdentifier> = Set()
-
-    private let defaultsKeyPrefix = "list-group-expanded-"
-
-    private var defaultList: ReminderList? {
-        lists.first(where: { $0.name == ReminderDefaults.defaultListName })
-    }
-
-    private var ungroupedLists: [ReminderList] {
-        lists.filter { $0.group == nil && $0.name != ReminderDefaults.defaultListName }
-    }
+    @State private var viewModel: ListsTabViewModel?
 
     var body: some View {
         NavigationStack {
-            List {
-                defaultListSection
-                ungroupedSection
-                groupSections
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.appBackground)
-            .navigationTitle("All Lists")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        onSettings()
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
+            alertsContainer
+        }
+    }
+
+    private var listContent: some View {
+        List {
+            defaultListSection
+            ungroupedSection
+            groupSections
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(AppTheme.colors.appBackground)
+        .navigationTitle("All Lists")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    onSettings()
+                } label: {
+                    Image(systemName: "gearshape")
                 }
             }
-            .overlay(alignment: .bottomTrailing) {
-                ReminderFloatingAddButton {
-                    newListName = ""
-                    isCreatingList = true
-                }
-                .padding(.trailing, 20)
-                .padding(.bottom, 24)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            ReminderFloatingAddButton {
+                viewModel?.newListName = ""
+                viewModel?.isCreatingList = true
             }
-            .alert("New List", isPresented: $isCreatingList) {
-                TextField("List Name", text: $newListName)
+            .padding(.trailing, 20)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var alertsContainer: some View {
+        listContent
+            .alert("New List", isPresented: Binding(
+                get: { viewModel?.isCreatingList ?? false },
+                set: { viewModel?.isCreatingList = $0 }
+            )) {
+                TextField("List Name", text: Binding(
+                    get: { viewModel?.newListName ?? "" },
+                    set: { viewModel?.newListName = $0 }
+                ))
                 Button("Cancel", role: .cancel) { }
                 Button("Create") {
-                    let name = newListName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    let list = ReminderList(name: name)
-                    modelContext.insert(list)
-                    list.assignInitialSortOrder(in: modelContext)
+                    viewModel?.createList(name: viewModel?.newListName ?? "")
                 }
             }
-            .alert("New Group", isPresented: $isCreatingGroup) {
-                TextField("Group Name", text: $newGroupName)
+            .alert("New Group", isPresented: Binding(
+                get: { viewModel?.isCreatingGroup ?? false },
+                set: { viewModel?.isCreatingGroup = $0 }
+            )) {
+                TextField("Group Name", text: Binding(
+                    get: { viewModel?.newGroupName ?? "" },
+                    set: { viewModel?.newGroupName = $0 }
+                ))
                 Button("Cancel", role: .cancel) {
-                    groupSourceList = nil
+                    viewModel?.groupSourceList = nil
                 }
                 Button("Create") {
-                    let name = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    let group = ReminderListGroup(name: name)
-                    modelContext.insert(group)
-                    group.assignInitialSortOrder(in: modelContext)
-                    if let sourceList = groupSourceList {
-                        sourceList.group = group
+                    viewModel?.createGroup(name: viewModel?.newGroupName ?? "", sourceList: viewModel?.groupSourceList)
+                    viewModel?.groupSourceList = nil
+                }
+            }
+            .alert("Rename List", isPresented: Binding(
+                get: { viewModel?.isRenamePresented ?? false },
+                set: { viewModel?.isRenamePresented = $0 }
+            )) {
+                TextField("List Name", text: Binding(
+                    get: { viewModel?.renameText ?? "" },
+                    set: { viewModel?.renameText = $0 }
+                ))
+                Button("Cancel", role: .cancel) {
+                    viewModel?.renameList = nil
+                }
+                Button("Rename") {
+                    if let list = viewModel?.renameList {
+                        viewModel?.renameList(list, to: viewModel?.renameText ?? "")
                     }
-                    groupSourceList = nil
-                    try? modelContext.save()
+                    viewModel?.renameList = nil
                 }
             }
-            .alert("Rename List", isPresented: $isRenamePresented) {
-                TextField("List Name", text: $renameText)
+            .alert("Rename Group", isPresented: Binding(
+                get: { viewModel?.isGroupRenamePresented ?? false },
+                set: { viewModel?.isGroupRenamePresented = $0 }
+            )) {
+                TextField("Group Name", text: Binding(
+                    get: { viewModel?.groupRenameText ?? "" },
+                    set: { viewModel?.groupRenameText = $0 }
+                ))
                 Button("Cancel", role: .cancel) {
-                    renameList = nil
+                    viewModel?.renameGroup = nil
                 }
                 Button("Rename") {
-                    guard let list = renameList else { return }
-                    let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    list.name = trimmed
-                    try? modelContext.save()
-                    renameList = nil
-                }
-            }
-            .alert("Rename Group", isPresented: $isGroupRenamePresented) {
-                TextField("Group Name", text: $groupRenameText)
-                Button("Cancel", role: .cancel) {
-                    renameGroup = nil
-                }
-                Button("Rename") {
-                    guard let group = renameGroup else { return }
-                    let trimmed = groupRenameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    group.name = trimmed
-                    try? modelContext.save()
-                    renameGroup = nil
+                    if let group = viewModel?.renameGroup {
+                        viewModel?.renameGroup(group, to: viewModel?.groupRenameText ?? "")
+                    }
+                    viewModel?.renameGroup = nil
                 }
             }
             .alert("Delete Group", isPresented: Binding(
-                get: { deleteGroup != nil },
-                set: { if !$0 { deleteGroup = nil } }
+                get: { viewModel?.deleteGroup != nil },
+                set: { if !$0 { viewModel?.deleteGroup = nil } }
             )) {
                 Button("Delete Group & Lists", role: .destructive) {
-                    handleDeleteGroup()
+                    if let group = viewModel?.deleteGroup {
+                        viewModel?.deleteGroup(group)
+                    }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
-                if let group = deleteGroup {
+                if let group = viewModel?.deleteGroup {
                     Text("Delete \"\(group.name)\" and all lists inside? This cannot be undone.")
                 }
             }
             .alert("Delete List", isPresented: Binding(
-                get: { deleteList != nil },
-                set: { if !$0 { deleteList = nil } }
+                get: { viewModel?.deleteList != nil },
+                set: { if !$0 { viewModel?.deleteList = nil } }
             )) {
                 Button("Move tasks to Reminders") {
-                    handleDelete(moveTasks: true)
+                    if let list = viewModel?.deleteList {
+                        viewModel?.deleteList(list, moveTasksToDefault: true)
+                    }
                 }
                 Button("Delete All Tasks", role: .destructive) {
-                    handleDelete(moveTasks: false)
+                    if let list = viewModel?.deleteList {
+                        viewModel?.deleteList(list, moveTasksToDefault: false)
+                    }
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
-                if let list = deleteList {
+                if let list = viewModel?.deleteList {
                     Text("What should happen to the tasks in \"\(list.name)\"?")
                 }
             }
-        }
+            .onAppear {
+                viewModel = ListsTabViewModel(modelContext: modelContext)
+                viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+            }
+            .onChange(of: lists) { _, _ in
+                viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+            }
+            .onChange(of: groups) { _, _ in
+                viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+            }
+            .onChange(of: allTasks) { _, _ in
+                viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+            }
     }
 
     // MARK: - Default List Section
 
     private var defaultListSection: some View {
         Section {
-            if let defaultList {
+            if let defaultList = viewModel?.defaultList {
                 NavigationLink {
                     ListDetailView(listID: defaultList.persistentModelID)
                 } label: {
@@ -173,7 +179,7 @@ struct ListsTabView: View {
     // MARK: - Ungrouped Lists Section
 
     private var ungroupedSection: some View {
-        let items = ungroupedLists
+        let items = viewModel?.ungroupedLists ?? []
         return Group {
             if !items.isEmpty {
                 Section {
@@ -181,7 +187,9 @@ struct ListsTabView: View {
                         listNavigationLink(for: list)
                     }
                     .onMove { fromOffsets, toOffset in
-                        moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items)
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items)
+                        }
                     }
                 } header: {
                     HStack {
@@ -199,24 +207,19 @@ struct ListsTabView: View {
 
     private var groupSections: some View {
         ForEach(groups) { group in
-            let items = lists.filter { $0.group?.persistentModelID == group.persistentModelID }
+            let items = viewModel?.listsInGroup(group) ?? []
             Section {
                 DisclosureGroup(isExpanded: Binding(
-                    get: { expandedGroupIDs.contains(group.persistentModelID) },
-                    set: { expanded in
-                        if expanded {
-                            expandedGroupIDs.insert(group.persistentModelID)
-                        } else {
-                            expandedGroupIDs.remove(group.persistentModelID)
-                        }
-                        UserDefaults.standard.set(expanded, forKey: defaultsKeyPrefix + group.persistentModelID.hashValue.description)
-                    }
+                    get: { viewModel?.isGroupExpanded(group) ?? false },
+                    set: { _ in viewModel?.toggleGroupExpanded(group) }
                 )) {
                     ForEach(items) { list in
                         listNavigationLink(for: list)
                     }
                     .onMove { fromOffsets, toOffset in
-                        moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items, group: group)
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items, group: group)
+                        }
                     }
                 } label: {
                     HStack {
@@ -237,12 +240,12 @@ struct ListsTabView: View {
                     }
                     .contextMenu {
                         Button("Rename") {
-                            groupRenameText = group.name
-                            renameGroup = group
-                            isGroupRenamePresented = true
+                            viewModel?.groupRenameText = group.name
+                            viewModel?.renameGroup = group
+                            viewModel?.isGroupRenamePresented = true
                         }
                         Button("Delete Group", role: .destructive) {
-                            deleteGroup = group
+                            viewModel?.deleteGroup = group
                         }
                     }
                 }
@@ -269,140 +272,46 @@ struct ListsTabView: View {
     private func contextMenuItems(for list: ReminderList) -> some View {
         if list.name != ReminderDefaults.defaultListName {
             Button("Rename") {
-                renameList = list
-                renameText = list.name
-                isRenamePresented = true
+                viewModel?.renameList = list
+                viewModel?.renameText = list.name
+                viewModel?.isRenamePresented = true
             }
 
             Button("Create New Group") {
-                newGroupName = ""
-                groupSourceList = list
-                isCreatingGroup = true
+                viewModel?.newGroupName = ""
+                viewModel?.groupSourceList = list
+                viewModel?.isCreatingGroup = true
             }
 
             if !groups.isEmpty {
                 Menu("Move to Group") {
                     if list.group != nil {
                         Button("None") {
-                            list.group = nil
-                            try? modelContext.save()
+                            viewModel?.assignListToGroup(list, group: nil)
                         }
                     }
                     ForEach(groups) { group in
                         if group.persistentModelID != list.group?.persistentModelID {
                             Button(group.name) {
-                                list.group = group
-                                try? modelContext.save()
+                                viewModel?.assignListToGroup(list, group: group)
                             }
                         }
                     }
                     Button("New Group...") {
-                        newGroupName = ""
-                        groupSourceList = list
-                        isCreatingGroup = true
+                        viewModel?.newGroupName = ""
+                        viewModel?.groupSourceList = list
+                        viewModel?.isCreatingGroup = true
                     }
                 }
             }
 
             Button("Delete List", role: .destructive) {
-                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-                if listTasks.isEmpty {
-                    modelContext.delete(list)
-                    try? modelContext.save()
-                } else {
-                    deleteList = list
-                }
+                viewModel?.requestDeleteList(list)
             }
         }
     }
 
     // MARK: - Helpers
-
-    private func handleDelete(moveTasks: Bool) {
-        guard let list = deleteList else { return }
-        deleteList = nil
-
-        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-
-        if moveTasks {
-            if let defaultList {
-                for task in listTasks {
-                    task.reminderList = defaultList
-                }
-            }
-        } else {
-            for task in listTasks {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-            }
-        }
-
-        modelContext.delete(list)
-        try? modelContext.save()
-    }
-
-    private func handleDeleteGroup() {
-        guard let group = deleteGroup else { return }
-        deleteGroup = nil
-
-        let groupLists = lists.filter { $0.group?.persistentModelID == group.persistentModelID }
-        for list in groupLists {
-            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-            for task in listTasks {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-            }
-            modelContext.delete(list)
-        }
-        modelContext.delete(group)
-        try? modelContext.save()
-    }
-
-    private func moveLists(fromOffsets: IndexSet, toOffset: Int, in source: [ReminderList], group: ReminderListGroup? = nil) {
-        withAnimation(.easeInOut(duration: 0.18)) {
-            var mutableLists = source
-            let sortedFrom = fromOffsets.sorted()
-
-            let moved = sortedFrom.reversed().map { mutableLists.remove(at: $0) }
-            let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
-            let insertAt = min(adjustedTo, mutableLists.count)
-
-            mutableLists.insert(contentsOf: moved, at: insertAt)
-
-            var lower = insertAt > 0 ? mutableLists[insertAt - 1].sortOrder : nil
-            for i in insertAt..<(insertAt + moved.count) {
-                let upper = (i + 1) < mutableLists.count ? mutableLists[i + 1].sortOrder : nil
-
-                if let newOrder = midpoint(between: lower, and: upper) {
-                    mutableLists[i].sortOrder = newOrder
-                } else {
-                    if let upperStr = upper {
-                        let widened = widen(upperStr)
-                        if let upperList = mutableLists.first(where: { $0.sortOrder == upperStr }) {
-                            upperList.sortOrder = widened
-                        }
-                        mutableLists[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
-                    } else {
-                        mutableLists[i].sortOrder = ""
-                    }
-                }
-
-                lower = mutableLists[i].sortOrder
-            }
-
-            if let group {
-                for list in mutableLists {
-                    list.group = group
-                }
-            }
-
-            try? modelContext.save()
-        }
-    }
 
     private func listRow(list: ReminderList) -> some View {
         let count = allTasks.filter {

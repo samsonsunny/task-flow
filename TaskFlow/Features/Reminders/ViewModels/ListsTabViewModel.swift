@@ -170,6 +170,23 @@ final class ListsTabViewModel {
         try? modelContext.save()
     }
 
+    // MARK: - List Group Assignment
+
+    func assignListToGroup(_ list: ReminderList, group: ReminderListGroup?) {
+        list.group = group
+        try? modelContext.save()
+    }
+
+    func requestDeleteList(_ list: ReminderList) {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
+        if listTasks.isEmpty {
+            modelContext.delete(list)
+            try? modelContext.save()
+        } else {
+            deleteList = list
+        }
+    }
+
     // MARK: - Group CRUD
 
     func createGroup(name: String, sourceList: ReminderList?) {

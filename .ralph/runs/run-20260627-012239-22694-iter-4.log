@@ -379,3 +379,94 @@ index 17d36fa..b0a20e0 100644
 +M .ralph/runs/run-20260627-012239-22694-iter-4.log
 +[0m
 [0m
+[0m$ [0mgit add .ralph/runs/run-20260627-012239-22694-iter-4.log && git commit --amend --no-edit
+[base-26.7.8 678c5aa] US-004: Add moveLists and group expand/collapse to ListsTabViewModel
+ Date: Sat Jun 27 01:32:24 2026 +0530
+ 10 files changed, 677 insertions(+), 5 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-012239-22694-4.md
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-4.json
+ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-4.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-3.md
+ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-4.log
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-4.log
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD
+678c5aa US-004: Add moveLists and group expand/collapse to ListsTabViewModel
+[0m
+[0m$ [0mgit diff .ralph/runs/run-20260627-012239-22694-iter-4.log | head -20
+diff --git a/.ralph/runs/run-20260627-012239-22694-iter-4.log b/.ralph/runs/run-20260627-012239-22694-iter-4.log
+index 0e6fe56..2114bb4 100644
+--- a/.ralph/runs/run-20260627-012239-22694-iter-4.log
++++ b/.ralph/runs/run-20260627-012239-22694-iter-4.log
+@@ -379,3 +379,19 @@ index 17d36fa..b0a20e0 100644
+ +M .ralph/runs/run-20260627-012239-22694-iter-4.log
+ +[0m
+ [0m
++[0m$ [0mgit add .ralph/runs/run-20260627-012239-22694-iter-4.log && git commit --amend --no-edit
++[base-26.7.8 678c5aa] US-004: Add moveLists and group expand/collapse to ListsTabViewModel
++ Date: Sat Jun 27 01:32:24 2026 +0530
++ 10 files changed, 677 insertions(+), 5 deletions(-)
++ create mode 100644 .ralph/.tmp/prompt-20260627-012239-22694-4.md
++ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-4.json
++ create mode 100644 .ralph/.tmp/story-20260627-012239-22694-4.md
++ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-3.md
++ create mode 100644 .ralph/runs/run-20260627-012239-22694-iter-4.log
++[0m
++[0m$ [0mgit status --porcelain
++M .ralph/runs/run-20260627-012239-22694-iter-4.log
+[0m
+[0m→ [0mRead .ralph/progress.md[90m [offset=1, limit=5][0m
+The run log is being written to by the outer loop system concurrently — this is expected. Let me update the progress log:
+[0m→ [0mRead .ralph/progress.md[90m [offset=520][0m
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -526,4 +526,27 @@
+   - Patterns discovered: Group CRUD methods follow same pattern as list CRUD — trim, guard empty, mutate, save
+   - Gotchas encountered: `deleteGroup` matches view's `handleDeleteGroup()` exactly — iterates lists in group, then their tasks, cascading delete
+   - Useful context: The view (ListsTabView) still has inline implementations of these methods; US-005 will wire view to VM calls
+ ---
++
++## [Sat Jun 27 01:33:00 IST 2026] - US-004: Move reorder and group expand/collapse to ViewModel
++Thread:
++Run: 20260627-012239-22694 (iteration 4)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-4.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-4.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 678c5aa US-004: Add moveLists and group expand/collapse to ListsTabViewModel
++- Post-commit status: `.ralph/runs/run-20260627-012239-22694-iter-4.log` (written by outer loop, expected)
++- Verification:
++  - Command: `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build` -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift
++- What was implemented:
++  - Added `expandedGroupIDs: Set<PersistentIdentifier>` property with `isGroupExpanded(_:)` and `toggleGroupExpanded(_:)` persisted to UserDefaults on per-group basis using `hashValue.description` as key (AC 4.2)
++  - Added `restoreExpandedState()` — reads UserDefaults booleans for each group on `update()` to restore saved state (AC 4.2)
++  - Added `moveLists(fromOffsets:toOffset:in:group:)` with midpoint/widen logic — matching view's existing implementation (AC 4.1)
++- **Learnings for future iterations:**
++  - Patterns discovered: `PersistentIdentifier` has no `uriRepresentation()` on iOS 26.0 SDK; use `hashValue.description` for UserDefaults keys (matching existing view pattern)
++  - Gotchas encountered: None
++  - Useful context: View methods for reorder and expand/collapse remain in ListsTabView until US-005 wires them to VM
++---
+
+[0m
+[0m$ [0mgit add .ralph/progress.md && git commit -m "US-004: Update progress log"
+[base-26.7.8 6b7d907] US-004: Update progress log
+ 1 file changed, 23 insertions(+)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/runs/run-20260627-012239-22694-iter-4.log
+[0m
+[0m# [0mTodos
+[✓] Add expandedGroupIDs + isGroupExpanded + toggleGroupExpanded with UserDefaults to ViewModel
+[✓] Add moveLists(fromOffsets:toOffset:in:group:) with midpoint/widen to ViewModel
+[✓] Verify build succeeds
+[✓] Commit changes and update progress log
+[0m
+<promise>COMPLETE</promise>
