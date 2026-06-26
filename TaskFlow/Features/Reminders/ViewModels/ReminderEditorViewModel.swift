@@ -98,6 +98,35 @@ final class ReminderEditorViewModel {
         }
     }
 
+    // MARK: - Subtask Operations
+
+    func addSubtask(title: String, to parent: TaskItem) {
+        let text = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let subtask = TaskItem(taskTitle: text, dueDate: nil)
+        subtask.createdAt = Date()
+        subtask.reminderList = parent.reminderList
+        subtask.parentTask = parent
+        let sorted = parent.subtasks
+            .filter { $0.persistentModelID != subtask.persistentModelID }
+            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        subtask.sortOrder = midpoint(between: sorted.last?.sortOrder, and: nil)
+        modelContext.insert(subtask)
+    }
+
+    func deleteSubtask(_ subtask: TaskItem) {
+        modelContext.delete(subtask)
+    }
+
+    func toggleSubtaskCompletion(_ subtask: TaskItem) {
+        let next = !(subtask.isCompleted ?? false)
+        subtask.isCompleted = next
+        subtask.completionDate = next ? Date() : nil
+        if next, let taskId = subtask.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+    }
+
     // MARK: - Helpers
 
     private func assignInitialSortOrder(_ task: TaskItem) {
