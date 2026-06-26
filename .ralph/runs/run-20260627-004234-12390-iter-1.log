@@ -1322,3 +1322,14 @@ Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
 M  .ralph/progress.md
 M  .ralph/runs/run-20260627-004234-12390-iter-1.log
 [0m
+[0m$ [0mgit add -A && git commit -m "docs: update progress and run log for US-003 completion" && git status --porcelain
+[base-26.7.8 8b1636d] docs: update progress and run log for US-003 completion
+ 2 files changed, 110 insertions(+), 1 deletion(-)
+[0m
+[0m$ [0mecho "[2026-06-27 00:43] US-003: Implementation complete - ListDetailView refactored to use ViewModel" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/activity.log
+ M .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
