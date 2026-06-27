@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct SettingsView: View {
+struct MoreView: View {
     @AppStorage(DailyReminderKeys.enabled) private var isEnabled = false
     @AppStorage(DailyReminderKeys.hour) private var hour = 7
     @AppStorage(DailyReminderKeys.minute) private var minute = 0
@@ -47,8 +47,19 @@ struct SettingsView: View {
                         Text("A daily notification will remind you to check your tasks.")
                     }
                 }
+                Section {
+                    NavigationLink {
+                        CompletedView()
+                            .navigationTitle("Completed")
+                            .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        Label("Recently Completed", systemImage: "checkmark.circle")
+                    }
+                } header: {
+                    Text("Recently Completed")
+                }
             }
-            .navigationTitle("Settings")
+            .navigationTitle("More")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

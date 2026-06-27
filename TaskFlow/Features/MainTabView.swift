@@ -27,7 +27,7 @@ struct MainTabView: View {
                 }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            MoreView()
         }
     }
 

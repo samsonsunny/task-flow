@@ -13,7 +13,7 @@ struct UpcomingView: View {
                         Button {
                             onSettings()
                         } label: {
-                            Image(systemName: "gearshape")
+                            Image(systemName: "ellipsis.circle")
                         }
                     }
                 }
