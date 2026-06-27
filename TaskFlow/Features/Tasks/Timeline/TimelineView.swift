@@ -16,6 +16,7 @@ private struct ScheduleConfig: Identifiable {
 
 struct ReminderSegmentDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var tasks: [TaskItem]
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
 
@@ -68,26 +69,11 @@ struct ReminderSegmentDetailView: View {
                 }
             }
 
-            if segment == .today || segment == .tomorrow {
-                if let subtitle = segment.subtitle(now: viewModel?.now ?? Date()), !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(AppTheme.colors.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 4)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                }
-            }
-
-            if activeCaptureDate != nil && segment != .upcoming {
-                quickCaptureRow
-            }
-
             if let vm = viewModel {
                 if segment == .upcoming {
                     upcomingContent(with: vm)
+                } else if segment == .today || segment == .tomorrow {
+                    todayLikeContent(with: vm)
                 } else if vm.sortedFlatTasks.isEmpty && !segment.usesGroupedSections {
                     emptyState
                 } else if segment.usesGroupedSections {
@@ -164,6 +150,9 @@ struct ReminderSegmentDetailView: View {
             if task == nil {
                 viewModel?.update(tasks: tasks, lists: reminderLists)
             }
+        }
+        .onChange(of: appState.mutationCount) { _, _ in
+            viewModel?.update(tasks: tasks, lists: reminderLists)
         }
     }
 
@@ -259,6 +248,29 @@ struct ReminderSegmentDetailView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
+    }
+
+    private func todayLikeContent(with vm: ReminderSegmentViewModel) -> some View {
+        Section {
+            if activeCaptureDate != nil {
+                quickCaptureRow
+            }
+            if vm.sortedFlatTasks.isEmpty {
+                emptyState
+            } else {
+                flatContent(with: vm)
+            }
+        } header: {
+            if let subtitle = segment.subtitle(now: vm.now), !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+                    .textCase(nil)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 16)
+                    .padding(.bottom, 4)
+            }
+        }
     }
 
     @ViewBuilder
