@@ -35,6 +35,7 @@ final class ListDetailViewModel {
 
     func refreshNow() {
         now = Date()
+        recompute()
     }
 
     func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date()) {

@@ -126,8 +126,12 @@ enum ReminderSegmentLogic {
                 guard !isCompleted else { return false }
                 return task.dueDate == nil
             case .overdue:
-                guard !isCompleted, let dueStart else { return false }
-                return dueStart < todayStart
+                guard !isCompleted, let dueDate = task.dueDate else { return false }
+                if task.hasTime == true {
+                    return dueDate < now
+                } else {
+                    return calendar.startOfDay(for: dueDate) < todayStart
+                }
             }
         }
     }

@@ -26,8 +26,7 @@ final class ReminderSegmentViewModel {
     }
 
     func refreshNow() {
-        now = Date()
-        overdueTasks = ReminderSegmentLogic.filteredTasks(allTasks, for: .overdue, now: now)
+        update(tasks: allTasks, lists: lists, now: Date())
     }
 
     func toggleShowOverdue() {
