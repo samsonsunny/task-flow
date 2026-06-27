@@ -112,12 +112,20 @@ enum ReminderSegmentLogic {
 
             switch segment {
             case .today:
-                guard !isCompleted, let dueStart else { return false }
-                return calendar.isDate(dueStart, inSameDayAs: todayStart)
+                guard !isCompleted, let dueDate = task.dueDate else { return false }
+                guard calendar.isDate(calendar.startOfDay(for: dueDate), inSameDayAs: todayStart) else { return false }
+                if task.hasTime == true {
+                    return dueDate >= now
+                }
+                return true
             case .tomorrow:
-                guard !isCompleted, let dueStart else { return false }
+                guard !isCompleted, let dueDate = task.dueDate else { return false }
                 let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
-                return calendar.isDate(dueStart, inSameDayAs: tomorrowStart)
+                guard calendar.isDate(calendar.startOfDay(for: dueDate), inSameDayAs: tomorrowStart) else { return false }
+                if task.hasTime == true {
+                    return dueDate >= now
+                }
+                return true
             case .upcoming:
                 guard !isCompleted, let dueStart else { return false }
                 let start = upcomingStart(now: now, calendar: calendar)
