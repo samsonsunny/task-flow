@@ -12,6 +12,7 @@ This project follows the **MVVM (Model-View-ViewModel)** pattern. All view-layer
 4. **ViewModels receive `modelContext` at init** from the view's `@Environment(\.modelContext)`.
 5. **ViewModels are co-located with their View** in the same folder.
 6. **UI-only state** (`@FocusState`, `@State` for sheet booleans, `@Environment(\.dismiss)`) stays in the view.
+7. **Every mutation must call `update()` after `modelContext.save()`.** `onChange(of:)` uses `Equatable` comparison; `@Model` objects compare equal by `persistentModelID`, so property-only changes are invisible to `onChange`. Explicit `update()` is the only reliable way to recompute derived state after a mutation. For inserts/deletes, update `allTasks` (add/remove) before calling `update()`.
 
 ### File organization
 

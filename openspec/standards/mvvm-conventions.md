@@ -60,7 +60,14 @@ final class FeatureViewModel {
     }
 
     // --- Mutations ---
-    func someMutation() { ... }
+    // Every mutation must call update(tasks:allTasks, lists:lists) after
+    // modelContext.save(). onChange(of:) uses Equatable and @Model compares
+    // by persistentModelID, so property-only changes are invisible to onChange.
+    func someMutation() {
+        // mutate model objects
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists) // explicit recompute
+    }
 }
 ```
 
@@ -100,6 +107,7 @@ struct FeatureView: View {
 | State entry point | Single `update()` method | Simple, predictable, easy to debug |
 | UI-only state | Stays in view | `@FocusState`, `@State` for sheet booleans, `editMode` |
 | Derived state | Computed in VM | Testable, single source of truth |
+| Mutation reactivity | Explicit `update()` after each save | `onChange(of:)` uses `Equatable`; `@Model` compares by `persistentModelID`, so property-only changes are invisible to `onChange`. Every mutation must call `self.update()` explicitly. |
 
 ## Testing
 

@@ -145,6 +145,8 @@ final class ReminderSegmentViewModel {
         task.reminderList = resolvedQuickCaptureList()
         modelContext.insert(task)
         try? modelContext.save()
+        allTasks.append(task)
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -165,6 +167,8 @@ final class ReminderSegmentViewModel {
         }
         modelContext.delete(task)
         try? modelContext.save()
+        allTasks.removeAll { $0.persistentModelID == task.persistentModelID }
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -172,6 +176,7 @@ final class ReminderSegmentViewModel {
         task.reminderList = list
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
     }
 
     private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
@@ -202,6 +207,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = nil
         }
         try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -211,6 +217,7 @@ final class ReminderSegmentViewModel {
         }
         task.dueDate = Calendar.current.startOfDay(for: now)
         try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -222,6 +229,7 @@ final class ReminderSegmentViewModel {
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
         try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -231,6 +239,7 @@ final class ReminderSegmentViewModel {
         }
         task.dueDate = nil
         try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
         BadgeService.update(modelContext: modelContext)
     }
 

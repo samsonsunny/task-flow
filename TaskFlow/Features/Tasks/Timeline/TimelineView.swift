@@ -160,6 +160,11 @@ struct ReminderSegmentDetailView: View {
         .onChange(of: reminderLists) { _, newLists in
             viewModel?.update(tasks: tasks, lists: newLists)
         }
+        .onChange(of: editingTask) { _, task in
+            if task == nil {
+                viewModel?.update(tasks: tasks, lists: reminderLists)
+            }
+        }
     }
 
     private var quickCaptureRow: some View {
