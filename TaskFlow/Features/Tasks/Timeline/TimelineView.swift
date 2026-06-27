@@ -88,7 +88,7 @@ struct ReminderSegmentDetailView: View {
             if let vm = viewModel {
                 if segment == .upcoming {
                     upcomingContent(with: vm)
-                } else if vm.filteredTasks.isEmpty && !segment.usesGroupedSections {
+                } else if vm.sortedFlatTasks.isEmpty && !segment.usesGroupedSections {
                     emptyState
                 } else if segment.usesGroupedSections {
                     groupedContent(with: vm)
@@ -100,7 +100,7 @@ struct ReminderSegmentDetailView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .animation(.easeInOut, value: viewModel?.filteredTasks.count ?? 0)
+        .animation(.easeInOut, value: viewModel?.sortedFlatTasks.count ?? 0)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 if segment == .upcoming {

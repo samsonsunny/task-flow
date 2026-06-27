@@ -99,6 +99,7 @@ struct TaskRowView: View {
                     .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
                     .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
                     .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                    .strikethrough(isCompletedVisualState, color: AppTheme.colors.textSecondary)
                     .lineSpacing(2)
                     .multilineTextAlignment(.leading)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)

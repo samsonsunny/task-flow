@@ -59,7 +59,7 @@ final class ListDetailViewModel {
         if next {
             if let id = task.taskId {
                 justCompleted.insert(id)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self, weak task] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak task] in
                     guard let self, let task, task.isCompleted == true else { return }
                     _ = withAnimation {
                         self.justCompleted.remove(id)
@@ -68,6 +68,8 @@ final class ListDetailViewModel {
                     }
                 }
             }
+        } else if let id = task.taskId {
+            justCompleted.remove(id)
         }
         task.isCompleted = next
         task.completionDate = next ? Date() : nil

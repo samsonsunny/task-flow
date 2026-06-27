@@ -41,9 +41,8 @@ final class ReminderSegmentViewModel {
         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
-        let sorted = ReminderSegmentLogic.sortedTasks(self.filteredTasks, for: segment)
-        let recent = tasks.filter { justCompleted.contains($0.taskId ?? "") }
-        self.sortedFlatTasks = sorted + recent
+        let displayable = self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") }
+        self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment)
     }
 
     var contextualDate: Date? {
@@ -105,12 +104,14 @@ final class ReminderSegmentViewModel {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             if let id = task.taskId {
                 justCompleted.insert(id)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self, weak task] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak task] in
                     guard let self, let task, task.isCompleted == true else { return }
                     self.justCompleted.remove(id)
                     self.update(tasks: self.allTasks, lists: self.lists)
                 }
             }
+        } else if let id = task.taskId {
+            justCompleted.remove(id)
         }
         withAnimation(.easeInOut(duration: 0.18)) {
             task.isCompleted = next
