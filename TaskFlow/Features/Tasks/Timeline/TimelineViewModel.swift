@@ -109,6 +109,7 @@ final class ReminderSegmentViewModel {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self, weak task] in
                     guard let self, let task, task.isCompleted == true else { return }
                     self.justCompleted.remove(id)
+                    self.update(tasks: self.allTasks, lists: self.lists)
                 }
             }
         }
@@ -119,6 +120,9 @@ final class ReminderSegmentViewModel {
                 NotificationService.shared.cancel(taskId: taskId)
             }
         }
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists)
+        BadgeService.update(modelContext: modelContext)
     }
 
     func commitQuickCapture(text: String, captureDate: Date?) {
@@ -140,6 +144,8 @@ final class ReminderSegmentViewModel {
         task.createdAt = Date()
         task.reminderList = resolvedQuickCaptureList()
         modelContext.insert(task)
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func openQuickCaptureEditor(text: String, captureDate: Date?) -> (initialDate: Date?, initialTitle: String) {
@@ -159,6 +165,7 @@ final class ReminderSegmentViewModel {
         }
         modelContext.delete(task)
         try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func moveTask(_ task: TaskItem, to list: ReminderList) {
@@ -194,6 +201,8 @@ final class ReminderSegmentViewModel {
         } else {
             task.dueDate = nil
         }
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleToToday(_ task: TaskItem) {
@@ -201,6 +210,8 @@ final class ReminderSegmentViewModel {
             NotificationService.shared.cancel(taskId: taskId)
         }
         task.dueDate = Calendar.current.startOfDay(for: now)
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleToTomorrow(_ task: TaskItem) {
@@ -210,6 +221,8 @@ final class ReminderSegmentViewModel {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleToLater(_ task: TaskItem) {
@@ -217,6 +230,8 @@ final class ReminderSegmentViewModel {
             NotificationService.shared.cancel(taskId: taskId)
         }
         task.dueDate = nil
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func canMoveToToday(_ task: TaskItem) -> Bool {

@@ -90,6 +90,8 @@ final class ReminderEditorViewModel {
                 notif.cancel(taskId: taskId)
             }
         }
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func handleClose() {

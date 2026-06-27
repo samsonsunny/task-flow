@@ -2,19 +2,36 @@
 
 ## Directory Structure
 
-All ViewModels live alongside their feature in a `ViewModels/` subdirectory:
+Features are split into domain-based folders under `Features/`. Each screen co-locates its View and ViewModel in the same folder. Truly shared files stay at the feature root or in `Views/Components/`.
 
 ```
-TaskFlow/Features/Reminders/
-├── ViewModels/
-│   ├── ListDetailViewModel.swift
-│   ├── ReminderSegmentViewModel.swift
-│   ├── ReminderEditorViewModel.swift
-│   ├── ListsTabViewModel.swift
+TaskFlow/Features/
+├── Tasks/                           (Today/Tomorrow/Upcoming tabs)
+│   ├── TodayView.swift
+│   ├── TomorrowView.swift
+│   ├── UpcomingView.swift
+│   ├── TimelineView.swift
+│   ├── TimelineViewModel.swift
+│   ├── TimelineSections.swift
+│   └── TimeSegments.swift
+├── Lists/                           (Lists tab + list detail)
+│   ├── ListView.swift
+│   ├── ListViewModel.swift
+│   ├── DetailView.swift
+│   └── DetailViewModel.swift
+├── Editor/                          (create/edit reminder, schedule picker)
+│   ├── EditorView.swift
+│   ├── EditorViewModel.swift
+│   ├── Draft.swift
+│   ├── DatePickerSheet.swift
+│   └── DatePickerViewModel.swift
+├── Completed/
+│   ├── CompletedView.swift
 │   └── CompletedViewModel.swift
-├── ListDetailView.swift
-├── ReminderSegmentDetailView.swift
-├── ...
+├── Settings/
+│   └── SettingsView.swift
+├── FloatingAddButton.swift
+└── MainTabView.swift
 ```
 
 ## Pattern

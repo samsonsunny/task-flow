@@ -63,6 +63,7 @@ final class ListDetailViewModel {
                     _ = withAnimation {
                         self.justCompleted.remove(id)
                         self.recompute()
+                        BadgeService.update(modelContext: self.modelContext)
                     }
                 }
             }
@@ -73,6 +74,7 @@ final class ListDetailViewModel {
             NotificationService.shared.cancel(taskId: taskId)
         }
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     private func recompute() {
@@ -123,6 +125,7 @@ final class ListDetailViewModel {
         modelContext.insert(task)
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func openQuickCaptureEditor(text: String, listID: ReminderList.ID?) -> (String, ReminderList.ID) {
@@ -139,6 +142,7 @@ final class ListDetailViewModel {
         modelContext.delete(task)
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     // MARK: - List Move (2.3)
@@ -277,6 +281,7 @@ final class ListDetailViewModel {
         }
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleTaskToToday(_ task: TaskItem) {
@@ -286,6 +291,7 @@ final class ListDetailViewModel {
         task.dueDate = Calendar.current.startOfDay(for: now)
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleTaskToTomorrow(_ task: TaskItem) {
@@ -297,6 +303,7 @@ final class ListDetailViewModel {
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     func rescheduleTaskToLater(_ task: TaskItem) {
@@ -306,6 +313,7 @@ final class ListDetailViewModel {
         task.dueDate = nil
         try? modelContext.save()
         recompute()
+        BadgeService.update(modelContext: modelContext)
     }
 
     // MARK: - Helpers (2.7)

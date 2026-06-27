@@ -141,6 +141,15 @@ enum ReminderSegmentLogic {
         filteredTasks(tasks, for: segment, now: now, calendar: calendar).count
     }
 
+    static func badgeCount(
+        _ tasks: [TaskItem],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Int {
+        filteredTasks(tasks, for: .overdue, now: now, calendar: calendar).count
+        + filteredTasks(tasks, for: .today, now: now, calendar: calendar).count
+    }
+
     static func datedSections(
         from tasks: [TaskItem],
         for segment: ReminderSegment,

@@ -12,9 +12,11 @@
 // ==========================================
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct TaskFlowApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var appState = AppState()
 
     var sharedModelContainer: ModelContainer = {
@@ -58,7 +60,13 @@ struct TaskFlowApp: App {
                 }
         }
         .modelContainer(sharedModelContainer)
-        
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                let context = ModelContext(sharedModelContainer)
+                BadgeService.update(modelContext: context)
+            }
+        }
     }
 }
 

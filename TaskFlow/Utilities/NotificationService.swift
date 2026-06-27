@@ -34,7 +34,7 @@ final class NotificationService {
         let settings = await center.notificationSettings()
         switch settings.authorizationStatus {
         case .notDetermined:
-            let granted = try? await center.requestAuthorization(options: [.alert, .sound])
+            let granted = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             return granted == true
         case .authorized:
             return true
@@ -59,6 +59,7 @@ final class NotificationService {
         let content = UNMutableNotificationContent()
         content.title = title
         content.sound = .default
+        content.badge = NSNumber(value: BadgeService.lastCount)
 
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate),
@@ -95,6 +96,7 @@ final class NotificationService {
         let content = UNMutableNotificationContent()
         content.title = "☀️ Good morning — your day is waiting"
         content.sound = .default
+        content.badge = NSNumber(value: BadgeService.lastCount)
 
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: components,
