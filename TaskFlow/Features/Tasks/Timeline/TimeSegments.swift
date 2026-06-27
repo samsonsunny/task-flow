@@ -5,7 +5,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
     case today
     case tomorrow
     case upcoming
-    case later
     case overdue
 
     var id: String { rawValue }
@@ -15,7 +14,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return "Today"
         case .tomorrow: return "Tomorrow"
         case .upcoming: return "Upcoming"
-        case .later: return "Later"
         case .overdue: return "Overdue"
         }
     }
@@ -25,7 +23,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return "calendar.circle.fill"
         case .tomorrow: return "sunrise.fill"
         case .upcoming: return "calendar.badge.clock"
-        case .later: return "tray"
         case .overdue: return "exclamationmark.circle.fill"
         }
     }
@@ -35,7 +32,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return AppTheme.colors.primaryAction
         case .tomorrow: return AppTheme.colors.success
         case .upcoming: return AppTheme.colors.warning
-        case .later: return AppTheme.colors.textSecondary
         case .overdue: return AppTheme.colors.error
         }
     }
@@ -43,7 +39,7 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
     var usesGroupedSections: Bool {
         switch self {
         case .upcoming: return true
-        case .today, .tomorrow, .later, .overdue: return false
+        case .today, .tomorrow, .overdue: return false
         }
     }
 
@@ -69,8 +65,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .upcoming:
             let start = ReminderSegmentLogic.upcomingStart(now: now, calendar: calendar)
             return "From \(TaskUIModel.chipDateFormatter.string(from: start))"
-        case .later:
-            return nil
         case .overdue:
             return nil
         }
@@ -81,7 +75,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return "Nothing due today"
         case .tomorrow: return "Nothing due tomorrow"
         case .upcoming: return "Nothing in Upcoming"
-        case .later: return "No unscheduled reminders"
         case .overdue: return "No overdue reminders"
         }
     }
@@ -91,7 +84,6 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return "Reminders due today will appear here."
         case .tomorrow: return "Reminders due tomorrow will appear here."
         case .upcoming: return "Reminders due soon will appear here."
-        case .later: return "Reminders without a due date will appear here."
         case .overdue: return "Reminders past their due date will appear here."
         }
     }
@@ -130,9 +122,6 @@ enum ReminderSegmentLogic {
                 guard !isCompleted, let dueStart else { return false }
                 let start = upcomingStart(now: now, calendar: calendar)
                 return dueStart >= start
-            case .later:
-                guard !isCompleted else { return false }
-                return task.dueDate == nil
             case .overdue:
                 guard !isCompleted, let dueDate = task.dueDate else { return false }
                 if task.hasTime == true {

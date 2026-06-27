@@ -28,7 +28,7 @@ TaskFlow/Features/
 │   ├── TimelineViewModel.swift
 │   ├── TimelineSections.swift
 │   └── TimeSegments.swift
-├── Lists/                           (Lists tab + list detail)
+├── Lists/                           (Later tab + list detail)
 │   ├── ListView.swift
 │   ├── ListViewModel.swift
 │   ├── DetailView.swift
@@ -51,6 +51,10 @@ TaskFlow/Features/
 ### Full conventions
 
 See `openspec/standards/mvvm-conventions.md` for the detailed pattern reference, including the ViewModel template, testing approach, and what stays in the view.
+
+### Product mental model
+
+Read `openspec/specs/app-mental-model/spec.md` before making architectural or navigation decisions. It defines the two-axis model (attention vs home) that all features build on.
 
 ### Existing specs
 

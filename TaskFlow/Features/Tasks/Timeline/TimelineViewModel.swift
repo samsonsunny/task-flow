@@ -87,7 +87,7 @@ final class ReminderSegmentViewModel {
 
     func shouldShowDueDate(for segment: ReminderSegment) -> Bool {
         switch segment {
-        case .today, .tomorrow, .later: return false
+        case .today, .tomorrow: return false
         case .upcoming, .overdue: return true
         }
     }

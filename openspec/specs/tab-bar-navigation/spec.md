@@ -2,7 +2,7 @@
 
 ### Requirement: Root navigation is a 4-tab bottom TabView
 
-The app SHALL use a `TabView` with a bottom tab bar as its root navigation container. The tab bar SHALL display exactly four tabs: Today, Tomorrow, Upcoming, and Lists. Each tab SHALL wrap its content in an independent `NavigationStack`.
+The app SHALL use a `TabView` with a bottom tab bar as its root navigation container. The tab bar SHALL display exactly four tabs: Today, Tomorrow, Upcoming, and Later. Each tab SHALL wrap its content in an independent `NavigationStack`.
 
 #### Scenario: App launches to Today tab
 - **WHEN** the app launches
@@ -15,7 +15,7 @@ The app SHALL use a `TabView` with a bottom tab bar as its root navigation conta
 - **AND** the Today tab's state (scroll position, quick-capture field) is preserved
 
 #### Scenario: Each tab has its own NavigationStack
-- **WHEN** the user navigates to a list detail in the Lists tab
+- **WHEN** the user navigates to a list detail in the Later tab
 - **AND** switches to the Today tab
 - **THEN** the Today tab shows its root content, not the list detail
 
@@ -39,28 +39,32 @@ The Today tab SHALL display a collapsible "Overdue" section at the top of its ta
 - **AND** no incomplete tasks have due dates before today
 - **THEN** the Overdue section is not displayed
 
-### Requirement: Lists tab shows user-created lists
+### Requirement: Later tab shows groups and lists
 
-The Lists tab SHALL display all user-created `ReminderList` objects sorted alphabetically (with the default "Reminders" list first). Each row SHALL show the list name and a count of uncompleted tasks in that list. Tapping a list SHALL push `ListDetailView` for that list onto the Lists tab's `NavigationStack`.
+The Later tab SHALL display user-created `ReminderList` objects optionally organized into `ReminderListGroup` sections, with the default "Inbox" list pinned at the top. Each row SHALL show the list name and a count of uncompleted tasks in that list. Tapping a list SHALL push `ListDetailView` for that list onto the Later tab's `NavigationStack`.
 
-The Lists tab SHALL have a toolbar button ("+") to create a new list. Tapping it SHALL present an alert with a text field for the list name.
+The Later tab SHALL have a button to create a new list.
 
-#### Scenario: Lists tab shows all lists with task counts
-- **WHEN** the user navigates to the Lists tab
-- **THEN** all user-created lists are displayed
+Groups SHALL be displayed as expandable/collapsible sections. Ungrouped lists SHALL appear in a dedicated section below groups.
+
+#### Scenario: Later tab shows groups and lists with task counts
+- **WHEN** the user navigates to the Later tab
+- **THEN** groups are shown as expandable sections with their contained lists
+- **AND** ungrouped lists appear in a separate section
+- **AND** the default "Inbox" list is pinned first
 - **AND** each list shows an uncompleted task count badge
 
 #### Scenario: Tapping a list pushes ListDetailView
-- **WHEN** the user taps a list row in the Lists tab
-- **THEN** `ListDetailView` for the selected list is pushed onto the Lists tab's NavigationStack
+- **WHEN** the user taps a list row in the Later tab
+- **THEN** `ListDetailView` for the selected list is pushed onto the Later tab's NavigationStack
 
-#### Scenario: Creating a new list from Lists tab
-- **WHEN** the user taps the "+" toolbar button in the Lists tab
+#### Scenario: Creating a new list from Later tab
+- **WHEN** the user taps the create button in the Later tab
 - **THEN** an alert appears with a text field for the list name
 - **AND** entering a name and tapping "Create" inserts a new `ReminderList`
 
 #### Scenario: Quick-capture in list detail assigns to that list
-- **WHEN** the user is viewing a specific list in `ListDetailView` (pushed from Lists tab)
+- **WHEN** the user is viewing a specific list in `ListDetailView` (pushed from Later tab)
 - **AND** creates a task via quick-capture
 - **THEN** the task is assigned to that list
 
@@ -79,10 +83,18 @@ The `SidebarView.swift` file (currently unused) SHALL be removed from the projec
 - **WHEN** the project builds
 - **THEN** the file `Views/Components/SidebarView.swift` SHALL NOT exist
 
+### Requirement: Quick-capture in time tabs assigns to Inbox
+
+When the user creates a task via the quick-capture field in any time-based tab's `ReminderSegmentDetailView`, the task SHALL be assigned to the default "Inbox" list.
+
+#### Scenario: Quick-capture in time tabs assigns to Inbox
+- **WHEN** the user quick-captures a task from the Today tab
+- **THEN** the task is created with `reminderList` set to the default "Inbox" list
+
+## REMOVED Requirements
+
 ### Requirement: Later and Completed have no entry point
 
-The Later and Completed views SHALL remain in the codebase but SHALL NOT have a navigation entry point in the new tab bar or any other visible navigation surface. Their functionality is accessible only through task context menus (reschedule to later) and completion actions (swipe to complete, toggle).
+**Reason**: The "Later" view concept was replaced by the Later tab, which serves as the permanent organizational home. The Later tab is now a first-class entry point in the tab bar.
 
-#### Scenario: No navigation to Later or Completed
-- **WHEN** the user views any tab or navigates within the app
-- **THEN** there is no button, link, or gesture to navigate to the Later or Completed views
+**Migration**: Remove this requirement entirely. The Later tab replaces the "no entry point" rule.

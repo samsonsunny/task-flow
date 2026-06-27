@@ -8,12 +8,12 @@ struct MainTabView: View {
         TabView {
             TodayTabView(onSettings: { showSettings = true })
                 .tabItem {
-                    Label("Today", systemImage: "calendar.circle.fill")
+                    Label("Today", systemImage: "clock.fill")
                 }
 
             TomorrowView(onSettings: { showSettings = true })
                 .tabItem {
-                    Label("Tomorrow", systemImage: "sunrise.fill")
+                    Label("Tomorrow", systemImage: "clock.arrow.2.circlepath")
                 }
 
             UpcomingView(onSettings: { showSettings = true })
@@ -23,7 +23,7 @@ struct MainTabView: View {
 
             ListsTabView(onSettings: { showSettings = true })
                 .tabItem {
-                    Label("Lists", systemImage: "list.bullet")
+                    Label("Later", systemImage: "tray.full")
                 }
         }
         .sheet(isPresented: $showSettings) {

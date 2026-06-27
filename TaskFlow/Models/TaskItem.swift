@@ -882,7 +882,7 @@ extension TaskItem {
 }
 
 enum ReminderDefaults {
-    static let defaultListName = "Reminders"
+    static let defaultListName = "Inbox"
 }
 
 private extension String {

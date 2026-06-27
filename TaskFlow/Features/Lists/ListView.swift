@@ -25,7 +25,7 @@ struct ListsTabView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .navigationTitle("All Lists")
+        .navigationTitle("Later")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -317,9 +317,10 @@ struct ListsTabView: View {
         let count = allTasks.filter {
             $0.reminderList?.persistentModelID == list.persistentModelID && $0.isCompleted != true
         }.count
+        let isInbox = list.name == ReminderDefaults.defaultListName
 
         return HStack(spacing: 12) {
-            Image(systemName: "list.bullet")
+            Image(systemName: isInbox ? "tray" : "list.bullet")
                 .font(.system(size: 16))
                 .foregroundStyle(AppTheme.colors.textSecondary)
                 .frame(width: 24)
