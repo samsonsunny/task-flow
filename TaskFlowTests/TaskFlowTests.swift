@@ -145,20 +145,17 @@ final class TaskFlowTests: XCTestCase {
             calendar: calendar
         )
 
-        // 7 mandatory days + 1 for beyond task
-        XCTAssertEqual(sections.count, 8)
-        
-        // Verify first day has task
+        // Sections only created for days with tasks (empty days filtered out)
+        XCTAssertEqual(sections.count, 2)
+
+        // First section: day section with horizon task
         XCTAssertEqual(sections[0].tasks.count, 1)
-        XCTAssertEqual(sections[0].title, "Fri, May 15")
-        
-        // Verify middle day is empty but present
-        XCTAssertEqual(sections[1].tasks.count, 0)
-        XCTAssertEqual(sections[1].title, "Sat, May 16")
-        
-        // Verify beyond section is present
-        XCTAssertEqual(sections.last?.tasks.count, 1)
-        XCTAssertEqual(sections.last?.tasks.first?.safeTitle, "Beyond Task")
+        XCTAssertEqual(sections[0].tasks.first?.safeTitle, "Horizon Task")
+        XCTAssertEqual(sections[0].title, TaskUIModel.tabDateTitle(for: start, calendar: calendar))
+
+        // Second section: remainder-of-month section with beyond-horizon task
+        XCTAssertEqual(sections[1].tasks.count, 1)
+        XCTAssertEqual(sections[1].tasks.first?.safeTitle, "Beyond Task")
     }
 
 
