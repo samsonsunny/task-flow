@@ -87,7 +87,10 @@ struct ReminderSegmentDetailView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .scrollDismissesKeyboard(.immediately)
+        .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            TapGesture().onEnded { isQuickCaptureFocused = false }
+        )
         .animation(.easeInOut, value: viewModel?.sortedFlatTasks.count ?? 0)
         .onChange(of: activeCaptureDate) { _, newValue in
             if newValue != nil {

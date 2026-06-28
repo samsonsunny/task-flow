@@ -76,7 +76,10 @@ struct ListDetailView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
-        .scrollDismissesKeyboard(.immediately)
+        .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            TapGesture().onEnded { isQuickCaptureFocused = false }
+        )
         .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
             .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
