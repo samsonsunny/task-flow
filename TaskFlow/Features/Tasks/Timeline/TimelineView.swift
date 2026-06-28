@@ -87,6 +87,7 @@ struct ReminderSegmentDetailView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
+        .scrollDismissesKeyboard(.immediately)
         .animation(.easeInOut, value: viewModel?.sortedFlatTasks.count ?? 0)
         .onChange(of: activeCaptureDate) { _, newValue in
             if newValue != nil {
@@ -528,7 +529,11 @@ struct ReminderSegmentDetailView: View {
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
             availableLists: viewModel?.otherLists ?? [],
             onDelete: { viewModel?.delete(task: task) },
-            onTap: { editingTask = task },
+            onTap: {
+                activeCaptureDate = nil
+                quickCaptureText = ""
+                editingTask = task
+            },
             showsDueDate: showsDueDate
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))

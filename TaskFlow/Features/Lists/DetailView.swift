@@ -75,8 +75,9 @@ struct ListDetailView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.appBackground)
-            .navigationTitle(viewModel?.list?.name ?? "")
+        .background(AppTheme.colors.appBackground)
+        .scrollDismissesKeyboard(.immediately)
+        .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
             .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
             .onChange(of: isQuickCapturing) { _, newValue in
@@ -192,7 +193,11 @@ struct ListDetailView: View {
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
             availableLists: viewModel?.otherLists ?? [],
             onDelete: { viewModel?.delete(task: task) },
-            onTap: { editingTask = task },
+            onTap: {
+                isQuickCapturing = false
+                quickCaptureText = ""
+                editingTask = task
+            },
             showsDueDate: true,
             showsListName: false,
             nestingDepth: node.depth,
