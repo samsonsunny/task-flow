@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "project": "MVVM: ReminderEditorViewModel",
+  "overview": "Extract ReminderEditorViewModel from ReminderEditorView (424 lines). View manages form state (ReminderDraft), save pipeline, subtask CRUD, notification scheduling, and dirty tracking. VM takes all business logic.",
+  "goals": [
+    "Create @Observable ReminderEditorViewModel owning draft state, save/validate, dirty tracking, subtask CRUD, notification scheduling",
+    "Reduce ReminderEditorView from ~424 lines to ~200 lines",
+    "Full save/discard flow becomes testable without sheet presentation"
+  ],
+  "nonGoals": [
+    "No changes to ReminderDraft or ReminderDraftMapper interfaces",
+    "No form layout or animation changes"
+  ],
+  "successMetrics": [
+    "ReminderEditorViewModel.swift created with init, save(), handleClose(), and subtask methods",
+    "Build succeeds with no warnings",
+    "Creating and editing tasks works identically"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "ReminderEditorViewModel",
+      "fields": [
+        "modelContext",
+        "task",
+        "draft",
+        "initialDraft",
+        "isDirty",
+        "isDiscardConfirmationPresented"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "View passes @Query results (lists, tags) to VM on init and update",
+    "VM uses @Observable",
+    "VM uses existing ReminderDraftMapper.apply() for save pipeline",
+    "View retains @FocusState, expandedPicker, pressedRow UI state"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create ReminderEditorViewModel",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, init (matching current view's draft-building logic), and core state properties.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/ReminderEditorViewModel.swift exists with @Observable class (1.1)",
+        "modelContext, reminderLists, reminderTags properties added (1.2)",
+        "task, initialDraft, draft with init logic matching current view (1.3)",
+        "isDirty computed property and isDiscardConfirmationPresented state added (1.4)",
+        "save() method validates, applies via ReminderDraftMapper, inserts new task, assigns sort order, schedules notification (1.5)",
+        "handleClose() shows discard confirmation if dirty (1.6)"
+      ],
+      "startedAt": "2026-06-26T19:40:30.797213+00:00",
+      "completedAt": "2026-06-26T19:42:33.822353+00:00",
+      "updatedAt": "2026-06-26T19:42:33.822066+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Move subtask operations to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Add subtask CRUD methods: add, delete, toggle completion.",
+      "acceptanceCriteria": [
+        "addSubtask(title:to:) creates subtask with parent and sort order (2.1)",
+        "deleteSubtask(_:) deletes from model context (2.2)",
+        "toggleSubtaskCompletion(_:) with notification cancellation (2.3)"
+      ],
+      "startedAt": "2026-06-26T19:42:35.904661+00:00",
+      "completedAt": "2026-06-26T19:43:28.938587+00:00",
+      "updatedAt": "2026-06-26T19:43:28.938457+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Refactor ReminderEditorView to use ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Wire ViewModel into the view. Replace @State draft, isDiscardConfirmationPresented, saveReminder(), handleClose(), and subtask methods with VM calls.",
+      "acceptanceCriteria": [
+        "VM created from environment modelContext and @Query results (3.1)",
+        "@State private var draft replaced with VM binding (3.2)",
+        "isDiscardConfirmationPresented replaced with VM property (3.3)",
+        "handleClose() and saveReminder() replaced with VM calls (3.4)",
+        "Subtask operations use VM methods (3.5)",
+        "No @Environment(\\.modelContext) usage or direct mutations remain (3.6)"
+      ],
+      "startedAt": "2026-06-26T19:43:31.022015+00:00",
+      "completedAt": "2026-06-26T19:48:42.243591+00:00",
+      "updatedAt": "2026-06-26T19:48:42.243449+00:00"
+    },
+    {
+      "id": "US-004",
+      "title": "Verify ReminderEditorView refactor",
+      "status": "done",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Build and verify all editor workflows.",
+      "acceptanceCriteria": [
+        "Build succeeds with no warnings (4.1)",
+        "Creating a new task from scratch works (4.2)",
+        "Editing an existing task works (4.3)",
+        "Save validates empty content (4.4)",
+        "Dirty tracking shows discard confirmation (4.5)",
+        "Subtask add/delete/toggle works (4.6)",
+        "Notifications scheduled on save with time (4.7)"
+      ],
+      "startedAt": "2026-06-26T19:48:44.333243+00:00",
+      "completedAt": "2026-06-26T19:52:26.106246+00:00",
+      "updatedAt": "2026-06-26T19:52:26.105978+00:00"
+    }
+  ]
+}

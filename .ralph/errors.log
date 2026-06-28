@@ -1,0 +1,26 @@
+# Error Log
+
+> Failures and repeated issues. Use this to add guardrails.
+
+[2026-06-27 00:05:55] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-000301-7665-iter-1.md
+[2026-06-27 00:09:20] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-000602-8600-iter-1.md
+[2026-06-27 00:15:49] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760-iter-1.md
+[2026-06-27 00:18:36] ITERATION 2 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760-iter-2.md
+[2026-06-27 00:48:32] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-1.md
+[2026-06-27 00:53:55] ITERATION 2 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-2.md
+[2026-06-27 00:57:05] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-1.md
+[2026-06-27 00:59:47] ITERATION 2 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.md
+[2026-06-27 01:02:27] ITERATION 3 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-3.md
+[2026-06-27 01:07:08] ITERATION 4 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-4.md
+[2026-06-27 01:10:18] ITERATION 5 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-5.md
+[2026-06-27 01:12:33] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-1.md
+[2026-06-27 01:13:28] ITERATION 2 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-2.md
+[2026-06-27 01:18:42] ITERATION 3 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-3.md
+[2026-06-27 01:22:26] ITERATION 4 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-011030-19782-iter-4.md
+[2026-06-27 01:24:58] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-1.md
+[2026-06-27 01:27:58] ITERATION 2 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-2.md
+[2026-06-27 01:30:02] ITERATION 3 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-3.md
+[2026-06-27 01:33:06] ITERATION 4 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-4.md
+[2026-06-27 01:39:46] ITERATION 5 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-5.md
+[2026-06-27 01:42:58] ITERATION 6 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-012239-22694-iter-6.md
+[2026-06-27 01:45:57] ITERATION 1 left uncommitted changes; review run summary at /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-014339-28602-iter-1.md

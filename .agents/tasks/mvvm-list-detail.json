@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "project": "MVVM: ListDetailViewModel",
+  "overview": "Extract ListDetailViewModel from ListDetailView (526 lines). View currently mixes @Query, drag-drop reorder, nesting, quick capture, completion, scheduling, and rendering. VM takes all business logic; view becomes a thin consumer.",
+  "goals": [
+    "Create @Observable ListDetailViewModel owning flat node computation, drag-drop, completion lifecycle, quick capture, scheduling, and deletion",
+    "Gut ListDetailView from ~526 lines to ~200 lines of pure view code",
+    "All mutations go through VM methods, testable without view lifecycle"
+  ],
+  "nonGoals": [
+    "No behavioral changes to existing UI",
+    "No changes to SwiftData models or queries",
+    "No new features"
+  ],
+  "successMetrics": [
+    "ListDetailViewModel.swift created with all expected methods",
+    "ListDetailView.swift delegates to VM, no direct modelContext mutations",
+    "Build succeeds with no warnings",
+    "All drag-drop, completion, quick capture, schedule, and delete workflows work identically"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "ListDetailViewModel",
+      "fields": [
+        "modelContext",
+        "listID",
+        "flatNodes",
+        "collapsedTasks",
+        "justCompleted",
+        "draggedTaskId",
+        "now"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "View holds @Query, passes data to VM via update()",
+    "VM uses @Observable, not ObservableObject",
+    "VM receives modelContext at init from view's @Environment",
+    "UI-only state (@FocusState, editMode) stays in view"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create ListDetailViewModel with core properties and update() entry point",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, init, update() entry point, and computed/derived state properties.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift exists with @Observable class",
+        "init(modelContext:listID:) stores both parameters",
+        "update(tasks:lists:allTasks:now:) stores data and recomputes derived state",
+        "list, tasks, rootTasks computed properties added",
+        "flatNodes, flattenTasks(), flattenNode() with collapse support added (task 1.5)",
+        "collapsedTasks set with toggleCollapse(_:) added (task 1.6)",
+        "justCompleted set with toggleCompletion(for:) including animation delay added (task 1.7)"
+      ],
+      "startedAt": "2026-06-26T18:42:02.684041+00:00",
+      "completedAt": "2026-06-26T18:45:49.312365+00:00",
+      "updatedAt": "2026-06-26T18:45:49.312217+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Move data mutations to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Add all mutation methods to the ViewModel: quick capture, deletion, move-to-list, drag-drop reorder, scheduling, rescheduling.",
+      "acceptanceCriteria": [
+        "commitQuickCapture(text:in:) creates TaskItem with list assignment (2.1)",
+        "delete(task:) cancels notification and removes task (2.2)",
+        "moveTask(_:to:) and assignSortOrder(for:in:) for list moves (2.3)",
+        "moveTasks(fromOffsets:toOffset:) uses midpoint/widen algorithm (2.4)",
+        "handleDrop(target:location:), moveTaskToRoot(), isDescendant(_:of:) added (2.5)",
+        "presentScheduleSheet(for:) and scheduleTask(_:dueDate:hasTime:), reschedule helpers added (2.6)",
+        "canMoveToToday(_:), canMoveToTomorrow(_:), otherLists added (2.7)",
+        "openQuickCaptureEditor(text:listID:) and commitQuickCapture(text:in:) added (2.8)"
+      ],
+      "startedAt": "2026-06-26T18:45:51.394025+00:00",
+      "completedAt": "2026-06-26T18:48:36.062256+00:00",
+      "updatedAt": "2026-06-26T18:48:36.062104+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Refactor ListDetailView to use ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Wire the ViewModel into the view. Replace all computed properties, mutation methods, and direct modelContext usage with VM calls.",
+      "acceptanceCriteria": [
+        "View creates VM from environment modelContext (3.1)",
+        "All computed properties replaced with viewModel. references (3.2)",
+        "All private mutation methods replaced with viewModel. calls (3.3)",
+        ".onReceive(refreshTimer) calls viewModel.refreshNow() (3.4)",
+        ".onChange and .onAppear call viewModel.update(...) (3.5)",
+        "No @Environment(\\.modelContext) usage remains in view (3.6)",
+        "No direct modelContext mutations remain in view (3.7)"
+      ],
+      "startedAt": "2026-06-26T19:12:34.661495+00:00",
+      "completedAt": "2026-06-26T19:18:32.563938+00:00",
+      "updatedAt": "2026-06-26T19:18:32.563599+00:00"
+    },
+    {
+      "id": "US-004",
+      "title": "Verify ListDetailView refactor",
+      "status": "done",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Build and manually verify all interactions work identically to before the refactor.",
+      "acceptanceCriteria": [
+        "Build succeeds with no warnings (4.1)",
+        "Task completion toggling works inline (4.2)",
+        "Drag-drop reorder within list works (4.3)",
+        "Drag-drop nesting works (parent-child) (4.4)",
+        "Quick capture creates task in correct list (4.5)",
+        "Swipe-to-delete works with notification cancellation (4.6)",
+        "Schedule sheet opens and commits correctly (4.7)",
+        "Move to another list works (4.8)",
+        "Collapse/expand subtasks works (4.9)"
+      ],
+      "startedAt": "2026-06-26T19:18:34.657148+00:00",
+      "completedAt": "2026-06-26T19:23:55.799724+00:00",
+      "updatedAt": "2026-06-26T19:23:55.799384+00:00"
+    }
+  ]
+}

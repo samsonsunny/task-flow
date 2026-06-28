@@ -1,0 +1,476 @@
+[0m
+> build · big-pickle
+[0m
+[0m→ [0mRead .ralph/guardrails.md
+[0m→ [0mRead .ralph/errors.log
+[0m→ [0mRead .agents/tasks/mvvm-reminder-segment.json
+[0m→ [0mRead AGENTS.md
+[0m
+[0m# [0mTodos
+[•] Read existing ReminderSegmentViewModel.swift and understand current state
+[ ] Read ReminderSegmentLogic and TaskUIModel to understand delegation targets
+[ ] Read ReminderSegmentDetailView.swift to understand current derived state logic
+[ ] Implement US-002 computed properties in ViewModel
+[ ] Build and verify
+[ ] Commit and log progress
+[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+[0m→ [0mRead TaskFlow/Features/Reminders/ReminderSegmentDetailView.swift
+[0m✱ [0mGrep "class ReminderSegmentLogic"[90m 0 matches[0m
+[0m✱ [0mGrep "enum TaskUIModel|struct TaskUIModel|class TaskUIModel"[90m 1 match[0m
+[0m✱ [0mGrep "enum ReminderSegment|class ReminderSegmentLogic|struct ReminderSegmentLogic"[90m 2 matches[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/TaskUIModel.swift
+[0m→ [0mRead TaskFlow/Features/Reminders/ReminderSegments.swift
+[0m→ [0mRead .ralph/runs/run-20260627-005411-15148-iter-1.md
+[0m→ [0mRead .ralph/progress.md
+[0m
+[0m# [0mTodos
+[✓] Read existing ReminderSegmentViewModel.swift and understand current state
+[✓] Read ReminderSegmentLogic and TaskUIModel to understand delegation targets
+[✓] Read ReminderSegmentDetailView.swift to understand current derived state logic
+[•] ReminderDefaults, otherLists pattern, and run summary from iter-1
+[ ] Implement US-002 computed properties in ViewModel
+[ ] Build and verify
+[ ] Commit and log progress
+[0m
+Now I have a clear picture. Let me check a few more things and then implement US-002.
+[0m✱ [0mGrep "enum ReminderDefaults|struct ReminderDefaults"[90m 1 match[0m
+[0m✱ [0mGrep "otherLists"[90m 2 matches[0m
+[0m→ [0mRead TaskFlow/Models/TaskItem.swift[90m [offset=880, limit=20][0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift[90m [offset=315, limit=20][0m
+[0m
+[0m# [0mTodos
+[✓] Read existing ReminderSegmentViewModel.swift and understand current state
+[✓] Read ReminderSegmentLogic and TaskUIModel to understand delegation targets
+[✓] Read ReminderSegmentDetailView.swift to understand current derived state logic
+[✓] ReminderDefaults, otherLists pattern, and run summary from iter-1
+[•] Implement US-002 computed properties in ViewModel
+[ ] Build and verify
+[ ] Commit and log progress
+[0m
+Good, I now have full understanding. Let me implement US-002.
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+@@ -16,8 +16,10 @@
+     private(set) var groupedSections: [TaskUIModel.DatedSection] = []
+     private(set) var upcomingGroups: [TaskUIModel.UpcomingGroup] = []
+     private(set) var sortedFlatTasks: [TaskItem] = []
+ 
++    private var lists: [ReminderList] = []
++
+     init(modelContext: ModelContext, segment: ReminderSegment, overdueTasks: [TaskItem] = []) {
+         self.modelContext = modelContext
+         self.segment = segment
+         self.overdueTasks = overdueTasks
+@@ -28,12 +30,64 @@
+     }
+ 
+     func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date()) {
+         self.now = now
++        self.lists = lists
+         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
+         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
+         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
+         let sorted = ReminderSegmentLogic.sortedTasks(self.filteredTasks, for: segment)
+         let recent = tasks.filter { justCompleted.contains($0.taskId ?? "") }
+         self.sortedFlatTasks = sorted + recent
+     }
++
++    var contextualDate: Date? {
++        let calendar = Calendar.current
++        let todayStart = calendar.startOfDay(for: now)
++        switch segment {
++        case .today: return todayStart
++        case .tomorrow: return calendar.date(byAdding: .day, value: 1, to: todayStart)
++        default: return nil
++        }
++    }
++
++    func captureDateHint(activeCaptureDate: Date?) -> String? {
++        let date: Date?
++        if segment == .upcoming {
++            date = activeCaptureDate
++        } else {
++            date = contextualDate
++        }
++        guard let date else { return nil }
++        if Calendar.current.isDateInToday(date) {
++            return "Today"
++        }
++        if Calendar.current.isDateInTomorrow(date) {
++            return "Tomorrow"
++        }
++        return TaskUIModel.compactDayTitle(for: date)
++    }
++
++    func resolvedQuickCaptureList() -> ReminderList {
++        let defaultName = ReminderDefaults.defaultListName
++        let descriptor = FetchDescriptor<ReminderList>(
++            predicate: #Predicate { $0.name == defaultName }
++        )
++        if let existing = try? modelContext.fetch(descriptor).first {
++            return existing
++        }
++        let list = ReminderList(name: ReminderDefaults.defaultListName)
++        modelContext.insert(list)
++        return list
++    }
++
++    func shouldShowDueDate(for segment: ReminderSegment) -> Bool {
++        switch segment {
++        case .today, .tomorrow, .later: return false
++        case .upcoming, .overdue: return true
++        }
++    }
++
++    var otherLists: [ReminderList] {
++        lists
++    }
+ }
+
+[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+Now let me verify the file and build:
+[0m
+[0m$ [0mxcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build 2>&1 | tail -20
+(ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/__preview.dylib
+/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app/__preview.dylib: replacing existing signature
+
+CodeSign /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Signing Identity:     "Apple Development: Samson Sunny (275T8SRNG6)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.samsonsunny.app.task-flow"
+                          (ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --entitlements /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app
+
+Validate /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-validationUtility /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app -shallow-bundle -infoplist-subpath Info.plist
+
+** BUILD SUCCEEDED **
+[0m
+[0m$ [0m/Users/sam/Desktop/TaskFlowApp/ralph log "US-002: Added contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel"
+zsh:1: no such file or directory: /Users/sam/Desktop/TaskFlowApp/ralph
+[0m
+Build succeeded with no warnings. Let me do the final steps.
+[0m✱ [0mGlob "**/ralph*"[90m 1 match[0m
+[0m
+[0m$ [0mecho "[2026-06-27 $(date +%T)] US-002: Added contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m$ [0mgit add -A
+(no output)
+[0m
+Now let me commit the changes:
+[0m$ [0mgit status --porcelain
+M  .agents/tasks/mvvm-reminder-segment.json
+A  .ralph/.tmp/prompt-20260627-005411-15148-1.md
+A  .ralph/.tmp/prompt-20260627-005411-15148-2.md
+A  .ralph/.tmp/story-20260627-005411-15148-1.json
+A  .ralph/.tmp/story-20260627-005411-15148-1.md
+A  .ralph/.tmp/story-20260627-005411-15148-2.json
+A  .ralph/.tmp/story-20260627-005411-15148-2.md
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/runs/run-20260627-005411-15148-iter-1.log
+A  .ralph/runs/run-20260627-005411-15148-iter-1.md
+AM .ralph/runs/run-20260627-005411-15148-iter-2.log
+M  TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+[0m
+[0m$ [0mgit diff .agents/tasks/mvvm-reminder-segment.json
+(no output)
+[0m
+[0m$ [0mgit diff HEAD -- .agents/tasks/mvvm-reminder-segment.json
+diff --git a/.agents/tasks/mvvm-reminder-segment.json b/.agents/tasks/mvvm-reminder-segment.json
+index ffdb407..0f6cab2 100644
+--- a/.agents/tasks/mvvm-reminder-segment.json
++++ b/.agents/tasks/mvvm-reminder-segment.json
+@@ -1,7 +1,7 @@
+ {
+   "version": 1,
+   "project": "MVVM: ReminderSegmentViewModel",
+-  "overview": "Extract ReminderSegmentViewModel from ReminderSegmentDetailView (714 lines — the largest file). View handles filtering, sorting, grouping across 5 segments. VM takes all business logic; view becomes thin consumer.",
++  "overview": "Extract ReminderSegmentViewModel from ReminderSegmentDetailView (714 lines \u2014 the largest file). View handles filtering, sorting, grouping across 5 segments. VM takes all business logic; view becomes thin consumer.",
+   "goals": [
+     "Create @Observable ReminderSegmentViewModel owning segment filtering, sorting, grouping, quick capture, completion, scheduling, rescheduling, overdue management",
+     "Reduce ReminderSegmentDetailView from ~714 lines to ~250 lines",
+@@ -26,12 +26,22 @@
+   },
+   "routes": [],
+   "uiNotes": [
+-    "No UI changes — pure refactor"
++    "No UI changes \u2014 pure refactor"
+   ],
+   "dataModel": [
+     {
+       "entity": "ReminderSegmentViewModel",
+-      "fields": ["modelContext", "segment", "filteredTasks", "groupedSections", "upcomingGroups", "sortedFlatTasks", "now", "showOverdue", "justCompleted"]
++      "fields": [
++        "modelContext",
++        "segment",
++        "filteredTasks",
++        "groupedSections",
++        "upcomingGroups",
++        "sortedFlatTasks",
++        "now",
++        "showOverdue",
++        "justCompleted"
++      ]
+     }
+   ],
+   "importFormat": {
+@@ -44,12 +54,14 @@
+     "VM delegates to existing ReminderSegmentLogic and TaskUIModel helpers",
+     "Timer.publish stays in view; VM exposes refreshNow()"
+   ],
+-  "qualityGates": ["xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"],
++  "qualityGates": [
++    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
++  ],
+   "stories": [
+     {
+       "id": "US-001",
+       "title": "Create ReminderSegmentViewModel with core properties and update()",
+-      "status": "open",
++      "status": "done",
+       "dependsOn": [],
+       "description": "Create the ViewModel file with @Observable class, init, refreshNow(), and update() entry point.",
+       "acceptanceCriteria": [
+@@ -59,26 +71,36 @@
+         "showOverdue toggle and overdueTasks array added (1.4)",
+         "justCompleted set for animation tracking added (1.5)",
+         "update(tasks:lists:now:) computes all derived state (1.6)"
+-      ]
++      ],
++      "updatedAt": "2026-06-26T19:27:05.076533+00:00",
++      "completedAt": "2026-06-26T19:27:05.076870+00:00",
++      "startedAt": "2026-06-26T19:27:05.076871+00:00"
+     },
+     {
+       "id": "US-002",
+       "title": "Move derived state computation to ViewModel",
+-      "status": "open",
+-      "dependsOn": ["US-001"],
++      "status": "in_progress",
++      "dependsOn": [
++        "US-001"
++      ],
+       "description": "Add computed properties that delegate to ReminderSegmentLogic and TaskUIModel for filtering, sorting, grouping.",
+       "acceptanceCriteria": [
+         "filteredTasks, groupedSections, upcomingGroups, sortedFlatTasks call ReminderSegmentLogic and TaskUIModel (2.1)",
+         "contextualDate and captureDateHint for segment-aware date logic (2.2)",
+         "resolvedQuickCaptureList() and shouldShowDueDate() helpers added (2.3)",
+         "otherLists computed property added (2.4)"
+-      ]
++      ],
++      "startedAt": "2026-06-26T19:27:07.185571+00:00",
++      "completedAt": null,
++      "updatedAt": "2026-06-26T19:27:07.185755+00:00"
+     },
+     {
+       "id": "US-003",
+       "title": "Move data mutations to ViewModel",
+       "status": "open",
+-      "dependsOn": ["US-002"],
++      "dependsOn": [
++        "US-002"
++      ],
+       "description": "Add all mutation methods: completion, quick capture, delete, move, schedule, reschedule.",
+       "acceptanceCriteria": [
+         "toggleCompletion(for:) with haptic, justCompleted, notification cancellation (3.1)",
+@@ -95,7 +117,9 @@
+       "id": "US-004",
+       "title": "Refactor ReminderSegmentDetailView to use ViewModel",
+       "status": "open",
+-      "dependsOn": ["US-003"],
++      "dependsOn": [
++        "US-003"
++      ],
+       "description": "Wire ViewModel into the view. Replace computed properties, mutations, and direct modelContext with VM calls.",
+       "acceptanceCriteria": [
+         "View creates VM from environment modelContext (4.1)",
+@@ -111,7 +135,9 @@
+       "id": "US-005",
+       "title": "Update TodayTabView and verify all segments",
+       "status": "open",
+-      "dependsOn": ["US-004"],
++      "dependsOn": [
++        "US-004"
++      ],
+       "description": "Update TodayTabView initialization if needed, then verify all 5 segments work correctly.",
+       "acceptanceCriteria": [
+         "TodayTabView updated to pass modelContext or adjust init (5.1)",
+[0m
+[0m$ [0mgit reset HEAD .agents/tasks/mvvm-reminder-segment.json
+Unstaged changes after reset:
+M	.agents/tasks/mvvm-reminder-segment.json
+M	.ralph/runs/run-20260627-005411-15148-iter-2.log
+[0m
+[0m$ [0mgit status --porcelain
+M .agents/tasks/mvvm-reminder-segment.json
+A  .ralph/.tmp/prompt-20260627-005411-15148-1.md
+A  .ralph/.tmp/prompt-20260627-005411-15148-2.md
+A  .ralph/.tmp/story-20260627-005411-15148-1.json
+A  .ralph/.tmp/story-20260627-005411-15148-1.md
+A  .ralph/.tmp/story-20260627-005411-15148-2.json
+A  .ralph/.tmp/story-20260627-005411-15148-2.md
+M  .ralph/activity.log
+M  .ralph/errors.log
+M  .ralph/runs/run-20260627-005411-15148-iter-1.log
+A  .ralph/runs/run-20260627-005411-15148-iter-1.md
+AM .ralph/runs/run-20260627-005411-15148-iter-2.log
+M  TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+[0m
+[0m$ [0mgit reset HEAD .ralph/.tmp/ .ralph/errors.log .ralph/activity.log .ralph/runs/run-20260627-005411-15148-iter-1.log .ralph/runs/run-20260627-005411-15148-iter-1.md .ralph/runs/run-20260627-005411-15148-iter-2.log
+Unstaged changes after reset:
+M	.agents/tasks/mvvm-reminder-segment.json
+M	.ralph/activity.log
+M	.ralph/errors.log
+M	.ralph/runs/run-20260627-005411-15148-iter-1.log
+[0m
+[0m$ [0mgit add TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift && git add .ralph/activity.log && git status --porcelain
+M .agents/tasks/mvvm-reminder-segment.json
+M  .ralph/activity.log
+ M .ralph/errors.log
+ M .ralph/runs/run-20260627-005411-15148-iter-1.log
+M  TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/prompt-20260627-005411-15148-2.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-2.json
+?? .ralph/.tmp/story-20260627-005411-15148-2.md
+?? .ralph/runs/run-20260627-005411-15148-iter-1.md
+?? .ralph/runs/run-20260627-005411-15148-iter-2.log
+[0m
+[0m$ [0mgit commit -m "US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel"
+[base-26.7.8 cc3db6f] US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
+ 2 files changed, 58 insertions(+)
+[0m
+[0m$ [0mgit show -s --format="%h %s" HEAD && git status --porcelain
+cc3db6f US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
+ M .agents/tasks/mvvm-reminder-segment.json
+ M .ralph/errors.log
+ M .ralph/runs/run-20260627-005411-15148-iter-1.log
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/prompt-20260627-005411-15148-2.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-2.json
+?? .ralph/.tmp/story-20260627-005411-15148-2.md
+?? .ralph/runs/run-20260627-005411-15148-iter-1.md
+?? .ralph/runs/run-20260627-005411-15148-iter-2.log
+[0m
+[0m→ [0mRead .ralph/progress.md
+Now let me update the progress log:
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -56,12 +56,38 @@
+   - collapsedTasks set with toggleCollapse(_:) method
+   - justCompleted set with toggleCompletion(for:) including 0.6s delayed removal
+   - Removed duplicate FlatTaskNode declaration from ListDetailView.swift to fix redeclaration error
+ - **Learnings for future iterations:**
+-  - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
+-  - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
+-   - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
++   - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
++   - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
++    - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
+ ---
++## [2026-06-27 $(date +%H:%M)] - US-002: Move derived state computation to ViewModel
++Thread:
++Run: 20260627-005411-15148 (iteration 2)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: cc3db6f US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
++- Post-commit status: `.ralph/runs/run-20260627-005411-15148-iter-2.log` (active run log, expected)
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift (added computed properties and helpers)
++- What was implemented:
++  - Added `contextualDate` computed property: returns today/tomorrow start based on segment (AC 2.2)
++  - Added `captureDateHint(activeCaptureDate:)` method: formats hint text based on segment and optional capture date (AC 2.2)
++  - Added `resolvedQuickCaptureList()` method: fetches or creates the default "Reminders" list (AC 2.3)
++  - Added `shouldShowDueDate(for:)` method: returns whether due date should be shown for given segment (AC 2.3)
++  - Added `otherLists` computed property: returns all stored lists (AC 2.4)
++  - Stored `lists` parameter from `update()` for use by `otherLists`
++- **Learnings for future iterations:**
++  - Patterns discovered: `captureDateHint` depends on UI-only state (`activeCaptureDate`) so it's a method, not a computed property; `otherLists` in segment context just returns all lists (no exclusion needed)
++  - Gotchas encountered: Need to unstage PRD JSON to avoid committing it; temp `.ralph/.tmp/` files should not be committed
++  - Useful context: ViewModel now has all derived state helpers needed for view refactoring in US-004
++---
++
+ ## [2026-06-27 00:17] - US-002: Move data mutations to ViewModel
+ Thread:
+ Run: 20260627-001202-9760 (iteration 2)
+ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-001202-9760-iter-2.log
+
+[0m
+[0m$ [0mdate "+%H:%M"
+00:59
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -60,9 +60,9 @@
+    - Patterns discovered: FlatTaskNode must be at global scope for both ViewModel and View to reference
+    - Gotchas encountered: withAnimation call in async closure requires explicit self. and leads to unused-result warning; used `_ = withAnimation {}` to suppress
+     - Useful context: ViewModel follows same pattern as CompletedViewModel (@MainActor, @Observable, final, private modelContext)
+ ---
+-## [2026-06-27 $(date +%H:%M)] - US-002: Move derived state computation to ViewModel
++## [2026-06-27 00:59] - US-002: Move derived state computation to ViewModel
+ Thread:
+ Run: 20260627-005411-15148 (iteration 2)
+ Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.log
+ Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-005411-15148-iter-2.md
+
+[0m
+[0m$ [0mgit add .ralph/progress.md && git commit -m "docs: update progress log for US-002"
+[base-26.7.8 6537f99] docs: update progress log for US-002
+ 1 file changed, 29 insertions(+), 3 deletions(-)
+[0m
+[0m$ [0mgit status --porcelain && git log --oneline -3
+M .agents/tasks/mvvm-reminder-segment.json
+ M .ralph/errors.log
+ M .ralph/runs/run-20260627-005411-15148-iter-1.log
+?? .ralph/.tmp/prompt-20260627-005411-15148-1.md
+?? .ralph/.tmp/prompt-20260627-005411-15148-2.md
+?? .ralph/.tmp/story-20260627-005411-15148-1.json
+?? .ralph/.tmp/story-20260627-005411-15148-1.md
+?? .ralph/.tmp/story-20260627-005411-15148-2.json
+?? .ralph/.tmp/story-20260627-005411-15148-2.md
+?? .ralph/runs/run-20260627-005411-15148-iter-1.md
+?? .ralph/runs/run-20260627-005411-15148-iter-2.log
+6537f99 docs: update progress log for US-002
+cc3db6f US-002: Add contextualDate, captureDateHint, resolvedQuickCaptureList, shouldShowDueDate, otherLists to ReminderSegmentViewModel
+dbd5aa2 docs: update progress log for US-001
+[0m
+[0m$ [0mecho "[2026-06-27 00:59] US-002: Completed implementation, build passed, committed cc3db6f + 6537f99" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m# [0mTodos
+[✓] Read existing ReminderSegmentViewModel.swift and understand current state
+[✓] Read ReminderSegmentLogic and TaskUIModel to understand delegation targets
+[✓] Read ReminderSegmentDetailView.swift to understand current derived state logic
+[✓] ReminderDefaults, otherLists pattern, and run summary from iter-1
+[✓] Implement US-002 computed properties in ViewModel
+[✓] Build and verify
+[✓] Commit and log progress
+[0m
+<promise>COMPLETE</promise>

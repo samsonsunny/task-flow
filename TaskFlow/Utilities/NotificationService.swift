@@ -8,6 +8,8 @@ enum DailyReminderKeys {
     static let minute = "dailyReminderMinute"
 }
 
+private let didPerformNotificationMigrationKey = "didPerformNotificationMigration"
+
 @MainActor
 final class NotificationService {
     static let shared = NotificationService()
@@ -16,6 +18,10 @@ final class NotificationService {
     private let defaults = UserDefaults.standard
 
     private init() {}
+
+    private var hasRunMigration: Bool {
+        defaults.bool(forKey: didPerformNotificationMigrationKey)
+    }
 
     var isAuthorized: Bool {
         get async {
@@ -28,7 +34,7 @@ final class NotificationService {
         let settings = await center.notificationSettings()
         switch settings.authorizationStatus {
         case .notDetermined:
-            let granted = try? await center.requestAuthorization(options: [.alert, .sound])
+            let granted = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             return granted == true
         case .authorized:
             return true
@@ -53,6 +59,7 @@ final class NotificationService {
         let content = UNMutableNotificationContent()
         content.title = title
         content.sound = .default
+        content.badge = NSNumber(value: BadgeService.lastCount)
 
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate),
@@ -73,6 +80,12 @@ final class NotificationService {
         center.removeDeliveredNotifications(withIdentifiers: [taskId])
     }
 
+    func performMigration() {
+        center.removeAllPendingNotificationRequests()
+        center.removeAllDeliveredNotifications()
+        defaults.set(true, forKey: didPerformNotificationMigrationKey)
+    }
+
     private let dailyReminderId = "daily-morning-reminder"
 
     func scheduleDailyReminder(hour: Int, minute: Int) {
@@ -83,6 +96,7 @@ final class NotificationService {
         let content = UNMutableNotificationContent()
         content.title = "☀️ Good morning — your day is waiting"
         content.sound = .default
+        content.badge = NSNumber(value: BadgeService.lastCount)
 
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: components,
@@ -104,6 +118,10 @@ final class NotificationService {
     }
 
     func reschedulePendingOnLaunch(modelContext: ModelContext) {
+        if !hasRunMigration {
+            performMigration()
+        }
+
         let descriptor = FetchDescriptor<TaskItem>(
             predicate: #Predicate { $0.dueDate != nil && $0.isCompleted != true }
         )

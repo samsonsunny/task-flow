@@ -30,6 +30,10 @@ func midpoint(between lower: String?, and upper: String?) -> String? {
         }
 
         if uv - lv == 1 && lv == -1 && uv == 0 {
+            if let upChars, i + 1 < upChars.count {
+                result.append("a")
+                continue
+            }
             return nil
         }
 

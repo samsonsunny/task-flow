@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "project": "MVVM: ListsTabViewModel",
+  "overview": "Extract ListsTabViewModel from ListsTabView (436 lines). View manages list/group CRUD across 6 alert dialogs, context menus, delete cascade, drag reorder, and group expand/collapse. VM takes all business logic and dialog state.",
+  "goals": [
+    "Create @Observable ListsTabViewModel owning list CRUD, group CRUD, delete cascade, drag reorder, group assignment, expand/collapse persistence",
+    "Reduce ListsTabView from ~436 lines to ~200 lines",
+    "All 6 alert flows become testable without UI presentation"
+  ],
+  "nonGoals": [
+    "No changes to list/group models or sort order algorithm",
+    "No UI layout changes"
+  ],
+  "successMetrics": [
+    "ListsTabViewModel.swift created with all CRUD, reorder, and dialog state methods",
+    "All 6 alert dialogs work identically",
+    "Build succeeds with no warnings"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "ListsTabViewModel",
+      "fields": [
+        "modelContext",
+        "lists",
+        "groups",
+        "allTasks",
+        "isCreatingList",
+        "newListName",
+        "isRenamePresented",
+        "renameList",
+        "renameText",
+        "deleteList",
+        "isCreatingGroup",
+        "newGroupName",
+        "groupSourceList",
+        "renameGroup",
+        "isGroupRenamePresented",
+        "groupRenameText",
+        "deleteGroup",
+        "expandedGroupIDs"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "View holds @Query, passes data to VM via update()",
+    "VM owns all dialog state (booleans + optionals for each alert)",
+    "VM persists group expand/collapse to UserDefaults",
+    "VM reuses midpoint/widen from SortOrderMidpoint.swift"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create ListsTabViewModel with core properties and dialog state",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, all dialog presentation state, and derived properties.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/ListsTabViewModel.swift exists with @Observable class (1.1)",
+        "modelContext, lists, groups, allTasks with update(lists:groups:allTasks:) entry point (1.2)",
+        "Derived properties: defaultList, ungroupedLists (1.3)",
+        "All dialog state added: isCreatingList, newListName, isRenamePresented, renameList, renameText, deleteList, isCreatingGroup, newGroupName, groupSourceList, renameGroup, isGroupRenamePresented, groupRenameText, deleteGroup (1.4)"
+      ],
+      "startedAt": "2026-06-26T19:52:39.495705+00:00",
+      "completedAt": "2026-06-26T19:54:58.276616+00:00",
+      "updatedAt": "2026-06-26T19:54:58.276348+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Move list CRUD to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Add list creation, rename, and delete methods.",
+      "acceptanceCriteria": [
+        "createList(name:) inserts list with sort order (2.1)",
+        "renameList(_:to:) updates list name (2.2)",
+        "deleteList(_:moveTasksToDefault:) with cascade logic (2.3)",
+        "listsInGroup(_:) helper (2.4)"
+      ],
+      "startedAt": "2026-06-26T19:55:00.363996+00:00",
+      "completedAt": "2026-06-26T19:57:58.148951+00:00",
+      "updatedAt": "2026-06-26T19:57:58.148622+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Move group CRUD to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Add group creation, rename, and delete methods with cascade.",
+      "acceptanceCriteria": [
+        "createGroup(name:sourceList:) inserts group with optional list assignment (3.1)",
+        "renameGroup(_:to:) updates group name (3.2)",
+        "deleteGroup(_:) cascades: deletes all tasks/lists in group, then deletes group (3.3)"
+      ],
+      "startedAt": "2026-06-26T19:58:00.232202+00:00",
+      "completedAt": "2026-06-26T20:00:02.116573+00:00",
+      "updatedAt": "2026-06-26T20:00:02.116174+00:00"
+    },
+    {
+      "id": "US-004",
+      "title": "Move reorder and group expand/collapse to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Add drag reorder method and group expand/collapse with UserDefaults persistence.",
+      "acceptanceCriteria": [
+        "moveLists(fromOffsets:toOffset:in:group:) with midpoint/widen (4.1)",
+        "expandedGroupIDs with isGroupExpanded(_:) and toggleGroupExpanded(_:) persisted to UserDefaults (4.2)"
+      ],
+      "startedAt": "2026-06-26T20:00:04.201236+00:00",
+      "completedAt": "2026-06-26T20:03:06.221696+00:00",
+      "updatedAt": "2026-06-26T20:03:06.221565+00:00"
+    },
+    {
+      "id": "US-005",
+      "title": "Refactor ListsTabView to use ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-004"
+      ],
+      "description": "Wire ViewModel into the view. Replace all @State dialog properties, alert button actions, and mutation methods with VM calls.",
+      "acceptanceCriteria": [
+        "VM created from environment modelContext and @Query results (5.1)",
+        "All @State dialog properties replaced with VM properties (5.2)",
+        "Alert button actions replaced with VM method calls (5.3)",
+        "handleDelete, handleDeleteGroup, moveLists replaced with VM calls (5.4)",
+        "DisclosureGroup binding uses VM isGroupExpanded/toggleGroupExpanded (5.5)",
+        "No @Environment(\\.modelContext) usage or direct mutations remain (5.6)"
+      ],
+      "startedAt": "2026-06-26T20:03:08.302136+00:00",
+      "completedAt": "2026-06-26T20:09:46.875619+00:00",
+      "updatedAt": "2026-06-26T20:09:46.875459+00:00"
+    },
+    {
+      "id": "US-006",
+      "title": "Verify ListsTabView refactor",
+      "status": "done",
+      "dependsOn": [
+        "US-005"
+      ],
+      "description": "Build and verify all list/group CRUD workflows.",
+      "acceptanceCriteria": [
+        "Build succeeds with no warnings (6.1)",
+        "Create list via FAB works (6.2)",
+        "Rename list via context menu works (6.3)",
+        "Delete list with 'Move to Reminders' works (6.4)",
+        "Delete list with 'Delete All Tasks' works (6.5)",
+        "Create group with optional source list works (6.6)",
+        "Rename group works (6.7)",
+        "Delete group with cascade works (6.8)",
+        "Drag reorder within ungrouped section works (6.9)",
+        "Drag reorder within group works (6.10)",
+        "Move list to group via context menu works (6.11)",
+        "Group expand/collapse persists across restarts (6.12)"
+      ],
+      "startedAt": "2026-06-26T20:09:48.958515+00:00",
+      "completedAt": "2026-06-26T20:12:58.691408+00:00",
+      "updatedAt": "2026-06-26T20:12:58.691257+00:00"
+    }
+  ]
+}

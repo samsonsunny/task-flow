@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "project": "MVVM: TaskScheduleDatePickerViewModel",
+  "overview": "Extract TaskScheduleDatePickerViewModel from TaskScheduleDatePickerSheet (182 lines) and deduplicate nearestRoundedHour() shared with ReminderEditorView. VM manages date/time state and picker expansion.",
+  "goals": [
+    "Create @Observable TaskScheduleDatePickerViewModel owning dueDate, hasTime, expandedPicker state",
+    "Extract nearestRoundedHour() to Utilities/DateRounding.swift shared utility",
+    "Remove duplicate nearestRoundedHour() from ReminderEditorView",
+    "Reduce sheet from ~182 lines to ~100 lines"
+  ],
+  "nonGoals": [
+    "No changes to callback-based communication with parent views",
+    "No UI or animation changes"
+  ],
+  "successMetrics": [
+    "TaskScheduleDatePickerViewModel.swift created",
+    "DateRounding.swift utility created",
+    "ReminderEditorView uses shared utility",
+    "Build succeeds with no warnings"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "TaskScheduleDatePickerViewModel",
+      "fields": [
+        "dueDate",
+        "hasTime",
+        "expandedPicker"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "VM owns local state only; parent callback is preserved",
+    "nearestRoundedHour extracted as standalone public function",
+    "Third story depends on first two due to deduplication"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Extract nearestRoundedHour() shared utility",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create DateRounding.swift with public nearestRoundedHour(from:) function. Update ReminderEditorView to use it and remove the private duplicate.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Utilities/DateRounding.swift exists with public nearestRoundedHour(from:) function (1.1)",
+        "ReminderEditorView updated to call shared utility instead of private method (1.2)",
+        "Private nearestRoundedHour() removed from ReminderEditorView"
+      ],
+      "startedAt": "2026-06-26T20:13:39.138716+00:00",
+      "completedAt": "2026-06-26T20:15:57.673870+00:00",
+      "updatedAt": "2026-06-26T20:15:57.673602+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Create TaskScheduleDatePickerViewModel",
+      "status": "in_progress",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, init, and date/time toggle methods using the shared rounding utility.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/TaskScheduleDatePickerViewModel.swift exists with @Observable class (2.1)",
+        "dueDate, hasTime, expandedPicker properties added (2.2)",
+        "init(initialDueDate:) matching current view init logic (2.3)",
+        "toggleDate(isEnabled:) with date defaulting and picker state (2.4)",
+        "toggleTime(isEnabled:) with rounding via shared utility (2.5)"
+      ],
+      "startedAt": "2026-06-26T20:15:59.760563+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-06-26T20:15:59.760737+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Refactor TaskScheduleDatePickerSheet to use ViewModel and verify",
+      "status": "open",
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
+      "description": "Wire ViewModel into the sheet and verify all workflows.",
+      "acceptanceCriteria": [
+        "VM created from initialDueDate (3.1)",
+        "All @State properties replaced with VM bindings (3.2)",
+        "Done button calls onCommit(vm.dueDate, vm.hasTime) (3.3)",
+        "Private nearestRoundedHour() removed from sheet (3.4)",
+        "Build succeeds with no warnings (4.1)",
+        "Schedule sheet opens with correct initial state (4.2)",
+        "Date toggle works correctly (4.3)",
+        "Time toggle rounds to nearest half hour (4.4)",
+        "Cancel dismisses with no changes (4.5)",
+        "Done commits selected date/time (4.6)",
+        "ReminderEditorView still compiles and works (4.7)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "project": "MVVM: CompletedViewModel",
+  "overview": "Extract CompletedViewModel from CompletedView (181 lines). View manages recently completed tasks with date grouping, un-complete, and delete. VM takes filtering, grouping, and mutation logic.",
+  "goals": [
+    "Create @Observable CompletedViewModel owning 30-day filtering, date grouping, un-complete lifecycle, and deletion",
+    "Reduce CompletedView from ~181 lines to ~100 lines",
+    "Make un-complete and notification rescheduling testable"
+  ],
+  "nonGoals": [
+    "No changes to 30-day cutoff or grouping logic",
+    "No UI changes"
+  ],
+  "successMetrics": [
+    "CompletedViewModel.swift created with static compute helpers and mutation methods",
+    "Build succeeds with no warnings",
+    "Completed tasks grouped and un-complete work identically"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "CompletedViewModel",
+      "fields": [
+        "modelContext",
+        "recentCompletedTasks",
+        "groupedTasks"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "View holds @Query, passes tasks to VM via update()",
+    "VM uses @Observable",
+    "Grouping and label logic as static methods for direct unit testing"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create CompletedViewModel with filtering, grouping, mutations",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, 30-day filtering, date grouping, un-complete, delete, and destination label.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/CompletedViewModel.swift exists with @Observable class (1.1)",
+        "modelContext property and init(modelContext:) (1.2)",
+        "recentCompletedTasks and groupedTasks with update(tasks:) entry point (1.3)",
+        "Static computeRecentTasks(_:) for 30-day filtering (1.4)",
+        "Static computeGroupedTasks(_:) for Today/Yesterday/This Week/Earlier (1.5)",
+        "uncomplete(_:) with notification rescheduling (1.6)",
+        "delete(_:) with notification cancellation (1.7)",
+        "destinationLabel(for:) helper (1.8)"
+      ],
+      "startedAt": "2026-06-26T18:33:01.961676+00:00",
+      "completedAt": "2026-06-26T18:35:55.391355+00:00",
+      "updatedAt": "2026-06-26T18:35:55.391238+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Refactor CompletedView to use ViewModel and verify",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Wire ViewModel into the view and verify all workflows.",
+      "acceptanceCriteria": [
+        "VM created from environment modelContext (2.1)",
+        "All computed properties replaced with viewModel. references (2.2)",
+        "uncomplete(_:) and delete closures replaced with VM calls (2.3)",
+        "No @Environment(\\.modelContext) usage or direct mutations remain (2.4)",
+        "Build succeeds with no warnings (3.1)",
+        "Completed tasks appear grouped correctly (3.2)",
+        "Un-complete restores task and schedules notification (3.3)",
+        "Swipe-to-delete removes task and cancels notification (3.4)",
+        "Destination label shows correct text for each date scenario (3.5)"
+      ],
+      "startedAt": "2026-06-26T18:36:02.128268+00:00",
+      "completedAt": "2026-06-26T18:39:20.126410+00:00",
+      "updatedAt": "2026-06-26T18:39:20.126279+00:00"
+    }
+  ]
+}

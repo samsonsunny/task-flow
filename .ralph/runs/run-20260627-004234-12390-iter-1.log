@@ -1,0 +1,1348 @@
+[0m
+> build · big-pickle
+[0m
+[0m→ [0mRead .ralph/guardrails.md
+[0m→ [0mRead .ralph/errors.log
+[0m→ [0mRead .agents/tasks/mvvm-list-detail.json
+[0m
+[0m# [0mTodos
+[•] Audit ListDetailView and ListDetailViewModel to understand current state
+[ ] Wire VM into ListDetailView - replace computed properties with viewModel refs
+[ ] Replace all mutation methods with viewModel calls
+[ ] Replace .onReceive, .onChange, .onAppear with VM calls
+[ ] Remove @Environment(\.modelContext) and direct modelContext mutations
+[ ] Build verification
+[ ] Commit and log progress
+[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/ListDetailView.swift
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+[0m• [0mFind existing ViewModel usage patterns[90m Explore Agent[0m
+Let me examine the existing patterns for ViewModel usage in this project:
+[0m✓ [0mFind existing ViewModel usage patterns[90m Explore Agent[0m
+[0m→ [0mRead TaskFlow/Features/Reminders/CompletedView.swift
+[0m
+[0m# [0mTodos
+[✓] Audit ListDetailView and ListDetailViewModel to understand current state
+[•] Add refreshNow() and expose draggedTaskId in ViewModel
+[ ] Wire VM into ListDetailView - replace computed properties with viewModel refs
+[ ] Replace all mutation methods with viewModel calls
+[ ] Replace .onReceive, .onChange, .onAppear with VM calls
+[ ] Remove @Environment(\.modelContext) and direct modelContext mutations
+[ ] Build verification
+[ ] Commit and log progress
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+@@ -32,8 +32,12 @@
+     self.modelContext = modelContext
+     self.listID = listID
+ }
+ 
++func refreshNow() {
++    now = Date()
++}
++
+ func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date()) {
+     self.allTasks = allTasks
+     self.allLists = lists
+     self.now = now
+
+[0m
+Now I'll add `refreshNow()` and make `draggedTaskId` settable in the VM:
+[0m← [0mEdit TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+@@ -21,9 +21,9 @@
+ 
+ private(set) var collapsedTasks: Set<PersistentIdentifier> = []
+ private(set) var justCompleted: Set<String> = []
+ private(set) var now: Date = Date()
+-private(set) var draggedTaskId: String?
++var draggedTaskId: String?
+ private(set) var scheduledTask: TaskItem?
+ 
+ private var allTasks: [TaskItem] = []
+ private var allLists: [ReminderList] = []
+
+[0m
+[0m# [0mTodos
+[✓] Audit ListDetailView and ListDetailViewModel to understand current state
+[✓] Add refreshNow() and expose draggedTaskId in ViewModel
+[•] Wire VM into ListDetailView - replace computed properties, mutations, modelContext with viewModel calls
+[ ] Build verification
+[ ] Commit and log progress
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -36,63 +36,19 @@
+ 
+ @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
+ @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
+ 
+-@State private var now = Date()
++@State private var viewModel: ListDetailViewModel?
+ @State private var scheduleConfig: ScheduleConfig?
+ @State private var newReminderConfig: NewReminderConfig?
+ @State private var editingTask: TaskItem?
+-@State private var justCompleted: Set<String> = []
+ @State private var isQuickCapturing = false
+ @State private var quickCaptureText = ""
+ @State private var skipNextDismiss = false
+-@State private var collapsedTasks: Set<PersistentIdentifier> = []
+-@State private var draggedTaskId: String?
+ @FocusState private var isQuickCaptureFocused: Bool
+ 
+ private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+ 
+-private var list: ReminderList? {
+-    allLists.first { $0.persistentModelID == listID }
+-}
+-
+-private var tasks: [TaskItem] {
+-    allTasks.filter {
+-        guard $0.reminderList?.persistentModelID == listID else { return false }
+-        if $0.isCompleted == true {
+-            return justCompleted.contains($0.taskId ?? "")
+-        }
+-        return true
+-    }
+-}
+-
+-private var rootTasks: [TaskItem] {
+-    tasks.filter { $0.parentTask == nil }
+-}
+-
+-private var flatNodes: [FlatTaskNode] {
+-    flattenTasks(rootTasks, collapseState: collapsedTasks)
+-}
+-
+-private func flattenTasks(_ tasks: [TaskItem], collapseState: Set<PersistentIdentifier>) -> [FlatTaskNode] {
+-    var result: [FlatTaskNode] = []
+-    for task in tasks {
+-        flattenNode(task, depth: 0, collapseState: collapseState, result: &result)
+-    }
+-    return result
+-}
+-
+-private func flattenNode(_ task: TaskItem, depth: Int, collapseState: Set<PersistentIdentifier>, result: inout [FlatTaskNode]) {
+-    let isCollapsed = collapseState.contains(task.persistentModelID)
+-    let activeSubtasks = task.subtasks.filter { !($0.isCompleted == true) }
+-    result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskCount: activeSubtasks.count))
+-    if !isCollapsed {
+-        for subtask in activeSubtasks.sorted(by: { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }) {
+-            flattenNode(subtask, depth: depth + 1, collapseState: collapseState, result: &result)
+-        }
+-    }
+-}
+-
+ var body: some View {
+     List {
+         if isQuickCapturing {
+             quickCaptureRow
+
+[0m
+Now I'll rewrite `ListDetailView.swift`. Let me apply the changes in logical sections:
+
+First, remove `@State` vars that moved to the VM and add `viewModel`:
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -53,30 +53,32 @@
+         if isQuickCapturing {
+             quickCaptureRow
+         }
+ 
+-        if flatNodes.isEmpty {
+-            emptyState
+-        } else {
+-            ForEach(flatNodes) { node in
+-                taskListRow(node)
+-                    .transition(.scale.combined(with: .opacity))
+-            }
+-            .onMove { fromOffsets, toOffset in
+-                let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+-                let taskToOffset = flatToTaskIndex(toOffset)
+-                moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+-            }
++        if let vm = viewModel {
++            if vm.flatNodes.isEmpty {
++                emptyState
++            } else {
++                ForEach(vm.flatNodes) { node in
++                    taskListRow(node)
++                        .transition(.scale.combined(with: .opacity))
++                }
++                .onMove { fromOffsets, toOffset in
++                    let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
++                    let taskToOffset = flatToTaskIndex(toOffset)
++                    vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
++                }
+ 
+-            rootDropZone
++                rootDropZone
++            }
+         }
+     }
+     .listStyle(.plain)
+     .scrollContentBackground(.hidden)
+     .background(AppTheme.colors.appBackground)
+-    .navigationTitle(list?.name ?? "")
++    .navigationTitle(viewModel?.list?.name ?? "")
+     .navigationBarTitleDisplayMode(.large)
+-    .animation(.easeInOut, value: flatNodes.count)
++    .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
+     .overlay(alignment: .bottomTrailing) {
+         ReminderFloatingAddButton {
+             withAnimation(.easeInOut(duration: 0.2)) {
+                 isQuickCapturing = true
+@@ -85,10 +87,10 @@
+         }
+         .padding(.trailing, 20)
+         .padding(.bottom, 24)
+     }
+-    .onReceive(refreshTimer) { fireDate in
+-        now = fireDate
++    .onReceive(refreshTimer) { _ in
++        viewModel?.refreshNow()
+     }
+     .sheet(item: $scheduleConfig) { config in
+         TaskScheduleDatePickerSheet(
+             isPresented: Binding(
+@@ -96,24 +98,9 @@
+                 set: { if !$0 { scheduleConfig = nil } }
+             ),
+             initialDueDate: config.task.dueDate,
+             onCommit: { dueDate, hasTime in
+-                let notif = NotificationService.shared
+-                if let taskId = config.task.taskId {
+-                    notif.cancel(taskId: taskId)
+-                }
+-                if let date = dueDate {
+-                    if hasTime {
+-                        config.task.dueDate = date
+-                        config.task.hasTime = true
+-                        notif.schedule(for: config.task)
+-                    } else {
+-                        config.task.dueDate = Calendar.current.startOfDay(for: date)
+-                        config.task.hasTime = false
+-                    }
+-                } else {
+-                    config.task.dueDate = nil
+-                }
++                viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
+             }
+         )
+     }
+     .sheet(item: $newReminderConfig) { config in
+@@ -135,8 +122,18 @@
+                 }
+             }
+         }
+     }
++    .onAppear {
++        viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
++        viewModel?.update(tasks: allTasks, lists: allLists, allTasks: allTasks, now: Date())
++    }
++    .onChange(of: allTasks) { _, newTasks in
++        viewModel?.update(tasks: newTasks, lists: allLists, allTasks: newTasks)
++    }
++    .onChange(of: allLists) { _, newLists in
++        viewModel?.update(tasks: allTasks, lists: newLists, allTasks: allTasks)
++    }
+ }
+ 
+ private var rootDropZone: some View {
+     Color.clear
+
+[0m
+Now replace the body with VM-backed code:
+[0m→ [0mRead TaskFlow/Features/Reminders/ListDetailView.swift
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -139,27 +139,16 @@
+     Color.clear
+         .frame(height: 1)
+         .contentShape(Rectangle())
+         .onDrop(of: [.text], isTargeted: nil) { _ in
+-            moveTaskToRoot()
++            viewModel?.moveTaskToRoot()
+             return true
+         }
+         .listRowInsets(EdgeInsets())
+         .listRowSeparator(.hidden)
+         .listRowBackground(Color.clear)
+ }
+ 
+-private func moveTaskToRoot() {
+-    guard let draggedTaskId,
+-          let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
+-    task.parentTask = nil
+-    let siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
+-        .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-    let lastOrder = siblings.last?.sortOrder
+-    task.sortOrder = midpoint(between: lastOrder, and: nil)
+-    try? modelContext.save()
+-}
+-
+ private var emptyState: some View {
+     VStack(alignment: .leading, spacing: 8) {
+         Text("No reminders")
+             .font(.headline)
+
+[0m
+Now I'll replace all the private computed properties and mutation methods with VM delegations. Let me do them in order:
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -166,235 +166,59 @@
+     .listRowBackground(Color.clear)
+     .accessibilityElement(children: .combine)
+ }
+ 
+-private var otherLists: [ReminderList] {
+-    allLists.filter { $0.persistentModelID != listID }
+-}
+-
+ private func taskListRow(_ node: FlatTaskNode) -> some View {
+     let task = node.task
+     return TaskRowView(
+         task: task,
+         isCompletedVisualState: task.isCompleted == true,
+-        onToggleCompletion: { toggleCompletion(for: task) },
+-        onMoveToToday: canMoveToToday(task) ? { rescheduleTaskToToday(task) } : nil,
+-        onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
+-        onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
++        onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
++        onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
++        onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
++        onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
+         onSchedule: { presentScheduleSheet(for: task) },
+-        onMoveToList: { moveTask(task, to: $0) },
+-        availableLists: otherLists,
+-        onDelete: {
+-            if let taskId = task.taskId {
+-                NotificationService.shared.cancel(taskId: taskId)
+-            }
+-            modelContext.delete(task)
+-            try? modelContext.save()
+-        },
++        onMoveToList: { viewModel?.moveTask(task, to: $0) },
++        availableLists: viewModel?.otherLists ?? [],
++        onDelete: { viewModel?.delete(task) },
+         onTap: { editingTask = task },
+         showsDueDate: true,
+         showsListName: false,
+         nestingDepth: node.depth,
+         subtaskCount: node.subtaskCount,
+-        isCollapsed: collapsedTasks.contains(task.persistentModelID),
+-        onToggleCollapse: { toggleCollapse(task) }
++        isCollapsed: viewModel?.collapsedTasks.contains(task.persistentModelID) == true,
++        onToggleCollapse: { viewModel?.toggleCollapse(task) }
+     )
+     .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+     .listRowSeparator(.hidden)
+     .listRowBackground(Color.clear)
+     .onDrag {
+-        draggedTaskId = task.taskId
++        viewModel?.draggedTaskId = task.taskId
+         return NSItemProvider(object: (task.taskId ?? "") as NSString)
+     }
+     .onDrop(of: [.text], delegate: TaskDropDelegate(targetTask: task) { target, location in
+-        handleDrop(target: target, location: location)
++        viewModel?.handleDrop(target: target, location: location)
+     })
+     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+         Button(role: .destructive) {
+-            if let taskId = task.taskId {
+-                NotificationService.shared.cancel(taskId: taskId)
+-            }
+-            modelContext.delete(task)
+-            try? modelContext.save()
++            viewModel?.delete(task)
+         } label: {
+             Label("Delete", systemImage: "trash")
+         }
+     }
+ }
+ 
+-private func moveTask(_ task: TaskItem, to list: ReminderList) {
+-    task.reminderList = list
+-    assignSortOrder(for: task, in: list)
+-    try? modelContext.save()
+-}
+-
+-private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
+-    let listTasks = allTasks.filter {
+-        $0.reminderList?.persistentModelID == list.persistentModelID &&
+-        $0.persistentModelID != task.persistentModelID
+-    }
+-    let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
+-    task.sortOrder = midpoint(between: lastOrder, and: nil)
+-}
+-
+ private func flatToTaskIndex(_ flatIndex: Int) -> Int {
+-    guard flatIndex < flatNodes.count else { return tasks.count }
+-    return tasks.firstIndex(where: { $0.persistentModelID == flatNodes[flatIndex].task.persistentModelID }) ?? tasks.count
++    guard let vm = viewModel else { return 0 }
++    guard flatIndex < vm.flatNodes.count else { return vm.tasks.count }
++    return vm.tasks.firstIndex(where: { $0.persistentModelID == vm.flatNodes[flatIndex].task.persistentModelID }) ?? vm.tasks.count
+ }
+ 
+-private func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
+-    withAnimation(.easeInOut(duration: 0.18)) {
+-        var mutableTasks = tasks
+-        let sortedFrom = fromOffsets.sorted()
+-
+-        let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
+-        let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
+-        let insertAt = min(adjustedTo, mutableTasks.count)
+-
+-        mutableTasks.insert(contentsOf: moved, at: insertAt)
+-
+-        var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
+-        for i in insertAt..<(insertAt + moved.count) {
+-            let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
+-
+-            if let newOrder = midpoint(between: lower, and: upper) {
+-                mutableTasks[i].sortOrder = newOrder
+-            } else {
+-                if let upperStr = upper {
+-                    let widened = widen(upperStr)
+-                    if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
+-                        upperTask.sortOrder = widened
+-                    }
+-                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+-                } else {
+-                    mutableTasks[i].sortOrder = ""
+-                }
+-            }
+-
+-            lower = mutableTasks[i].sortOrder
+-        }
+-
+-        try? modelContext.save()
+-    }
+-}
+-
+-private func toggleCollapse(_ task: TaskItem) {
+-    if collapsedTasks.contains(task.persistentModelID) {
+-        collapsedTasks.remove(task.persistentModelID)
+-    } else {
+-        collapsedTasks.insert(task.persistentModelID)
+-    }
+-}
+-
+-private func handleDrop(target: TaskItem, location: CGPoint) {
+-    guard let draggedTaskId,
+-          let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
+-          draggedTask.persistentModelID != target.persistentModelID else { return }
+-
+-    guard !isDescendant(target, of: draggedTask) else { return }
+-
+-    let threshold: CGFloat = 22
+-    if location.y < threshold {
+-        draggedTask.parentTask = target.parentTask
+-        let siblings: [TaskItem]
+-        if let parent = target.parentTask {
+-            siblings = Array(parent.subtasks)
+-        } else {
+-            siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+-        }
+-        let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-        if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
+-            let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
+-            draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
+-        }
+-    } else {
+-        draggedTask.parentTask = target
+-        let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+-            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-        let lastOrder = subbies.last?.sortOrder
+-        draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
+-    }
+-    try? modelContext.save()
+-}
+-
+-private func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
+-    var current = task
+-    while let parent = current.parentTask {
+-        if parent.persistentModelID == potentialParent.persistentModelID {
+-            return true
+-        }
+-        current = parent
+-    }
+-    return false
+-}
+-
+-private func dueDateColor(for task: TaskItem) -> Color? {
+-    guard let dueDate = task.dueDate else { return nil }
+-    return Calendar.current.startOfDay(for: dueDate) < Calendar.current.startOfDay(for: now)
+-        ? AppTheme.colors.error
+-        : AppTheme.colors.textSecondary
+-}
+-
+ private func presentScheduleSheet(for task: TaskItem) {
++    viewModel?.presentScheduleSheet(for: task)
+     scheduleConfig = ScheduleConfig(task: task)
+ }
+ 
+-private func toggleCompletion(for task: TaskItem) {
+-    let next = !(task.isCompleted ?? false)
+-    if next {
+-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+-        if let id = task.taskId {
+-            justCompleted.insert(id)
+-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
+-                guard let task, task.isCompleted == true else { return }
+-                withAnimation {
+-                    justCompleted.remove(id)
+-                }
+-            }
+-        }
+-    }
+-    withAnimation(.easeInOut(duration: 0.18)) {
+-        task.isCompleted = next
+-        task.completionDate = next ? Date() : nil
+-        if next, let taskId = task.taskId {
+-            NotificationService.shared.cancel(taskId: taskId)
+-        }
+-    }
+-}
+-
+-private func rescheduleTaskToToday(_ task: TaskItem) {
+-    if let taskId = task.taskId {
+-        NotificationService.shared.cancel(taskId: taskId)
+-    }
+-    task.dueDate = Calendar.current.startOfDay(for: now)
+-}
+-
+-private func rescheduleTaskToTomorrow(_ task: TaskItem) {
+-    if let taskId = task.taskId {
+-        NotificationService.shared.cancel(taskId: taskId)
+-    }
+-    let calendar = Calendar.current
+-    let todayStart = calendar.startOfDay(for: now)
+-    task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+-}
+-
+-private func rescheduleTaskToLater(_ task: TaskItem) {
+-    if let taskId = task.taskId {
+-        NotificationService.shared.cancel(taskId: taskId)
+-    }
+-    task.dueDate = nil
+-}
+-
+-private func canMoveToToday(_ task: TaskItem) -> Bool {
+-    guard let dueDate = task.dueDate else { return true }
+-    return !Calendar.current.isDateInToday(dueDate)
+-}
+-
+-private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
+-    guard let dueDate = task.dueDate else { return true }
+-    return !Calendar.current.isDateInTomorrow(dueDate)
+-}
+-
+ private var quickCaptureRow: some View {
+     HStack(spacing: 12) {
+         Circle()
+             .fill(AppTheme.colors.primaryAction)
+
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -261,25 +261,17 @@
+ 
+     private func commitQuickCapture() {
+         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+         guard !text.isEmpty else { return }
+-
+         skipNextDismiss = true
+-
+-        guard let currentList = list else { return }
+-
+-        let task = TaskItem(taskTitle: text, dueDate: nil)
+-        task.createdAt = Date()
+-        task.reminderList = currentList
+-        modelContext.insert(task)
+-
++        viewModel?.commitQuickCapture(text: text, in: listID)
+         quickCaptureText = ""
+         isQuickCaptureFocused = true
+     }
+ 
+     private func openQuickCaptureEditor() {
+-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+-        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: listID, initialTitle: text)
++        let (title, targetListID) = viewModel?.openQuickCaptureEditor(text: quickCaptureText, listID: listID) ?? (quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines), listID)
++        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: targetListID, initialTitle: title)
+         quickCaptureText = ""
+         isQuickCapturing = false
+     }
+ }
+
+[0m
+Now replace `commitQuickCapture` and `openQuickCaptureEditor`:
+[0m→ [0mRead TaskFlow/Features/Reminders/ListDetailView.swift
+Let me verify the final state of the view:
+[0m→ [0mRead TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift
+Good. Let me also verify the VM file:
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -171,9 +171,14 @@
+ let task = node.task
+ return TaskRowView(
+     task: task,
+     isCompletedVisualState: task.isCompleted == true,
+-    onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
++    onToggleCompletion: {
++        if task.isCompleted == false {
++            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
++        }
++        viewModel?.toggleCompletion(for: task)
++    },
+     onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
+     onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
+     onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
+     onSchedule: { presentScheduleSheet(for: task) },
+
+[0m
+I need to preserve the haptic feedback that was in the original `toggleCompletion`. Let me update the `onToggleCompletion` closure:
+[0m# [0mTodos
+[✓] Audit ListDetailView and ListDetailViewModel to understand current state
+[✓] Add refreshNow() and expose draggedTaskId in ViewModel
+[✓] Wire VM into ListDetailView - replace computed properties, mutations, modelContext with viewModel calls
+[•] Build verification
+[ ] Commit and log progress
+[0m
+Now let me build to verify:
+[0m$ [0mxcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build 2>&1 | tail -30
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/sam/Desktop/TaskFlowApp/TaskFlow/App/AppState.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/App/ContentView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/App/TaskFlowApp.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/DesignSystem/Colors.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/DesignSystem/Radius.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/DesignSystem/Theme.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/DesignSystem/Typography.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/CompletedViewModel.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/CompletedView.swift -primary-file /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListsTabView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/MainTabView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ReminderDraft.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ReminderEditorView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ReminderFloatingAddButton.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ReminderSegmentDetailView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ReminderSegments.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/SettingsView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/TaskScheduleDatePickerSheet.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/TaskUIModel.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/TodayTabView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Models/SortOrderBackfill.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Models/TaskItem.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Previews/TaskPreviewData.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Utilities/NotificationService.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Utilities/SortOrderMidpoint.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Views/Components/TaskNodeView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Views/Components/TaskRowView.swift /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources/GeneratedAssetSymbols.swift -emit-dependencies-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.d -emit-const-values-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.swiftconstvalues -emit-reference-dependencies-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.swiftdeps -serialize-diagnostics-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.dia -emit-localized-strings -emit-localized-strings-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64 -target arm64-apple-ios26.0 -module-can-import-version DeveloperToolsSupport 23.0.4 23.0.4 -module-can-import-version SwiftUI 7.0.84.1 7.0.84 -module-can-import-version UIKit 9088.1.113 9088.1.113 -disable-cross-import-overlay-search -swift-module-cross-import SwiftData /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftData.framework/Modules/SwiftData.swiftcrossimport/CoreData.swiftoverlay -swift-module-cross-import SwiftData /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftData.framework/Modules/SwiftData.swiftcrossimport/SwiftUI.swiftoverlay -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftDataMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftDataMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -I /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -F /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos -no-color-diagnostics -Xcc -fno-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -profile-generate -profile-coverage-mapping -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/TaskFlow_const_extract_protocols.json -enable-upcoming-feature DisableOutwardActorInference -enable-upcoming-feature InferSendableFromCaptures -enable-upcoming-feature GlobalActorIsolatedTypesUsability -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -default-isolation\=MainActor -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/sam/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/sam/Desktop/TaskFlowApp -enable-anonymous-context-mangled-names -file-compilation-dir /Users/sam/Desktop/TaskFlowApp -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphoneos26.0-23A339-81ce72e5b06c9602b9d30b56f2eed08a.sdkstatcache -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-generated-files.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-own-target-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-all-target-headers.hmap -Xcc -iquote -Xcc /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow-project-headers.hmap -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/include -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources-normal/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources/arm64 -Xcc -I/Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/DerivedSources -Xcc -DDEBUG\=1 -no-auto-bridging-header-chaining -module-name TaskFlow -frontend-parseable-output -disable-clang-spi -target-sdk-version 26.0 -target-sdk-name iphoneos26.0 -clang-target arm64-apple-ios26.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -o /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.o -index-unit-output-path /TaskFlow.build/Debug-iphoneos/TaskFlow.build/Objects-normal/arm64/ListDetailView.o -index-store-path /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal arm64 /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+/Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift:187:43: error: missing argument label 'task:' in call
+            onDelete: { viewModel?.delete(task) },
+                                          ^
+                                          task: 
+/Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift:208:35: error: missing argument label 'task:' in call
+                viewModel?.delete(task)
+                                  ^
+                                  task: 
+
+SwiftCompile normal arm64 Compiling\ ListDetailViewModel.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+
+SwiftCompile normal arm64 /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling ListDetailViewModel.swift (in target 'TaskFlow' from project 'TaskFlow')
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ ListDetailView.swift /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift (in target 'TaskFlow' from project 'TaskFlow')
+	SwiftCompile normal arm64 /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift (in target 'TaskFlow' from project 'TaskFlow')
+	Building project TaskFlow with scheme TaskFlow
+(3 failures)
+[0m
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -183,9 +183,9 @@
+ onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
+ onSchedule: { presentScheduleSheet(for: task) },
+ onMoveToList: { viewModel?.moveTask(task, to: $0) },
+ availableLists: viewModel?.otherLists ?? [],
+-onDelete: { viewModel?.delete(task) },
++onDelete: { viewModel?.delete(task: task) },
+ onTap: { editingTask = task },
+ showsDueDate: true,
+ showsListName: false,
+ nestingDepth: node.depth,
+
+[0m
+Need to add the `task:` label to `delete` calls:
+[0m← [0mEdit TaskFlow/Features/Reminders/ListDetailView.swift
+Index: /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
++++ /Users/sam/Desktop/TaskFlowApp/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -204,9 +204,9 @@
+     viewModel?.handleDrop(target: target, location: location)
+ })
+ .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+     Button(role: .destructive) {
+-        viewModel?.delete(task)
++        viewModel?.delete(task: task)
+     } label: {
+         Label("Delete", systemImage: "trash")
+     }
+ }
+
+[0m
+[0m$ [0mxcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build 2>&1 | tail -15
+CodeSign /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    
+    Signing Identity:     "Apple Development: Samson Sunny (275T8SRNG6)"
+    Provisioning Profile: "iOS Team Provisioning Profile: com.samsonsunny.app.task-flow"
+                          (ca510b10-580f-4e6a-bd1f-acf70d14b912)
+    
+    /usr/bin/codesign --force --sign AF13213CB4F23C5680ECD1F13DC28A77D77133A0 --entitlements /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Intermediates.noindex/TaskFlow.build/Debug-iphoneos/TaskFlow.build/TaskFlow.app.xcent --timestamp\=none --generate-entitlement-der /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app
+
+Validate /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app (in target 'TaskFlow' from project 'TaskFlow')
+    cd /Users/sam/Desktop/TaskFlowApp
+    builtin-validationUtility /Users/sam/Library/Developer/Xcode/DerivedData/TaskFlow-cbbennyuxitjoreoabhnscwmiozi/Build/Products/Debug-iphoneos/TaskFlow.app -shallow-bundle -infoplist-subpath Info.plist
+
+** BUILD SUCCEEDED **
+[0m
+[0m$ [0m/Users/sam/Desktop/TaskFlowApp/ralph log "US-003: Refactored ListDetailView to use ListDetailViewModel"
+zsh:1: no such file or directory: /Users/sam/Desktop/TaskFlowApp/ralph
+[0m
+Build succeeded. Let me do the pre-commit audit and then commit.
+[0m✱ [0mGlob "**/ralph*"[90m in .ralph · 0 matches[0m
+[0m
+[0m$ [0mecho "[2026-06-27 00:42:34] US-003: Refactored ListDetailView to use ListDetailViewModel" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m$ [0mgit diff --stat
+.agents/tasks/mvvm-list-detail.json                |   6 +-
+ .ralph/activity.log                                |   2 +
+ TaskFlow/Features/Reminders/ListDetailView.swift   | 347 ++++-----------------
+ .../Reminders/ViewModels/ListDetailViewModel.swift |   6 +-
+ 4 files changed, 65 insertions(+), 296 deletions(-)
+[0m
+[0m$ [0mgit diff TaskFlow/Features/Reminders/ListDetailView.swift
+diff --git a/TaskFlow/Features/Reminders/ListDetailView.swift b/TaskFlow/Features/Reminders/ListDetailView.swift
+index 8ce2d83..5266037 100644
+--- a/TaskFlow/Features/Reminders/ListDetailView.swift
++++ b/TaskFlow/Features/Reminders/ListDetailView.swift
+@@ -37,89 +37,47 @@ struct ListDetailView: View {
+     @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
+     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
+ 
+-    @State private var now = Date()
++    @State private var viewModel: ListDetailViewModel?
+     @State private var scheduleConfig: ScheduleConfig?
+     @State private var newReminderConfig: NewReminderConfig?
+     @State private var editingTask: TaskItem?
+-    @State private var justCompleted: Set<String> = []
+     @State private var isQuickCapturing = false
+     @State private var quickCaptureText = ""
+     @State private var skipNextDismiss = false
+-    @State private var collapsedTasks: Set<PersistentIdentifier> = []
+-    @State private var draggedTaskId: String?
+     @FocusState private var isQuickCaptureFocused: Bool
+ 
+     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+ 
+-    private var list: ReminderList? {
+-        allLists.first { $0.persistentModelID == listID }
+-    }
+-
+-    private var tasks: [TaskItem] {
+-        allTasks.filter {
+-            guard $0.reminderList?.persistentModelID == listID else { return false }
+-            if $0.isCompleted == true {
+-                return justCompleted.contains($0.taskId ?? "")
+-            }
+-            return true
+-        }
+-    }
+-
+-    private var rootTasks: [TaskItem] {
+-        tasks.filter { $0.parentTask == nil }
+-    }
+-
+-    private var flatNodes: [FlatTaskNode] {
+-        flattenTasks(rootTasks, collapseState: collapsedTasks)
+-    }
+-
+-    private func flattenTasks(_ tasks: [TaskItem], collapseState: Set<PersistentIdentifier>) -> [FlatTaskNode] {
+-        var result: [FlatTaskNode] = []
+-        for task in tasks {
+-            flattenNode(task, depth: 0, collapseState: collapseState, result: &result)
+-        }
+-        return result
+-    }
+-
+-    private func flattenNode(_ task: TaskItem, depth: Int, collapseState: Set<PersistentIdentifier>, result: inout [FlatTaskNode]) {
+-        let isCollapsed = collapseState.contains(task.persistentModelID)
+-        let activeSubtasks = task.subtasks.filter { !($0.isCompleted == true) }
+-        result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskCount: activeSubtasks.count))
+-        if !isCollapsed {
+-            for subtask in activeSubtasks.sorted(by: { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }) {
+-                flattenNode(subtask, depth: depth + 1, collapseState: collapseState, result: &result)
+-            }
+-        }
+-    }
+-
+     var body: some View {
+         List {
+             if isQuickCapturing {
+                 quickCaptureRow
+             }
+ 
+-            if flatNodes.isEmpty {
+-                emptyState
+-            } else {
+-                ForEach(flatNodes) { node in
+-                    taskListRow(node)
+-                        .transition(.scale.combined(with: .opacity))
+-                }
+-                .onMove { fromOffsets, toOffset in
+-                    let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+-                    let taskToOffset = flatToTaskIndex(toOffset)
+-                    moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+-                }
++            if let vm = viewModel {
++                if vm.flatNodes.isEmpty {
++                    emptyState
++                } else {
++                    ForEach(vm.flatNodes) { node in
++                        taskListRow(node)
++                            .transition(.scale.combined(with: .opacity))
++                    }
++                    .onMove { fromOffsets, toOffset in
++                        let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
++                        let taskToOffset = flatToTaskIndex(toOffset)
++                        vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
++                    }
+ 
+-                rootDropZone
++                    rootDropZone
++                }
+             }
+         }
+         .listStyle(.plain)
+         .scrollContentBackground(.hidden)
+         .background(AppTheme.colors.appBackground)
+-        .navigationTitle(list?.name ?? "")
++        .navigationTitle(viewModel?.list?.name ?? "")
+         .navigationBarTitleDisplayMode(.large)
+-        .animation(.easeInOut, value: flatNodes.count)
++        .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
+         .overlay(alignment: .bottomTrailing) {
+             ReminderFloatingAddButton {
+                 withAnimation(.easeInOut(duration: 0.2)) {
+@@ -130,8 +88,8 @@ struct ListDetailView: View {
+             .padding(.trailing, 20)
+             .padding(.bottom, 24)
+         }
+-        .onReceive(refreshTimer) { fireDate in
+-            now = fireDate
++        .onReceive(refreshTimer) { _ in
++            viewModel?.refreshNow()
+         }
+         .sheet(item: $scheduleConfig) { config in
+             TaskScheduleDatePickerSheet(
+@@ -141,22 +99,7 @@ struct ListDetailView: View {
+                 ),
+                 initialDueDate: config.task.dueDate,
+                 onCommit: { dueDate, hasTime in
+-                    let notif = NotificationService.shared
+-                    if let taskId = config.task.taskId {
+-                        notif.cancel(taskId: taskId)
+-                    }
+-                    if let date = dueDate {
+-                        if hasTime {
+-                            config.task.dueDate = date
+-                            config.task.hasTime = true
+-                            notif.schedule(for: config.task)
+-                        } else {
+-                            config.task.dueDate = Calendar.current.startOfDay(for: date)
+-                            config.task.hasTime = false
+-                        }
+-                    } else {
+-                        config.task.dueDate = nil
+-                    }
++                    viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
+                 }
+             )
+         }
+@@ -180,6 +123,16 @@ struct ListDetailView: View {
+                 }
+             }
+         }
++        .onAppear {
++            viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
++            viewModel?.update(tasks: allTasks, lists: allLists, allTasks: allTasks, now: Date())
++        }
++        .onChange(of: allTasks) { _, newTasks in
++            viewModel?.update(tasks: newTasks, lists: allLists, allTasks: newTasks)
++        }
++        .onChange(of: allLists) { _, newLists in
++            viewModel?.update(tasks: allTasks, lists: newLists, allTasks: allTasks)
++        }
+     }
+ 
+     private var rootDropZone: some View {
+@@ -187,7 +140,7 @@ struct ListDetailView: View {
+             .frame(height: 1)
+             .contentShape(Rectangle())
+             .onDrop(of: [.text], isTargeted: nil) { _ in
+-                moveTaskToRoot()
++                viewModel?.moveTaskToRoot()
+                 return true
+             }
+             .listRowInsets(EdgeInsets())
+@@ -195,17 +148,6 @@ struct ListDetailView: View {
+             .listRowBackground(Color.clear)
+     }
+ 
+-    private func moveTaskToRoot() {
+-        guard let draggedTaskId,
+-              let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
+-        task.parentTask = nil
+-        let siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
+-            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-        let lastOrder = siblings.last?.sortOrder
+-        task.sortOrder = midpoint(between: lastOrder, and: nil)
+-        try? modelContext.save()
+-    }
+-
+     private var emptyState: some View {
+         VStack(alignment: .leading, spacing: 8) {
+             Text("No reminders")
+@@ -225,233 +167,62 @@ struct ListDetailView: View {
+         .accessibilityElement(children: .combine)
+     }
+ 
+-    private var otherLists: [ReminderList] {
+-        allLists.filter { $0.persistentModelID != listID }
+-    }
+-
+     private func taskListRow(_ node: FlatTaskNode) -> some View {
+         let task = node.task
+         return TaskRowView(
+             task: task,
+             isCompletedVisualState: task.isCompleted == true,
+-            onToggleCompletion: { toggleCompletion(for: task) },
+-            onMoveToToday: canMoveToToday(task) ? { rescheduleTaskToToday(task) } : nil,
+-            onMoveToTomorrow: canMoveToTomorrow(task) ? { rescheduleTaskToTomorrow(task) } : nil,
+-            onMoveToLater: task.dueDate != nil ? { rescheduleTaskToLater(task) } : nil,
+-            onSchedule: { presentScheduleSheet(for: task) },
+-            onMoveToList: { moveTask(task, to: $0) },
+-            availableLists: otherLists,
+-            onDelete: {
+-                if let taskId = task.taskId {
+-                    NotificationService.shared.cancel(taskId: taskId)
++            onToggleCompletion: {
++                if task.isCompleted == false {
++                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                 }
+-                modelContext.delete(task)
+-                try? modelContext.save()
++                viewModel?.toggleCompletion(for: task)
+             },
++            onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
++            onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
++            onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
++            onSchedule: { presentScheduleSheet(for: task) },
++            onMoveToList: { viewModel?.moveTask(task, to: $0) },
++            availableLists: viewModel?.otherLists ?? [],
++            onDelete: { viewModel?.delete(task: task) },
+             onTap: { editingTask = task },
+             showsDueDate: true,
+             showsListName: false,
+             nestingDepth: node.depth,
+             subtaskCount: node.subtaskCount,
+-            isCollapsed: collapsedTasks.contains(task.persistentModelID),
+-            onToggleCollapse: { toggleCollapse(task) }
++            isCollapsed: viewModel?.collapsedTasks.contains(task.persistentModelID) == true,
++            onToggleCollapse: { viewModel?.toggleCollapse(task) }
+         )
+         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+         .listRowSeparator(.hidden)
+         .listRowBackground(Color.clear)
+         .onDrag {
+-            draggedTaskId = task.taskId
++            viewModel?.draggedTaskId = task.taskId
+             return NSItemProvider(object: (task.taskId ?? "") as NSString)
+         }
+         .onDrop(of: [.text], delegate: TaskDropDelegate(targetTask: task) { target, location in
+-            handleDrop(target: target, location: location)
++            viewModel?.handleDrop(target: target, location: location)
+         })
+         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+             Button(role: .destructive) {
+-                if let taskId = task.taskId {
+-                    NotificationService.shared.cancel(taskId: taskId)
+-                }
+-                modelContext.delete(task)
+-                try? modelContext.save()
++                viewModel?.delete(task: task)
+             } label: {
+                 Label("Delete", systemImage: "trash")
+             }
+         }
+     }
+ 
+-    private func moveTask(_ task: TaskItem, to list: ReminderList) {
+-        task.reminderList = list
+-        assignSortOrder(for: task, in: list)
+-        try? modelContext.save()
+-    }
+-
+-    private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
+-        let listTasks = allTasks.filter {
+-            $0.reminderList?.persistentModelID == list.persistentModelID &&
+-            $0.persistentModelID != task.persistentModelID
+-        }
+-        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
+-        task.sortOrder = midpoint(between: lastOrder, and: nil)
+-    }
+-
+     private func flatToTaskIndex(_ flatIndex: Int) -> Int {
+-        guard flatIndex < flatNodes.count else { return tasks.count }
+-        return tasks.firstIndex(where: { $0.persistentModelID == flatNodes[flatIndex].task.persistentModelID }) ?? tasks.count
+-    }
+-
+-    private func moveTasks(fromOffsets: IndexSet, toOffset: Int) {
+-        withAnimation(.easeInOut(duration: 0.18)) {
+-            var mutableTasks = tasks
+-            let sortedFrom = fromOffsets.sorted()
+-
+-            let moved = sortedFrom.reversed().map { mutableTasks.remove(at: $0) }
+-            let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
+-            let insertAt = min(adjustedTo, mutableTasks.count)
+-
+-            mutableTasks.insert(contentsOf: moved, at: insertAt)
+-
+-            var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
+-            for i in insertAt..<(insertAt + moved.count) {
+-                let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
+-
+-                if let newOrder = midpoint(between: lower, and: upper) {
+-                    mutableTasks[i].sortOrder = newOrder
+-                } else {
+-                    if let upperStr = upper {
+-                        let widened = widen(upperStr)
+-                        if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
+-                            upperTask.sortOrder = widened
+-                        }
+-                        mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+-                    } else {
+-                        mutableTasks[i].sortOrder = ""
+-                    }
+-                }
+-
+-                lower = mutableTasks[i].sortOrder
+-            }
+-
+-            try? modelContext.save()
+-        }
+-    }
+-
+-    private func toggleCollapse(_ task: TaskItem) {
+-        if collapsedTasks.contains(task.persistentModelID) {
+-            collapsedTasks.remove(task.persistentModelID)
+-        } else {
+-            collapsedTasks.insert(task.persistentModelID)
+-        }
+-    }
+-
+-    private func handleDrop(target: TaskItem, location: CGPoint) {
+-        guard let draggedTaskId,
+-              let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
+-              draggedTask.persistentModelID != target.persistentModelID else { return }
+-
+-        guard !isDescendant(target, of: draggedTask) else { return }
+-
+-        let threshold: CGFloat = 22
+-        if location.y < threshold {
+-            draggedTask.parentTask = target.parentTask
+-            let siblings: [TaskItem]
+-            if let parent = target.parentTask {
+-                siblings = Array(parent.subtasks)
+-            } else {
+-                siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+-            }
+-            let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-            if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
+-                let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
+-                draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
+-            }
+-        } else {
+-            draggedTask.parentTask = target
+-            let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+-                .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+-            let lastOrder = subbies.last?.sortOrder
+-            draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
+-        }
+-        try? modelContext.save()
+-    }
+-
+-    private func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
+-        var current = task
+-        while let parent = current.parentTask {
+-            if parent.persistentModelID == potentialParent.persistentModelID {
+-                return true
+-            }
+-            current = parent
+-        }
+-        return false
+-    }
+-
+-    private func dueDateColor(for task: TaskItem) -> Color? {
+-        guard let dueDate = task.dueDate else { return nil }
+-        return Calendar.current.startOfDay(for: dueDate) < Calendar.current.startOfDay(for: now)
+-            ? AppTheme.colors.error
+-            : AppTheme.colors.textSecondary
++        guard let vm = viewModel else { return 0 }
++        guard flatIndex < vm.flatNodes.count else { return vm.tasks.count }
++        return vm.tasks.firstIndex(where: { $0.persistentModelID == vm.flatNodes[flatIndex].task.persistentModelID }) ?? vm.tasks.count
+     }
+ 
+     private func presentScheduleSheet(for task: TaskItem) {
++        viewModel?.presentScheduleSheet(for: task)
+         scheduleConfig = ScheduleConfig(task: task)
+     }
+ 
+-    private func toggleCompletion(for task: TaskItem) {
+-        let next = !(task.isCompleted ?? false)
+-        if next {
+-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+-            if let id = task.taskId {
+-                justCompleted.insert(id)
+-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak task] in
+-                    guard let task, task.isCompleted == true else { return }
+-                    withAnimation {
+-                        justCompleted.remove(id)
+-                    }
+-                }
+-            }
+-        }
+-        withAnimation(.easeInOut(duration: 0.18)) {
+-            task.isCompleted = next
+-            task.completionDate = next ? Date() : nil
+-            if next, let taskId = task.taskId {
+-                NotificationService.shared.cancel(taskId: taskId)
+-            }
+-        }
+-    }
+-
+-    private func rescheduleTaskToToday(_ task: TaskItem) {
+-        if let taskId = task.taskId {
+-            NotificationService.shared.cancel(taskId: taskId)
+-        }
+-        task.dueDate = Calendar.current.startOfDay(for: now)
+-    }
+-
+-    private func rescheduleTaskToTomorrow(_ task: TaskItem) {
+-        if let taskId = task.taskId {
+-            NotificationService.shared.cancel(taskId: taskId)
+-        }
+-        let calendar = Calendar.current
+-        let todayStart = calendar.startOfDay(for: now)
+-        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+-    }
+-
+-    private func rescheduleTaskToLater(_ task: TaskItem) {
+-        if let taskId = task.taskId {
+-            NotificationService.shared.cancel(taskId: taskId)
+-        }
+-        task.dueDate = nil
+-    }
+-
+-    private func canMoveToToday(_ task: TaskItem) -> Bool {
+-        guard let dueDate = task.dueDate else { return true }
+-        return !Calendar.current.isDateInToday(dueDate)
+-    }
+-
+-    private func canMoveToTomorrow(_ task: TaskItem) -> Bool {
+-        guard let dueDate = task.dueDate else { return true }
+-        return !Calendar.current.isDateInTomorrow(dueDate)
+-    }
+-
+     private var quickCaptureRow: some View {
+         HStack(spacing: 12) {
+             Circle()
+@@ -496,23 +267,15 @@ struct ListDetailView: View {
+     private func commitQuickCapture() {
+         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+         guard !text.isEmpty else { return }
+-
+         skipNextDismiss = true
+-
+-        guard let currentList = list else { return }
+-
+-        let task = TaskItem(taskTitle: text, dueDate: nil)
+-        task.createdAt = Date()
+-        task.reminderList = currentList
+-        modelContext.insert(task)
+-
++        viewModel?.commitQuickCapture(text: text, in: listID)
+         quickCaptureText = ""
+         isQuickCaptureFocused = true
+     }
+ 
+     private func openQuickCaptureEditor() {
+-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+-        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: listID, initialTitle: text)
++        let (title, targetListID) = viewModel?.openQuickCaptureEditor(text: quickCaptureText, listID: listID) ?? (quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines), listID)
++        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: targetListID, initialTitle: title)
+         quickCaptureText = ""
+         isQuickCapturing = false
+     }
+[0m
+The diff is clean — no direct modelContext mutations remain in the view, all business logic lives in the VM. Let me commit.
+[0m$ [0mgit add -A && git commit -m "US-003: Refactor ListDetailView to use ListDetailViewModel
+
+- Add @State viewModel and initialize from environment modelContext
+- Remove computed properties (list, tasks, rootTasks, flatNodes, otherLists)
+- Remove all private mutation methods, delegate to viewModel calls
+- Add .onAppear / .onChange to call viewModel.update() with @Query data
+- Add viewModel.refreshNow() for refresh timer
+- Replace schedule sheet onCommit with viewModel.scheduleTask()
+- Preserve haptic feedback in view layer (UI concern)
+- Keep UI-only state (scheduleConfig, newReminderConfig, editingTask, etc.)
+- Remove @State for now, justCompleted, collapsedTasks, draggedTaskId"
+[base-26.7.8 95e2a66] US-003: Refactor ListDetailView to use ListDetailViewModel
+ 8 files changed, 1447 insertions(+), 296 deletions(-)
+ create mode 100644 .ralph/.tmp/prompt-20260627-004234-12390-1.md
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-1.json
+ create mode 100644 .ralph/.tmp/story-20260627-004234-12390-1.md
+ create mode 100644 .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit status --porcelain && git show -s --format="%h %s" HEAD
+M .ralph/runs/run-20260627-004234-12390-iter-1.log
+95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
+[0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit diff .ralph/runs/run-20260627-004234-12390-iter-1.log
+diff --git a/.ralph/runs/run-20260627-004234-12390-iter-1.log b/.ralph/runs/run-20260627-004234-12390-iter-1.log
+index 7fc6e3e..bf84d07 100644
+--- a/.ralph/runs/run-20260627-004234-12390-iter-1.log
++++ b/.ralph/runs/run-20260627-004234-12390-iter-1.log
+@@ -1236,3 +1236,6 @@ The diff is clean — no direct modelContext mutations remain in the view, all b
+ M .ralph/runs/run-20260627-004234-12390-iter-1.log
+ 95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
+ [0m
++[0m$ [0mgit add -A && git status --porcelain
++M  .ralph/runs/run-20260627-004234-12390-iter-1.log
++[0m
+[0m
+[0m$ [0mgit add .ralph/runs/run-20260627-004234-12390-iter-1.log && git commit -m "docs: update run log for US-003" && git status --porcelain && git show -s --format="%h %s" HEAD
+[base-26.7.8 0d2a70b] docs: update run log for US-003
+ 1 file changed, 39 insertions(+)
+0d2a70b docs: update run log for US-003
+[0m
+[0m→ [0mRead .ralph/progress.md
+Now update the progress log:
+[0m✗ [0mEdit .ralph/progress.md failed
+[91m[1mError: [0mFound multiple matches for oldString. Provide more surrounding context to make the match unique.
+[0m→ [0mRead .ralph/progress.md[90m [offset=88][0m
+[0m
+[0m← [0mEdit .ralph/progress.md
+Index: /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+===================================================================
+--- /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
++++ /Users/sam/Desktop/TaskFlowApp/.ralph/progress.md
+@@ -87,7 +87,46 @@
+   - All mutation methods call `recompute()` to refresh derived state and `try? modelContext.save()` to persist
+ - **Learnings for future iterations:**
+   - Patterns discovered: All mutation methods follow consistent pattern: mutate, save, recompute
+   - Gotchas encountered: `commitQuickCapture` and `openQuickCaptureEditor` appear in both AC 2.1 and 2.8
+-  - Useful context: View layer (ListDetailView.swift) still has duplicate implementations of these methods; US-003 will wire view to VM calls
++   - Useful context: View layer (ListDetailView.swift) still has duplicate implementations of these methods; US-003 will wire view to VM calls
+ ---
++## [2026-06-27 00:42] - US-003: Refactor ListDetailView to use ViewModel
++Thread:
++Run: 20260627-004234-12390 (iteration 1)
++Run log: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-1.log
++Run summary: /Users/sam/Desktop/TaskFlowApp/.ralph/runs/run-20260627-004234-12390-iter-1.md
++- Guardrails reviewed: yes
++- No-commit run: false
++- Commit: 95e2a66 US-003: Refactor ListDetailView to use ListDetailViewModel
++          0d2a70b docs: update run log for US-003
++- Post-commit status: `clean`
++- Verification:
++  - Command: xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build -> PASS
++- Files changed:
++  - TaskFlow/Features/Reminders/ListDetailView.swift (refactored, 519 -> 277 lines)
++  - TaskFlow/Features/Reminders/ViewModels/ListDetailViewModel.swift (added refreshNow(), exposed draggedTaskId)
++- What was implemented:
++  - Added @State private var viewModel: ListDetailViewModel? initialized in .onAppear
++  - Removed computed properties: list, tasks, rootTasks, flatNodes, otherLists
++  - Removed @State: now, justCompleted, collapsedTasks, draggedTaskId (moved to VM)
++  - Removed all private mutation methods (moveTask, assignSortOrder, moveTasks, toggleCollapse,
++    handleDrop, isDescendant, moveTaskToRoot, toggleCompletion, reschedule helpers,
++    canMoveToToday/Tomorrow, dueDateColor, commitQuickCapture, openQuickCaptureEditor)
++  - Kept flatToTaskIndex (bridging flat indices to task indices for .onMove)
++  - Kept presentScheduleSheet (UI sheet presentation state)
++  - Added .onReceive(refreshTimer) -> viewModel?.refreshNow()
++  - Added .onAppear -> create VM + viewModel?.update(...)
++  - Added .onChange(of: allTasks) -> viewModel?.update(...)
++  - Added .onChange(of: allLists) -> viewModel?.update(...)
++  - Sheet onCommit delegates to viewModel?.scheduleTask(...)
++  - Haptic feedback preserved in view layer (UI concern)
++  - VM changes: added refreshNow() method, made draggedTaskId publicly settable
++  - No direct modelContext mutations remain in view
++  - @Environment(\.modelContext) retained only for VM initialization
++- **Learnings for future iterations:**
++  - Patterns discovered: flatToTaskIndex bridging must stay in view since it maps display (flat) indices to task indices
++  - Gotchas encountered: VM's `delete(task:)` uses argument label `task:` — need `viewModel?.delete(task:` at call sites
++  - Useful context: Haptic feedback is a UI concern and should stay in the view layer even when completion logic moves to VM
++---
+ 
++
+
+[0m
+[0m$ [0mgit add -A && git status --porcelain
+M  .ralph/progress.md
+M  .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit add -A && git commit -m "docs: update progress and run log for US-003 completion" && git status --porcelain
+[base-26.7.8 8b1636d] docs: update progress and run log for US-003 completion
+ 2 files changed, 110 insertions(+), 1 deletion(-)
+[0m
+[0m$ [0mecho "[2026-06-27 00:43] US-003: Implementation complete - ListDetailView refactored to use ViewModel" >> /Users/sam/Desktop/TaskFlowApp/.ralph/activity.log
+(no output)
+[0m
+[0m$ [0mgit status --porcelain
+M .ralph/activity.log
+ M .ralph/runs/run-20260627-004234-12390-iter-1.log
+[0m
+[0m$ [0mgit add -A && git commit -m "chore: update activity log for US-003" && git status --porcelain && git show -s --format="%h %s" HEAD
+[base-26.7.8 7b80db4] chore: update activity log for US-003
+ 2 files changed, 12 insertions(+)
+7b80db4 chore: update activity log for US-003
+[0m
+[0m# [0mTodos
+[✓] Audit ListDetailView and ListDetailViewModel to understand current state
+[✓] Add refreshNow() and expose draggedTaskId in ViewModel
+[✓] Wire VM into ListDetailView - replace computed properties, mutations, modelContext with viewModel calls
+[✓] Build verification
+[✓] Commit and log progress
+[0m
+<promise>COMPLETE</promise>

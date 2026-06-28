@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "project": "MVVM: ReminderSegmentViewModel",
+  "overview": "Extract ReminderSegmentViewModel from ReminderSegmentDetailView (714 lines \u2014 the largest file). View handles filtering, sorting, grouping across 5 segments. VM takes all business logic; view becomes thin consumer.",
+  "goals": [
+    "Create @Observable ReminderSegmentViewModel owning segment filtering, sorting, grouping, quick capture, completion, scheduling, rescheduling, overdue management",
+    "Reduce ReminderSegmentDetailView from ~714 lines to ~250 lines",
+    "All segment operations testable without view lifecycle"
+  ],
+  "nonGoals": [
+    "No behavioral changes to segment display",
+    "No changes to ReminderSegmentLogic or TaskUIModel helpers",
+    "No new features"
+  ],
+  "successMetrics": [
+    "ReminderSegmentViewModel.swift created",
+    "All 5 segments (Today, Tomorrow, Upcoming, Later, Overdue) render identically",
+    "Build succeeds with no warnings"
+  ],
+  "openQuestions": [],
+  "stack": {
+    "framework": "SwiftUI + SwiftData",
+    "hosting": "iOS 17+",
+    "database": "SwiftData (local)",
+    "auth": "none"
+  },
+  "routes": [],
+  "uiNotes": [
+    "No UI changes \u2014 pure refactor"
+  ],
+  "dataModel": [
+    {
+      "entity": "ReminderSegmentViewModel",
+      "fields": [
+        "modelContext",
+        "segment",
+        "filteredTasks",
+        "groupedSections",
+        "upcomingGroups",
+        "sortedFlatTasks",
+        "now",
+        "showOverdue",
+        "justCompleted"
+      ]
+    }
+  ],
+  "importFormat": {
+    "description": "Not applicable",
+    "example": {}
+  },
+  "rules": [
+    "View holds @Query, passes data to VM via update()",
+    "VM uses @Observable",
+    "VM delegates to existing ReminderSegmentLogic and TaskUIModel helpers",
+    "Timer.publish stays in view; VM exposes refreshNow()"
+  ],
+  "qualityGates": [
+    "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow build"
+  ],
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Create ReminderSegmentViewModel with core properties and update()",
+      "status": "done",
+      "dependsOn": [],
+      "description": "Create the ViewModel file with @Observable class, init, refreshNow(), and update() entry point.",
+      "acceptanceCriteria": [
+        "File TaskFlow/Features/Reminders/ViewModels/ReminderSegmentViewModel.swift exists with @Observable class",
+        "init(modelContext:segment:overdueTasks:) stores parameters",
+        "refreshNow() updates internal now date",
+        "showOverdue toggle and overdueTasks array added (1.4)",
+        "justCompleted set for animation tracking added (1.5)",
+        "update(tasks:lists:now:) computes all derived state (1.6)"
+      ],
+      "updatedAt": "2026-06-26T19:27:05.076533+00:00",
+      "completedAt": "2026-06-26T19:27:05.076870+00:00",
+      "startedAt": "2026-06-26T19:27:05.076871+00:00"
+    },
+    {
+      "id": "US-002",
+      "title": "Move derived state computation to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-001"
+      ],
+      "description": "Add computed properties that delegate to ReminderSegmentLogic and TaskUIModel for filtering, sorting, grouping.",
+      "acceptanceCriteria": [
+        "filteredTasks, groupedSections, upcomingGroups, sortedFlatTasks call ReminderSegmentLogic and TaskUIModel (2.1)",
+        "contextualDate and captureDateHint for segment-aware date logic (2.2)",
+        "resolvedQuickCaptureList() and shouldShowDueDate() helpers added (2.3)",
+        "otherLists computed property added (2.4)"
+      ],
+      "startedAt": "2026-06-26T19:27:07.185571+00:00",
+      "completedAt": "2026-06-26T19:29:47.330799+00:00",
+      "updatedAt": "2026-06-26T19:29:47.330524+00:00"
+    },
+    {
+      "id": "US-003",
+      "title": "Move data mutations to ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-002"
+      ],
+      "description": "Add all mutation methods: completion, quick capture, delete, move, schedule, reschedule.",
+      "acceptanceCriteria": [
+        "toggleCompletion(for:) with haptic, justCompleted, notification cancellation (3.1)",
+        "commitQuickCapture(text:captureDate:) creates TaskItem with segment dates (3.2)",
+        "openQuickCaptureEditor(text:captureDate:) returns config values (3.3)",
+        "delete(task:) with notification cancellation (3.4)",
+        "moveTask(_:to:) and assignSortOrder(for:in:) (3.5)",
+        "scheduleTask(_:dueDate:hasTime:) for schedule sheet commits (3.6)",
+        "rescheduleToToday(_:), rescheduleToTomorrow(_:), rescheduleToLater(_:) (3.7)",
+        "canMoveToToday(_:), canMoveToTomorrow(_:) (3.8)"
+      ],
+      "startedAt": "2026-06-26T19:29:49.427784+00:00",
+      "completedAt": "2026-06-26T19:32:27.551247+00:00",
+      "updatedAt": "2026-06-26T19:32:27.550969+00:00"
+    },
+    {
+      "id": "US-004",
+      "title": "Refactor ReminderSegmentDetailView to use ViewModel",
+      "status": "done",
+      "dependsOn": [
+        "US-003"
+      ],
+      "description": "Wire ViewModel into the view. Replace computed properties, mutations, and direct modelContext with VM calls.",
+      "acceptanceCriteria": [
+        "View creates VM from environment modelContext (4.1)",
+        "All computed properties replaced with viewModel. references (4.2)",
+        "All private mutation methods replaced with viewModel. calls (4.3)",
+        ".onReceive(refreshTimer) calls viewModel.refreshNow() (4.4)",
+        ".onChange and .onAppear call viewModel.update(...) (4.5)",
+        "No @Environment(\\.modelContext) usage remains (4.6)",
+        "No direct modelContext mutations remain (4.7)"
+      ],
+      "startedAt": "2026-06-26T19:32:29.649921+00:00",
+      "completedAt": "2026-06-26T19:37:08.303375+00:00",
+      "updatedAt": "2026-06-26T19:37:08.303041+00:00"
+    },
+    {
+      "id": "US-005",
+      "title": "Update TodayTabView and verify all segments",
+      "status": "done",
+      "dependsOn": [
+        "US-004"
+      ],
+      "description": "Update TodayTabView initialization if needed, then verify all 5 segments work correctly.",
+      "acceptanceCriteria": [
+        "TodayTabView updated to pass modelContext or adjust init (5.1)",
+        "Build succeeds with no warnings (6.1)",
+        "Today segment shows overdue + today tasks (6.2)",
+        "Tomorrow segment shows tomorrow tasks (6.3)",
+        "Upcoming segment shows grouped month/day sections (6.4)",
+        "Later and Overdue segments work (6.5)",
+        "Task completion works across all segments (6.6)",
+        "Quick capture assigns correct contextual dates (6.7)",
+        "Schedule sheet opens and commits correctly (6.8)",
+        "Reschedule actions work (6.9)",
+        "Timer refresh updates overdue count after midnight (6.10)"
+      ],
+      "startedAt": "2026-06-26T19:37:10.410663+00:00",
+      "completedAt": "2026-06-26T19:40:18.453672+00:00",
+      "updatedAt": "2026-06-26T19:40:18.453337+00:00"
+    }
+  ]
+}

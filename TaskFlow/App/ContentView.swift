@@ -7,10 +7,34 @@ struct ContentView: View {
     var body: some View {
         MainTabView()
             .onAppear {
+                migrateDefaultListName()
                 migrateOrphanedTasks()
                 backfillSortOrdersIfNeeded(in: modelContext)
                 backfillListSortOrdersIfNeeded(in: modelContext)
             }
+    }
+
+    private func migrateDefaultListName() {
+        let key = "did_migrate_default_list_name_v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+
+        let oldName = "Reminders"
+        let newName = ReminderDefaults.defaultListName
+
+        let listDescriptor = FetchDescriptor<ReminderList>(
+            predicate: #Predicate { $0.name == oldName }
+        )
+        guard let remindersList = try? modelContext.fetch(listDescriptor).first else { return }
+
+        let inboxDescriptor = FetchDescriptor<ReminderList>(
+            predicate: #Predicate { $0.name == newName }
+        )
+        let existingInbox = try? modelContext.fetch(inboxDescriptor).first
+        guard existingInbox == nil else { return }
+
+        remindersList.name = newName
+        try? modelContext.save()
     }
 
     private func migrateOrphanedTasks() {
