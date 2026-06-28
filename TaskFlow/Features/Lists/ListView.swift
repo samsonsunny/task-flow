@@ -172,6 +172,16 @@ struct ListsTabView: View {
                 } label: {
                     listRow(list: defaultList)
                 }
+                .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        } header: {
+            HStack {
+                Text("Inbox")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Spacer()
             }
         }
     }
@@ -193,7 +203,7 @@ struct ListsTabView: View {
                     }
                 } header: {
                     HStack {
-                        Text("LISTS")
+                        Text("Lists")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppTheme.colors.textSecondary)
                         Spacer()
@@ -206,9 +216,9 @@ struct ListsTabView: View {
     // MARK: - Group Sections
 
     private var groupSections: some View {
-        ForEach(groups) { group in
-            let items = viewModel?.listsInGroup(group) ?? []
-            Section {
+        Section {
+            ForEach(groups) { group in
+                let items = viewModel?.listsInGroup(group) ?? []
                 DisclosureGroup(isExpanded: Binding(
                     get: { viewModel?.isGroupExpanded(group) ?? false },
                     set: { _ in viewModel?.toggleGroupExpanded(group) }
@@ -227,7 +237,7 @@ struct ListsTabView: View {
                             .font(.system(size: 14))
                             .foregroundStyle(AppTheme.colors.textSecondary)
                         Text(group.name)
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(AppTheme.colors.textPrimary)
                         Spacer()
                         Text("\(items.count)")
@@ -249,6 +259,15 @@ struct ListsTabView: View {
                         }
                     }
                 }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        } header: {
+            HStack {
+                Text("Groups")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Spacer()
             }
         }
     }
@@ -261,6 +280,9 @@ struct ListsTabView: View {
         } label: {
             listRow(list: list)
         }
+        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
         .contextMenu {
             contextMenuItems(for: list)
         }
@@ -326,7 +348,7 @@ struct ListsTabView: View {
                 .frame(width: 24)
 
             Text(list.name)
-                .font(.system(size: 16))
+                .font(.system(size: 17))
                 .foregroundStyle(AppTheme.colors.textPrimary)
 
             Spacer()
@@ -341,6 +363,5 @@ struct ListsTabView: View {
                     .clipShape(Capsule())
             }
         }
-        .padding(.vertical, 4)
     }
 }
