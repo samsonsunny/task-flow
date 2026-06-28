@@ -34,8 +34,9 @@ struct ReminderSegmentDetailView: View {
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        List {
-            if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
+        ScrollViewReader { proxy in
+            List {
+                if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
                 Section {
                     if viewModel?.showOverdue ?? true {
                         ForEach(viewModel?.overdueTasks ?? []) { task in
@@ -87,6 +88,12 @@ struct ReminderSegmentDetailView: View {
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
         .animation(.easeInOut, value: viewModel?.sortedFlatTasks.count ?? 0)
+        .onChange(of: activeCaptureDate) { _, newValue in
+            if newValue != nil {
+                withAnimation { proxy.scrollTo("quick-capture", anchor: .top) }
+            }
+        }
+    }
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 if segment == .upcoming {
@@ -188,6 +195,7 @@ struct ReminderSegmentDetailView: View {
                     .padding(.leading, 32)
             }
         }
+        .id("quick-capture")
         .padding(.vertical, 9)
         .padding(.horizontal, 16)
         .listRowSeparator(.hidden)

@@ -49,12 +49,13 @@ struct ListDetailView: View {
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        List {
-            if isQuickCapturing {
-                quickCaptureRow
-            }
+        ScrollViewReader { proxy in
+            List {
+                if isQuickCapturing {
+                    quickCaptureRow
+                }
 
-            if let vm = viewModel {
+                if let vm = viewModel {
                 if vm.flatNodes.isEmpty {
                     emptyState
                 } else {
@@ -71,13 +72,19 @@ struct ListDetailView: View {
                     rootDropZone
                 }
             }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.colors.appBackground)
+            .navigationTitle(viewModel?.list?.name ?? "")
+            .navigationBarTitleDisplayMode(.large)
+            .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
+            .onChange(of: isQuickCapturing) { _, newValue in
+                if newValue {
+                    withAnimation { proxy.scrollTo("quick-capture", anchor: .top) }
+                }
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
-        .navigationTitle(viewModel?.list?.name ?? "")
-        .navigationBarTitleDisplayMode(.large)
-        .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -246,6 +253,7 @@ struct ListDetailView: View {
             }
             .accessibilityIdentifier("quick-capture-detail")
         }
+        .id("quick-capture")
         .padding(.vertical, 9)
         .padding(.horizontal, 16)
         .listRowSeparator(.hidden)
