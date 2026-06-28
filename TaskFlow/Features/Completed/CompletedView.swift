@@ -3,6 +3,7 @@ import SwiftData
 
 struct CompletedView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
 
     @State private var viewModel: CompletedViewModel?
@@ -43,7 +44,7 @@ struct CompletedView: View {
             ReminderEditorView(task: task)
         }
         .onAppear {
-            viewModel = CompletedViewModel(modelContext: modelContext)
+            viewModel = CompletedViewModel(modelContext: modelContext, appState: appState)
             viewModel?.update(tasks: allTasks)
         }
         .onChange(of: allTasks) { _, newTasks in
@@ -69,22 +70,26 @@ struct CompletedView: View {
     }
 
     private func completedTaskRow(_ task: TaskItem) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        let isUncompleting = viewModel?.justUncompleted.contains(task.taskId ?? "") ?? false
+
+        return HStack(alignment: .center, spacing: 12) {
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    viewModel?.uncomplete(task)
-                }
+                viewModel?.beginUncomplete(task)
             } label: {
                 ZStack {
                     Circle()
-                        .stroke(AppTheme.colors.primaryAction, lineWidth: 1.5)
-                        .background(Circle().fill(AppTheme.colors.primaryAction))
+                        .stroke(isUncompleting ? AppTheme.colors.border : AppTheme.colors.primaryAction, lineWidth: 1.5)
+                        .background(Circle().fill(isUncompleting ? AppTheme.colors.surface : AppTheme.colors.primaryAction))
                         .frame(width: 20, height: 20)
 
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                    if !isUncompleting {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
+                .animation(.easeInOut(duration: 0.18), value: isUncompleting)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Un-complete task")
@@ -92,16 +97,15 @@ struct CompletedView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.safeTitle)
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                    .strikethrough()
-                    .opacity(0.82)
-                    .lineLimit(2)
+                    .foregroundStyle(isUncompleting ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+                    .strikethrough(!isUncompleting)
+                    .opacity(isUncompleting ? 1.0 : 0.82)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .animation(.easeInOut(duration: 0.18), value: isUncompleting)
 
-                Text(CompletedViewModel.destinationLabel(for: task))
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                    .lineLimit(1)
+                Text("\(CompletedViewModel.completionTimeLabel(for: task))  ·  \(task.listName)")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textTertiary)
             }
         }
         .contentShape(Rectangle())

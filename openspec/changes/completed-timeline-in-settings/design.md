@@ -1,60 +1,30 @@
 ## Context
 
-SettingsView currently has no ViewModel and no `@Query`. CompletedView is defined but unreachable from the UI. The existing CompletedViewModel groups completed tasks into buckets (Today/Yesterday/This Week/Earlier) with destination labels. The new design replaces the grouped list with a visual timeline, removes destination labels, and wires the view into Settings via a NavigationLink.
+SettingsView currently has no ViewModel and no `@Query`. CompletedView is defined but unreachable from the UI. The existing CompletedViewModel groups completed tasks into buckets (Today/Yesterday/This Week/Earlier) with destination labels. The new design replaces the destination label with a completion-time label, removes the timeline visual in favor of a plain grouped list, and wires the view into Settings via a NavigationLink.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Settings gains a "Recently Completed" NavigationLink pushing to a timeline view
-- Completed tasks display chronologically by completion date with visual timeline lines/dots
+- Settings gains a "Recently Completed" NavigationLink pushing to CompletedView
+- Completed tasks display in a plain grouped list (Today/Yesterday/This Week/Earlier), sorted by completion date descending
+- Show completion time (short time for today/yesterday, date for older) on the trailing edge of each row
 - Remove destination labels ("Will reappear in...")
-- Update CompletedViewModel to supply timeline-position metadata for view rendering
 - Follow existing MVVM conventions (View holds `@Query`, ViewModel receives data via `update()`)
 
 **Non-Goals:**
 - No changes to un-complete, delete, or tap-to-edit interactions
 - No changes to the 30-day filter window
-- No new capabilities beyond the completed timeline
+- No timeline visual (lines, dots, connecting elements)
 
 ## Decisions
 
-### Decision: Timeline position model in ViewModel
+### Decision: Simple grouped list, not timeline
 
-A `CompletedTimelineItem` wrapper lets the view draw lines/dots without layout logic in the ViewModel.
+Completed tasks display as a standard grouped List with section headers (Today/Yesterday/This Week/Earlier). Within each section, tasks sort by completion date descending. Each row shows: leading checkmark circle, strikethrough title, trailing completion time. This matches Apple's Reminders approach — clean, familiar, no custom drawing.
 
-```
-CompletedTimelineItem
-├── id: String
-├── task: TaskItem
-├── completionTime: Date
-├── timeString: String          // "10:30 AM" or "Yesterday"
-├── position: TimelinePosition   // first, middle, last, single
-└── groupTitle: String          // "Today", "Yesterday", etc.
-```
+### Decision: Static `completionTimeLabel` method on ViewModel
 
-The ViewModel exposes `timelineGroups: [CompletedTimelineGroup]` where each group has a title + date + items. Position is computed by the ViewModel during `update()`.
-
-### Decision: Timeline line drawn in view layer
-
-The vertical line and dots are drawn using SwiftUI `Path` in a `ZStack` overlay on each row. A custom `TimelineRowView` wraps the existing `TaskRowView` in the timeline container. This keeps the line-drawing purely visual and reusable.
-
-```
-TimelineRowView
-┌────┬────────────────────────┐
-│    │  10:30                 │
-│ ●──┤  Buy groceries         │
-│    │                        │
-│ ●──┤  09:15                 │
-│    │  Call dentist          │
-│ ●──┤                        │
-└────┴────────────────────────┘
-```
-
-### Decision: SettingsView gets `@Query` directly
-
-Per MVVM conventions, the View holds `@Query`. SettingsView adds a `@Query` and passes `allTasks` to the pushed `CompletedView`. The `CompletedView` already has its own `@Query` — the Settings NavigationLink's destination instantiates it fresh, so no data passing needed.
-
-Alternatively, the `CompletedView` keeps its existing `@Query`. Settings just adds a NavigationLink pointing to it. This is the simplest approach and matches the existing pattern.
+A static helper `CompletedViewModel.completionTimeLabel(for:)` formats the completion date. It returns a short time string ("10:30 AM") for today/yesterday tasks, and a date string ("Jun 24") for older tasks. No instance state needed.
 
 ### Decision: No SettingsViewModel
 
@@ -64,6 +34,5 @@ SettingsView's existing logic (daily reminder toggle) stays as `@AppStorage`. Th
 
 | Risk | Mitigation |
 |---|---|
-| Timeline lines may break with dynamic type / accessibility sizes | Use `GeometryReader` sparingly; prefer `.overlay` with relative positioning |
-| Existing `CompletedView` test coverage becomes stale | Unit tests on `CompletedViewModel` still work; update for new data types |
+| Existing `CompletedView` test coverage becomes stale | Unit tests on `CompletedViewModel` still work |
 | NavigationLink in a Form may look out of place | Use a plain `NavigationLink` in a Section with a `Label` — matches standard Settings patterns |

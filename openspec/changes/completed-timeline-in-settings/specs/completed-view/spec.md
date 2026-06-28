@@ -10,45 +10,28 @@ The `CompletedView` SHALL be reachable via a "Recently Completed" NavigationLink
 - **WHEN** the user taps the link
 - **THEN** the `CompletedView` SHALL be pushed onto the navigation stack with a navigation title of "Completed"
 
-### Requirement: Timeline visual rendering
+### Requirement: Completion time on each row
 
-The `CompletedView` SHALL display completed tasks as a visual timeline. Tasks SHALL be grouped by completion date into sections titled "Today", "Yesterday", "This Week", and "Earlier". Within each section, tasks SHALL be ordered by completion time descending.
+Each completed task row SHALL display the task's completion time on the trailing edge. For tasks completed today or yesterday, SHALL show a short time string (e.g., "10:30 AM"). For older tasks, SHALL show a date string (e.g., "Jun 24").
 
-Each timeline row SHALL display:
-- A vertical line connecting all items in the group on the leading edge
-- A filled dot at each task's position on the timeline line
-- The task completion time formatted as a short time string (e.g., "10:30 AM")
-- The task title with strikethrough and muted styling
-
-#### Scenario: Today section shows timeline
-- **WHEN** the user views completed tasks from today
-- **THEN** each task SHALL show its completion time (e.g., "10:30 AM")
-- **AND** a vertical line SHALL connect all tasks in the section
-- **AND** each task SHALL have a filled dot at its position on the line
-
-#### Scenario: Section headers are day names
-- **WHEN** the user views completed tasks
-- **THEN** tasks completed today SHALL appear under "Today"
-- **AND** tasks completed yesterday SHALL appear under "Yesterday"
-- **AND** tasks completed within the last 7 days but not today or yesterday SHALL appear under "This Week"
-- **AND** tasks completed within the last 30 days but not within the last 7 days SHALL appear under "Earlier"
-
-#### Scenario: Completed view is empty
-- **WHEN** the user navigates to Completed
-- **AND** there are no tasks completed within the last 30 days
-- **THEN** the view SHALL display an appropriate empty state message
+#### Scenario: Time shown for recent tasks
+- **WHEN** the user views a task completed today
+- **THEN** the row SHALL display the completion time (e.g., "10:30 AM")
+- **WHEN** the user views a task completed yesterday
+- **THEN** the row SHALL display the completion time (e.g., "4:00 PM")
+- **WHEN** the user views a task completed earlier than yesterday
+- **THEN** the row SHALL display the completion date (e.g., "Jun 24")
 
 ## MODIFIED Requirements
 
 ### Requirement: Completed view shows recently completed tasks
 
-The `CompletedView` SHALL display tasks where `isCompleted == true` and `completionDate` falls within the last 30 days. Tasks SHALL be grouped into sections by completion date: "Today", "Yesterday", "This Week", "Earlier". Within each section, tasks SHALL be displayed as a visual timeline sorted by completion time descending.
+The `CompletedView` SHALL display tasks where `isCompleted == true` and `completionDate` falls within the last 30 days. Tasks SHALL be grouped into sections by completion date: "Today", "Yesterday", "This Week", "Earlier". Within each section, tasks SHALL be sorted by completion time descending.
 
 Each task row SHALL display:
 - The task title with a strikethrough and muted/dimmed styling
-- The task's completion time (if completed today) or date context
+- The task's completion time (short time for today/yesterday, date for older) on the trailing edge
 - A filled checkmark circle indicating completion state
-- A visual timeline line and dot connecting the row to its section
 
 #### Scenario: Completed tasks are listed with sections
 - **WHEN** the user navigates to Completed
@@ -57,16 +40,12 @@ Each task row SHALL display:
 - **AND** tasks completed within the last 7 days but not today or yesterday SHALL appear under a "This Week" section
 - **AND** tasks completed within the last 30 days but not within the last 7 days SHALL appear under an "Earlier" section
 
-#### Scenario: Completed timeline shows time labels
-- **WHEN** the user views completed tasks from today or yesterday
-- **THEN** each task SHALL display its completion time
-
 #### Scenario: Completed view is empty
 - **WHEN** the user navigates to Completed
 - **AND** there are no tasks completed within the last 30 days
 - **THEN** the view SHALL display an appropriate empty state message
 
-### Requirement: Swipe to un-complete
+### Requirement: Tap to un-complete
 
 Each task row in the `CompletedView` SHALL support a tap on the checkmark circle to un-complete the task. Un-completing SHALL set `isCompleted = false` and clear `completionDate`. The task SHALL then reappear in its appropriate smart filter (Today, Tomorrow, Upcoming, or Later) based on its `dueDate`. Swipe-to-delete SHALL also be supported.
 
@@ -96,3 +75,8 @@ The view SHALL NOT include quick-capture, FAB, swipe-to-schedule, or swipe-to-mo
 
 **Reason**: Align with Apple's Reminders approach — completed view shows completion information, not reappear destinations
 **Migration**: Remove the destination label ("Will reappear in...") from completed task rows. The task row shows completion time instead.
+
+### Requirement: Timeline visual rendering
+
+**Reason**: Simplified to plain grouped list — no timeline lines/dots
+**Migration**: Remove TimelineRowView component. Use standard List rows with strikethrough title + trailing time.
