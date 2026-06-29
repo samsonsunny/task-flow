@@ -144,6 +144,60 @@ enum TaskPreviewData {
     }
 
     @discardableResult
+    static func seedSubtasksInlineFixture(into container: ModelContainer, now: Date = Date(), calendar: Calendar = .current) -> [TaskItem] {
+        let defaultList = ensureDefaultListExists(in: container.mainContext)
+        let todayStart = calendar.startOfDay(for: now)
+        let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
+
+        let parent = TaskItem(
+            taskTitle: "Parent Project",
+            dueDate: todayStart,
+            reminderList: defaultList
+        )
+
+        let childToday = TaskItem(
+            taskTitle: "Child with today date",
+            dueDate: todayStart,
+            reminderList: defaultList
+        )
+        childToday.parentTask = parent
+
+        let childTomorrow = TaskItem(
+            taskTitle: "Child with tomorrow date",
+            dueDate: tomorrowStart,
+            reminderList: defaultList
+        )
+        childTomorrow.parentTask = parent
+
+        let childNoDate = TaskItem(
+            taskTitle: "Child no date",
+            dueDate: nil,
+            reminderList: defaultList
+        )
+        childNoDate.parentTask = parent
+
+        parent.subtasks = [childToday, childTomorrow, childNoDate]
+
+        let orphanParent = TaskItem(
+            taskTitle: "Orphan parent",
+            dueDate: nil,
+            reminderList: defaultList
+        )
+
+        let orphan = TaskItem(
+            taskTitle: "Orphan subtask",
+            dueDate: todayStart,
+            reminderList: defaultList
+        )
+        orphan.parentTask = orphanParent
+        orphanParent.subtasks = [orphan]
+
+        let tasks = [parent, childToday, childTomorrow, childNoDate, orphanParent, orphan]
+        tasks.forEach { container.mainContext.insert($0) }
+        return tasks
+    }
+
+    @discardableResult
     static func ensureDefaultListExists(in context: ModelContext) -> ReminderList {
         let descriptor = FetchDescriptor<ReminderList>()
         if let existing = try? context.fetch(descriptor).first(where: { $0.name == ReminderDefaults.defaultListName }) {

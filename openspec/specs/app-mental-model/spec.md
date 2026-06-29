@@ -27,10 +27,11 @@ their due date                        permanently, organized
 - If it has a due date, it surfaces in a time tab (its attention signal)
 - Removing the due date ("Move to Later" context action) returns it to Later-only visibility
 
-**Subtasks in time tabs (under exploration):**
-- All descendants of a root task that passes the time filter are shown inline with their parent, regardless of the subtask's own due date
-- A subtask with its own due date that matches a time tab but whose parent does not appears standalone at depth 0
-- The exact nesting approach (inline expansion vs count link) is pending further research — see `changes/subtasks-in-time-tabs/`
+**Subtasks in time tabs:**
+- When a task passes a time tab's filter by its own `dueDate`, ALL its descendants render inline beneath it — regardless of the subtask's own due date (inherited date context). Subtasks without a `dueDate` become visible through their ancestor's filter match.
+- When a subtask independently passes a time tab's filter but its parent does not, it appears standalone at depth 0 (no parent context pulled in).
+- Each parent is expandable/collapsible. Collapse state is per-view (independent between time tabs and list detail).
+- Within a single view, a subtask rendered under its parent is not duplicated as a standalone row (dedup).
 
 ### Navigation
 
@@ -38,9 +39,9 @@ The app has a **single 4-tab `TabView`** as its only navigation surface. There i
 
 | Tab | Purpose | Content |
 |---|---|---|---|
-| Today | Attention now | Tasks due today + their subtasks (flat or nested — TBD) |
-| Tomorrow | Attention next | Tasks due tomorrow + their subtasks (flat or nested — TBD) |
-| Upcoming | Coming in future | Tasks due D+2 onward + their subtasks (flat or nested — TBD) |
+| Today | Attention now | Tasks due today + their subtasks inline (expandable/collapsible) |
+| Tomorrow | Attention next | Tasks due tomorrow + their subtasks inline (expandable/collapsible) |
+| Upcoming | Coming in future | Tasks due D+2 onward + their subtasks inline (expandable/collapsible) |
 | Later | Permanent home | Groups (areas) and lists — the organizational structure |
 
 ### Later tab

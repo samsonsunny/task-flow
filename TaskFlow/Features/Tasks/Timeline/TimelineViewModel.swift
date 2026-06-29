@@ -13,6 +13,8 @@ final class ReminderSegmentViewModel {
     private(set) var justCompleted: Set<String> = []
 
     private(set) var filteredTasks: [TaskItem] = []
+    private(set) var flatNodes: [FlatTaskNode] = []
+    private(set) var collapsedTasks: Set<PersistentIdentifier> = []
     private(set) var groupedSections: [TaskUIModel.DatedSection] = []
     private(set) var upcomingGroups: [TaskUIModel.UpcomingGroup] = []
     private(set) var sortedFlatTasks: [TaskItem] = []
@@ -33,6 +35,15 @@ final class ReminderSegmentViewModel {
         showOverdue.toggle()
     }
 
+    func toggleCollapse(_ task: TaskItem) {
+        if collapsedTasks.contains(task.persistentModelID) {
+            collapsedTasks.remove(task.persistentModelID)
+        } else {
+            collapsedTasks.insert(task.persistentModelID)
+        }
+        rebuildTree()
+    }
+
     func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date()) {
         self.now = now
         self.lists = lists
@@ -41,9 +52,33 @@ final class ReminderSegmentViewModel {
         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
-        let displayable = self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") }
+        let displayable = (self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") })
         self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment)
+        rebuildTree()
     }
+
+    private func rebuildTree() {
+        let filterBase = filteredTasks + allTasks.filter { justCompleted.contains($0.taskId ?? "") }
+        let filteredIds = Set(filterBase.map(\.persistentModelID))
+        let matchedRoots = filterBase.filter { task in
+            guard let parent = task.parentTask else { return true }
+            return !filteredIds.contains(parent.persistentModelID)
+        }
+        let sortedRoots = ReminderSegmentLogic.sortedTasks(matchedRoots, for: segment)
+        flatNodes = TaskTreeFlattener.flatten(roots: sortedRoots, collapsed: collapsedTasks)
+    }
+
+    /// Build flat nodes from section-scoped tasks, respecting collapse state.
+    /// Each task whose parent is also in the section is nested; orphans become depth-0.
+    func flatNodes(for sectionTasks: [TaskItem]) -> [FlatTaskNode] {
+        let sectionIds = Set(sectionTasks.map(\.persistentModelID))
+        let roots = sectionTasks.filter { task in
+            guard let parent = task.parentTask else { return true }
+            return !sectionIds.contains(parent.persistentModelID)
+        }
+        return TaskTreeFlattener.flatten(roots: roots, collapsed: collapsedTasks)
+    }
+
 
     var contextualDate: Date? {
         let calendar = Calendar.current

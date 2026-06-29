@@ -233,4 +233,663 @@ final class TaskFlowTests: XCTestCase {
     private func makeDate(year: Int, month: Int, day: Int, calendar: Calendar) -> Date {
         calendar.date(from: DateComponents(year: year, month: month, day: day)) ?? Date()
     }
+
+    // MARK: - Test Infrastructure
+
+    @MainActor
+    private func createDetailViewModel(
+        list: ReminderList,
+        allTasks: [TaskItem],
+        context: ModelContext
+    ) -> ListDetailViewModel {
+        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
+        vm.update(tasks: allTasks, lists: [list], allTasks: allTasks)
+        return vm
+    }
+
+    @MainActor
+    private func createListsTabViewModel(
+        lists: [ReminderList],
+        groups: [ReminderListGroup],
+        allTasks: [TaskItem],
+        context: ModelContext
+    ) -> ListsTabViewModel {
+        let vm = ListsTabViewModel(modelContext: context)
+        vm.update(lists: lists, groups: groups, allTasks: allTasks)
+        return vm
+    }
+
+    private func assertValidTaskSortOrders(_ tasks: [TaskItem], file: StaticString = #filePath, line: UInt = #line) {
+        let orders = tasks.map { $0.sortOrder }
+        let nonNil = orders.compactMap { $0 }
+        XCTAssertEqual(nonNil.count, orders.count, "All sortOrders should be non-nil", file: file, line: line)
+        XCTAssertEqual(Set(nonNil).count, nonNil.count, "sortOrders should be unique", file: file, line: line)
+        XCTAssertEqual(nonNil.sorted(), nonNil, "sortOrders should be in increasing order", file: file, line: line)
+    }
+
+    private func assertValidListSortOrders(_ lists: [ReminderList], file: StaticString = #filePath, line: UInt = #line) {
+        let orders = lists.map { $0.sortOrder }
+        let nonNil = orders.compactMap { $0 }
+        XCTAssertEqual(nonNil.count, orders.count, "All sortOrders should be non-nil", file: file, line: line)
+        XCTAssertEqual(Set(nonNil).count, nonNil.count, "sortOrders should be unique", file: file, line: line)
+        XCTAssertEqual(nonNil.sorted(), nonNil, "sortOrders should be in increasing order", file: file, line: line)
+    }
+
+    @MainActor
+    private func makeTasks(sortOrders: [String?]) -> [TaskItem] {
+        sortOrders.enumerated().map { (i, order) in
+            let task = TaskItem(taskTitle: "Task \(i)", dueDate: nil)
+            task.sortOrder = order
+            return task
+        }
+    }
+
+    private func sortedBySortOrder(_ tasks: [TaskItem]) -> [TaskItem] {
+        tasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+    }
+
+    // MARK: - Midpoint Edge Cases
+
+    func testMidpointNilAndEmptyString() throws {
+        let result = midpoint(between: nil, and: "")
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result! < "", "\(result!) should be < empty string")
+    }
+
+    func testMidpointExhaustionChainWidensPreservingOrder() throws {
+        var lower: String? = nil
+        var upper: String? = "b"
+        var results: [String] = []
+        for _ in 0..<20 {
+            if let m = midpoint(between: lower, and: upper) {
+                results.append(m)
+                upper = m
+            } else {
+                let w = widen(upper!)
+                results.append(w)
+                upper = w
+                if let m = midpoint(between: lower, and: upper) {
+                    results.append(m)
+                    upper = m
+                }
+            }
+        }
+        XCTAssertEqual(results.sorted(), results, "Chain should produce ascending order")
+    }
+
+    func testMidpointReturnsNilForImpossibleGapRecovery() throws {
+        let result = midpoint(between: "f", and: "fa")
+        XCTAssertNil(result)
+        let widened = widen("fa")
+        let recovered = midpoint(between: "f", and: widened)
+        XCTAssertNotNil(recovered)
+        XCTAssertTrue(recovered! > "f" && recovered! < widened)
+    }
+
+    // MARK: - assignSortOrder Tests
+
+    @MainActor
+    func testAssignSortOrderPlacesAtEndOfExistingList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let existing = makeTasks(sortOrders: ["m", "t", "w"])
+        existing.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: existing, context: context)
+        let newTask = TaskItem(taskTitle: "New", dueDate: nil)
+        context.insert(newTask)
+        vm.assignSortOrder(for: newTask, in: list)
+
+        XCTAssertNotNil(newTask.sortOrder)
+        let all = existing + [newTask]
+        let sorted = sortedBySortOrder(all)
+        XCTAssertEqual(sorted.last?.taskTitle, "New")
+        assertValidTaskSortOrders(all)
+    }
+
+    @MainActor
+    func testAssignSortOrderForSingleItemList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let existing = makeTasks(sortOrders: ["m"])
+        existing.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: existing, context: context)
+        let newTask = TaskItem(taskTitle: "New", dueDate: nil)
+        context.insert(newTask)
+        vm.assignSortOrder(for: newTask, in: list)
+
+        XCTAssertNotNil(newTask.sortOrder)
+        XCTAssertTrue(newTask.sortOrder! > "m")
+    }
+
+    @MainActor
+    func testAssignSortOrderForFirstTaskInEmptyList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: [], context: context)
+        let task = TaskItem(taskTitle: "First", dueDate: nil)
+        vm.assignSortOrder(for: task, in: list)
+
+        XCTAssertNotNil(task.sortOrder)
+        XCTAssertEqual(task.sortOrder, "m")
+    }
+
+    // MARK: - moveTasks Tests
+
+    @MainActor
+    func testMoveFirstTaskToLastPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet(integer: 0), toOffset: 4)
+
+        let sorted = sortedBySortOrder(tasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 1", "Task 2", "Task 3", "Task 0"])
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testMoveLastTaskToFirstPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet(integer: 3), toOffset: 0)
+
+        let sorted = sortedBySortOrder(tasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 3", "Task 0", "Task 1", "Task 2"])
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testMoveTaskToSameIndexIsNoOp() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let beforeOrders = tasks.map { $0.sortOrder }
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet(integer: 1), toOffset: 1)
+
+        let afterOrders = tasks.map { $0.sortOrder }
+        XCTAssertEqual(beforeOrders, afterOrders)
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testMoveMultipleNonAdjacentItems() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet([0, 2]), toOffset: 4)
+
+        let sorted = sortedBySortOrder(tasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 1", "Task 3", "Task 0", "Task 2"])
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testMoveAdjacentItemsDoesNotCrash() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "e", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet([2, 3]), toOffset: 0)
+
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testMoveTasksMidpointExhaustionTriggersWiden() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["f", "fa"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let newTask = TaskItem(taskTitle: "Inserted", dueDate: nil)
+        newTask.reminderList = list
+        context.insert(newTask)
+        try? context.save()
+
+        let allTasks = tasks + [newTask]
+        let vm = createDetailViewModel(list: list, allTasks: allTasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet(integer: 2), toOffset: 2)
+
+        assertValidTaskSortOrders(allTasks)
+        let sorted = sortedBySortOrder(allTasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 0", "Inserted", "Task 1"])
+    }
+
+    // MARK: - handleDrop Tests
+
+    @MainActor
+    func testDropOnUpperZoneReordersAmongSiblings() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[2].taskId
+        vm.handleDrop(target: tasks[1], location: CGPoint(x: 0, y: 10))
+
+        assertValidTaskSortOrders(tasks)
+        let sorted = sortedBySortOrder(tasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 0", "Task 2", "Task 1"])
+        XCTAssertNil(sorted[1].parentTask)
+        XCTAssertNil(sorted[2].parentTask)
+    }
+
+    @MainActor
+    func testDropOnLowerZoneMakesChild() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[2].taskId
+        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
+
+        XCTAssertEqual(tasks[2].parentTask?.persistentModelID, tasks[0].persistentModelID)
+        assertValidTaskSortOrders(tasks)
+    }
+
+    @MainActor
+    func testDropTaskOnItselfIsNoOp() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[0].taskId
+        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
+
+        XCTAssertNil(tasks[0].parentTask)
+        XCTAssertEqual(tasks[0].sortOrder, "a")
+    }
+
+    @MainActor
+    func testDropParentOnDescendantIsRejected() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        tasks[1].parentTask = tasks[0]
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[0].taskId
+        vm.handleDrop(target: tasks[1], location: CGPoint(x: 0, y: 30))
+
+        XCTAssertEqual(tasks[1].parentTask?.persistentModelID, tasks[0].persistentModelID)
+    }
+
+    @MainActor
+    func testDropIntoTaskWithExistingSubtasks() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        tasks[1].parentTask = tasks[0]
+        tasks[2].parentTask = tasks[0]
+        let subtaskSortOrders = [tasks[1].sortOrder, tasks[2].sortOrder]
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[3].taskId
+        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
+
+        XCTAssertEqual(tasks[3].parentTask?.persistentModelID, tasks[0].persistentModelID)
+        let children = tasks[0].subtasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        XCTAssertEqual(children.count, 3)
+        assertValidTaskSortOrders(Array(tasks[0].subtasks))
+    }
+
+    @MainActor
+    func testDropIntoTaskWithNoSubtasks() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "m"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+        vm.draggedTaskId = tasks[1].taskId
+        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
+
+        XCTAssertEqual(tasks[1].parentTask?.persistentModelID, tasks[0].persistentModelID)
+        XCTAssertEqual(tasks[0].subtasks.count, 1)
+    }
+
+    // MARK: - moveTaskToRoot Tests
+
+    @MainActor
+    func testMoveNestedTaskToEmptyRoot() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["m"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        let nested = TaskItem(taskTitle: "Nested", dueDate: nil)
+        nested.sortOrder = "a"
+        nested.parentTask = tasks[0]
+        nested.reminderList = list
+        context.insert(nested)
+        try? context.save()
+
+        let allTasks = tasks + [nested]
+        let vm = createDetailViewModel(list: list, allTasks: allTasks, context: context)
+        vm.draggedTaskId = nested.taskId
+        vm.moveTaskToRoot()
+
+        XCTAssertNil(nested.parentTask)
+        XCTAssertNotNil(nested.sortOrder)
+        assertValidTaskSortOrders(allTasks)
+    }
+
+    @MainActor
+    func testMoveNestedTaskToRootWithExistingSiblings() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let tasks = makeTasks(sortOrders: ["a", "t"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        let nested = TaskItem(taskTitle: "Nested", dueDate: nil)
+        nested.sortOrder = "m"
+        nested.parentTask = tasks[0]
+        nested.reminderList = list
+        context.insert(nested)
+        try? context.save()
+
+        let allTasks = tasks + [nested]
+        let vm = createDetailViewModel(list: list, allTasks: allTasks, context: context)
+        vm.draggedTaskId = nested.taskId
+        vm.moveTaskToRoot()
+
+        XCTAssertNil(nested.parentTask)
+        let rootTasks = allTasks.filter { $0.parentTask == nil }
+        assertValidTaskSortOrders(rootTasks)
+        let sorted = sortedBySortOrder(rootTasks)
+        XCTAssertEqual(sorted.map { $0.taskTitle }, ["Task 0", "Nested", "Task 1"])
+    }
+
+    // MARK: - moveLists Tests
+
+    @MainActor
+    func testMoveListWithinSameGroup() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group A")
+        context.insert(group)
+        let lists = [
+            ReminderList(name: "Alpha"),
+            ReminderList(name: "Beta"),
+            ReminderList(name: "Gamma")
+        ]
+        lists.forEach { $0.group = group; $0.sortOrder = ["a", "m", "t"][lists.firstIndex(of: $0)!]; context.insert($0) }
+        try? context.save()
+
+        let vm = createListsTabViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 2), toOffset: 0, in: lists, group: group)
+
+        for list in lists {
+            XCTAssertEqual(list.group?.persistentModelID, group.persistentModelID)
+        }
+        assertValidListSortOrders(lists)
+    }
+
+    @MainActor
+    func testMoveListToDifferentGroup() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let groupA = ReminderListGroup(name: "Group A")
+        let groupB = ReminderListGroup(name: "Group B")
+        context.insert(groupA)
+        context.insert(groupB)
+        let list = ReminderList(name: "Moveable")
+        list.sortOrder = "m"
+        list.group = groupA
+        context.insert(list)
+        let existingInB = ReminderList(name: "Existing B")
+        existingInB.sortOrder = "a"
+        existingInB.group = groupB
+        context.insert(existingInB)
+        try? context.save()
+
+        let vm = createListsTabViewModel(lists: [list, existingInB], groups: [groupA, groupB], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 0), toOffset: 1, in: [list], group: groupB)
+
+        XCTAssertEqual(list.group?.persistentModelID, groupB.persistentModelID)
+    }
+
+    @MainActor
+    func testMoveListToEmptyGroup() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Empty Group")
+        context.insert(group)
+        let list = ReminderList(name: "Solo")
+        list.sortOrder = "m"
+        context.insert(list)
+        try? context.save()
+
+        let vm = createListsTabViewModel(lists: [list], groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 0), toOffset: 0, in: [list], group: group)
+
+        XCTAssertEqual(list.group?.persistentModelID, group.persistentModelID)
+        XCTAssertNotNil(list.sortOrder)
+    }
+
+    // MARK: - isDescendant Tests
+
+    @MainActor
+    func testIsDescendantDirectParent() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let parent = TaskItem(taskTitle: "Parent", dueDate: nil)
+        let child = TaskItem(taskTitle: "Child", dueDate: nil)
+        child.parentTask = parent
+
+        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
+        XCTAssertTrue(vm.isDescendant(child, of: parent))
+    }
+
+    @MainActor
+    func testIsDescendantGrandparent() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let grandparent = TaskItem(taskTitle: "GP", dueDate: nil)
+        let parent = TaskItem(taskTitle: "Parent", dueDate: nil)
+        let child = TaskItem(taskTitle: "Child", dueDate: nil)
+        parent.parentTask = grandparent
+        child.parentTask = parent
+
+        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
+        XCTAssertTrue(vm.isDescendant(child, of: grandparent))
+    }
+
+    @MainActor
+    func testIsDescendantUnrelatedReturnsFalse() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let taskA = TaskItem(taskTitle: "A", dueDate: nil)
+        let taskB = TaskItem(taskTitle: "B", dueDate: nil)
+
+        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
+        XCTAssertFalse(vm.isDescendant(taskA, of: taskB))
+    }
+
+    @MainActor
+    func testIsDescendantSelfReturnsFalse() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let task = TaskItem(taskTitle: "Self", dueDate: nil)
+
+        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
+        XCTAssertFalse(vm.isDescendant(task, of: task))
+    }
+
+    // MARK: - commitQuickCapture Tests
+
+    @MainActor
+    func testQuickCaptureAssignsSortOrderInNonEmptyList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        let existing = makeTasks(sortOrders: ["a", "m"])
+        existing.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: existing, context: context)
+        vm.update(tasks: existing, lists: [list], allTasks: existing)
+        vm.commitQuickCapture(text: "Quick", in: list.persistentModelID)
+
+        let allTasks = existing + (try! context.fetch(FetchDescriptor<TaskItem>()).filter { $0.taskTitle == "Quick" })
+        let newTask = allTasks.first { $0.taskTitle == "Quick" }
+        XCTAssertNotNil(newTask)
+        XCTAssertNotNil(newTask?.sortOrder)
+        assertValidTaskSortOrders(allTasks)
+        let sorted = sortedBySortOrder(allTasks)
+        XCTAssertEqual(sorted.last?.taskTitle, "Quick")
+    }
+
+    @MainActor
+    func testQuickCaptureAssignsSortOrderInEmptyList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let vm = createDetailViewModel(list: list, allTasks: [], context: context)
+        vm.update(tasks: [], lists: [list], allTasks: [])
+        vm.commitQuickCapture(text: "First", in: list.persistentModelID)
+
+        let quickTasks = try! context.fetch(FetchDescriptor<TaskItem>()).filter { $0.taskTitle == "First" }
+        XCTAssertEqual(quickTasks.count, 1)
+        XCTAssertNotNil(quickTasks[0].sortOrder)
+    }
+
+    // MARK: - Property-Based Invariant Tests
+
+    @MainActor
+    func testChainOfReordersAtSamePositionPreservesInvariants() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        var tasks = makeTasks(sortOrders: ["a", "z"])
+        tasks.forEach { $0.reminderList = list; context.insert($0) }
+        try? context.save()
+
+        for i in 0..<10 {
+            let newTask = TaskItem(taskTitle: "Insert \(i)", dueDate: nil)
+            newTask.sortOrder = nil
+            newTask.reminderList = list
+            context.insert(newTask)
+            tasks.append(newTask)
+            try? context.save()
+
+            let vm = createDetailViewModel(list: list, allTasks: tasks, context: context)
+            vm.moveTasks(fromOffsets: IndexSet(integer: tasks.count - 1), toOffset: 1)
+            assertValidTaskSortOrders(tasks)
+        }
+    }
+
+    @MainActor
+    func testCrossListMoveAndReorderPreservesInvariants() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let listA = ReminderList(name: "A")
+        let listB = ReminderList(name: "B")
+        context.insert(listA)
+        context.insert(listB)
+        let tasksA = makeTasks(sortOrders: ["a", "m"])
+        tasksA.forEach { $0.reminderList = listA; context.insert($0) }
+        let tasksB = makeTasks(sortOrders: ["t"])
+        tasksB.forEach { $0.reminderList = listB; context.insert($0) }
+        try? context.save()
+
+        let allTasks = tasksA + tasksB
+        let vm = createDetailViewModel(list: listA, allTasks: allTasks, context: context)
+        vm.moveTasks(fromOffsets: IndexSet(integer: 1), toOffset: 0)
+
+        assertValidTaskSortOrders(tasksA)
+    }
 }

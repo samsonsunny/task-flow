@@ -149,12 +149,11 @@ final class ListsTabViewModel {
             } else {
                 if let upperStr = upper {
                     let widened = widen(upperStr)
-                    if let upperList = mutableLists.first(where: { $0.sortOrder == upperStr }) {
-                        upperList.sortOrder = widened
-                    }
-                    mutableLists[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+                    mutableLists[i + 1].sortOrder = widened
+                    mutableLists[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
                 } else {
-                    mutableLists[i].sortOrder = ""
+                    let widened = widen(lower ?? "m")
+                    mutableLists[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
                 }
             }
 

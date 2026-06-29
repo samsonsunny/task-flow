@@ -1,13 +1,6 @@
 import SwiftUI
 import SwiftData
 
-struct FlatTaskNode: Identifiable {
-    let id: PersistentIdentifier
-    let task: TaskItem
-    let depth: Int
-    let subtaskCount: Int
-}
-
 @MainActor
 @Observable
 final class ListDetailViewModel {
@@ -51,7 +44,7 @@ final class ListDetailViewModel {
         } else {
             collapsedTasks.insert(task.persistentModelID)
         }
-        flatNodes = flattenTasks(rootTasks)
+        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
     }
 
     func toggleCompletion(for task: TaskItem) {
@@ -84,7 +77,7 @@ final class ListDetailViewModel {
         list = allLists.first { $0.persistentModelID == listID }
         tasks = computeTasks()
         rootTasks = tasks.filter { $0.parentTask == nil }
-        flatNodes = flattenTasks(rootTasks)
+        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
     }
 
     private func computeTasks() -> [TaskItem] {
@@ -94,25 +87,6 @@ final class ListDetailViewModel {
                 return justCompleted.contains($0.taskId ?? "")
             }
             return true
-        }
-    }
-
-    private func flattenTasks(_ tasks: [TaskItem]) -> [FlatTaskNode] {
-        var result: [FlatTaskNode] = []
-        for task in tasks {
-            flattenNode(task, depth: 0, result: &result)
-        }
-        return result
-    }
-
-    private func flattenNode(_ task: TaskItem, depth: Int, result: inout [FlatTaskNode]) {
-        let isCollapsed = collapsedTasks.contains(task.persistentModelID)
-        let activeSubtasks = task.subtasks.filter { !($0.isCompleted == true) }
-        result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskCount: activeSubtasks.count))
-        if !isCollapsed {
-            for subtask in activeSubtasks.sorted(by: { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }) {
-                flattenNode(subtask, depth: depth + 1, result: &result)
-            }
         }
     }
 
@@ -126,6 +100,7 @@ final class ListDetailViewModel {
         task.createdAt = Date()
         task.reminderList = list
         modelContext.insert(task)
+        assignSortOrder(for: task, in: list)
         try? modelContext.save()
         recompute()
         BadgeService.update(modelContext: modelContext)
@@ -187,12 +162,11 @@ final class ListDetailViewModel {
             } else {
                 if let upperStr = upper {
                     let widened = widen(upperStr)
-                    if let upperTask = mutableTasks.first(where: { $0.sortOrder == upperStr }) {
-                        upperTask.sortOrder = widened
-                    }
-                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? ""
+                    mutableTasks[i + 1].sortOrder = widened
+                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
                 } else {
-                    mutableTasks[i].sortOrder = ""
+                    let widened = widen(lower ?? "m")
+                    mutableTasks[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
                 }
             }
 

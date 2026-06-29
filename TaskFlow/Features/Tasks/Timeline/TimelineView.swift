@@ -39,8 +39,11 @@ struct ReminderSegmentDetailView: View {
                 if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
                 Section {
                     if viewModel?.showOverdue ?? true {
-                        ForEach(viewModel?.overdueTasks ?? []) { task in
-                            taskListRow(task, showsDueDate: true)
+                        let overdueNodes = (viewModel?.overdueTasks ?? []).map { task in
+                            FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskCount: 0)
+                        }
+                        ForEach(overdueNodes) { node in
+                            taskListRow(node, showsDueDate: true)
                         }
                     }
                 } header: {
@@ -75,7 +78,7 @@ struct ReminderSegmentDetailView: View {
                     upcomingContent(with: vm)
                 } else if segment == .today || segment == .tomorrow {
                     todayLikeContent(with: vm)
-                } else if vm.sortedFlatTasks.isEmpty && !segment.usesGroupedSections {
+                } else if vm.flatNodes.isEmpty && !segment.usesGroupedSections {
                     emptyState
                 } else if segment.usesGroupedSections {
                     groupedContent(with: vm)
@@ -91,7 +94,7 @@ struct ReminderSegmentDetailView: View {
         .simultaneousGesture(
             TapGesture().onEnded { isQuickCaptureFocused = false }
         )
-        .animation(.easeInOut, value: viewModel?.sortedFlatTasks.count ?? 0)
+        .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
         .onChange(of: activeCaptureDate) { _, newValue in
             if newValue != nil {
                 withAnimation { proxy.scrollTo("quick-capture", anchor: .top) }
@@ -223,7 +226,8 @@ struct ReminderSegmentDetailView: View {
         ForEach(vm.groupedSections) { section in
             Section {
                 ForEach(section.tasks) { task in
-                    taskListRow(task, showsDueDate: vm.shouldShowDueDate(for: segment))
+                    let node = FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskCount: 0)
+                    taskListRow(node, showsDueDate: vm.shouldShowDueDate(for: segment))
                 }
             } header: {
                 sectionHeader(
@@ -237,8 +241,8 @@ struct ReminderSegmentDetailView: View {
 
     @ViewBuilder
     private func flatContent(with vm: ReminderSegmentViewModel) -> some View {
-        ForEach(vm.sortedFlatTasks) { task in
-            taskListRow(task, showsDueDate: vm.shouldShowDueDate(for: segment))
+        ForEach(vm.flatNodes) { node in
+            taskListRow(node, showsDueDate: vm.shouldShowDueDate(for: segment))
                 .transition(.scale.combined(with: .opacity))
         }
     }
@@ -267,7 +271,7 @@ struct ReminderSegmentDetailView: View {
             if activeCaptureDate != nil {
                 quickCaptureRow
             }
-            if vm.sortedFlatTasks.isEmpty {
+            if vm.flatNodes.isEmpty {
                 emptyState
             } else {
                 flatContent(with: vm)
@@ -299,9 +303,10 @@ struct ReminderSegmentDetailView: View {
                     if tasks.isEmpty {
                         emptyDayRow(id: id, title: title, date: date)
                     } else {
+                        let sectionNodes = viewModel?.flatNodes(for: tasks) ?? []
                         Section {
-                            ForEach(tasks) { task in
-                                taskListRow(task, showsDueDate: false)
+                            ForEach(sectionNodes) { node in
+                                taskListRow(node, showsDueDate: false)
                             }
 
                             if activeCaptureDate == date {
@@ -318,7 +323,7 @@ struct ReminderSegmentDetailView: View {
                     if dayGroups.isEmpty {
                         emptyMonthRow(title: title, date: date)
                     } else {
-                        monthSectionView(title: title, date: date, dayGroups: dayGroups, isCollapsible: isCollapsible)
+                        monthSectionView(title: title, date: date, dayGroups: dayGroups, isCollapsible: isCollapsible, vm: vm)
                     }
                 }
             }
@@ -432,16 +437,17 @@ struct ReminderSegmentDetailView: View {
         .accessibilityIdentifier("upcoming-add-reminder-\(date)")
     }
 
-    private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], isCollapsible: Bool) -> some View {
+    private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], isCollapsible: Bool, vm: ReminderSegmentViewModel) -> some View {
         Section {
             if activeCaptureDate == date {
                 quickCaptureRow
             }
 
             ForEach(dayGroups) { dayGroup in
+                let dayNodes = vm.flatNodes(for: dayGroup.tasks)
                 Section {
-                    ForEach(dayGroup.tasks) { task in
-                        taskListRow(task, showsDueDate: false)
+                    ForEach(dayNodes) { node in
+                        taskListRow(node, showsDueDate: false)
                             .listRowInsets(EdgeInsets(top: 3, leading: 32, bottom: 3, trailing: 16))
                     }
 
@@ -520,8 +526,9 @@ struct ReminderSegmentDetailView: View {
         }
     }
 
-    private func taskListRow(_ task: TaskItem, showsDueDate: Bool) -> some View {
-        TaskRowView(
+    private func taskListRow(_ node: FlatTaskNode, showsDueDate: Bool) -> some View {
+        let task = node.task
+        return TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
             onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
@@ -537,7 +544,11 @@ struct ReminderSegmentDetailView: View {
                 quickCaptureText = ""
                 editingTask = task
             },
-            showsDueDate: showsDueDate
+            showsDueDate: showsDueDate,
+            nestingDepth: node.depth,
+            subtaskCount: node.subtaskCount,
+            isCollapsed: viewModel?.collapsedTasks.contains(task.persistentModelID) == true,
+            onToggleCollapse: node.subtaskCount > 0 ? { viewModel?.toggleCollapse(task) } : nil
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
