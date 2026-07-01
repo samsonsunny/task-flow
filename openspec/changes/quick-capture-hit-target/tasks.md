@@ -1,14 +1,17 @@
-## 1. Fix openQuickCaptureEditor in TimelineView
+## 1. Update TimelineView.swift
 
-- [ ] 1.1 Add `skipNextDismiss = true` at the top of `openQuickCaptureEditor()` in `TimelineView.swift:576`
-- [ ] 1.2 Move `newReminderConfig` assignment after `activeCaptureDate = nil` inside a `Task { @MainActor in }` block
+- [x] 1.1 Remove chevron button from `quickCaptureRow`
+- [x] 1.2 Delete `openQuickCaptureEditor()` method
+- [x] 1.3 Change `onChange(of: isQuickCaptureFocused)` — commit on defocus, keep row alive
+- [x] 1.4 Re-add `onChange(of: tasks)` — no racing issue with stable row
 
-## 2. Fix openQuickCaptureEditor in DetailView
+## 2. Update DetailView.swift
 
-- [ ] 2.1 Add `skipNextDismiss = true` at the top of `openQuickCaptureEditor()` in `DetailView.swift`
-- [ ] 2.2 Move `newReminderConfig` assignment after `activeCaptureDate = nil` inside a `Task { @MainActor in }` block
+- [x] 2.1 Remove chevron button from `quickCaptureRow`
+- [x] 2.2 Delete `openQuickCaptureEditor()` method
+- [x] 2.3 Change `onChange(of: isQuickCaptureFocused)` — commit on defocus, keep row alive
 
 ## 3. Verify
 
-- [ ] 3.1 Build with `xcodebuild`
-- [ ] 3.2 Run UI test `testQuickCaptureChevronOpensEditor`
+- [x] 3.1 Build with `xcodebuild`
+- [ ] 3.2 Run UI test if one exists

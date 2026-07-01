@@ -143,10 +143,11 @@ struct ReminderSegmentDetailView: View {
                         skipNextDismiss = false
                         return
                     }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeCaptureDate = nil
-                        quickCaptureText = ""
+                    let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !text.isEmpty {
+                        viewModel?.commitQuickCapture(text: text, captureDate: activeCaptureDate)
                     }
+                    quickCaptureText = ""
                 }
             }
         }
@@ -185,14 +186,6 @@ struct ReminderSegmentDetailView: View {
                     .submitLabel(.done)
                     .accessibilityIdentifier("quick-capture-field")
 
-                Button {
-                    openQuickCaptureEditor()
-                } label: {
-                    Image(systemName: "chevron.right.circle")
-                        .font(.system(size: 18))
-                        .foregroundStyle(AppTheme.colors.textSecondary)
-                }
-                .accessibilityIdentifier("quick-capture-detail")
             }
 
             if let hintDate = viewModel?.captureDateHint(activeCaptureDate: activeCaptureDate) {
@@ -569,18 +562,6 @@ struct ReminderSegmentDetailView: View {
         viewModel?.commitQuickCapture(text: text, captureDate: activeCaptureDate)
         quickCaptureText = ""
         isQuickCaptureFocused = true
-    }
-
-    private func openQuickCaptureEditor() {
-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let (initialDate, initialTitle) = viewModel?.openQuickCaptureEditor(text: text, captureDate: activeCaptureDate) ?? (nil, "")
-        newReminderConfig = NewReminderConfig(
-            initialDate: initialDate,
-            initialListID: nil,
-            initialTitle: initialTitle
-        )
-        quickCaptureText = ""
-        activeCaptureDate = nil
     }
 
     private func presentScheduleSheet(for task: TaskItem) {

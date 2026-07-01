@@ -1,64 +1,124 @@
 ## Context
 
-The quick capture chevron button exists in two places:
+The quick capture row appears in two places:
 
-1. `TimelineView.swift:188-197` — used in Today/Tomorrow/Upcoming tabs
-2. `DetailView.swift:255-264` — used in list detail
+1. `TimelineView.swift` — Today/Tomorrow/Upcoming tabs (controlled by `activeCaptureDate`)
+2. `DetailView.swift` — list detail (controlled by `isQuickCapturing`)
 
-Both have an identical `openQuickCaptureEditor()` method:
+Both have a `quickCaptureRow` with a TextField and a chevron button, and both have an almost-identical `openQuickCaptureEditor()` method.
+
+### The problem
+
+The chevron exists to "upgrade" inline text to the full editor. But in practice, it's broken — tapping it dismisses the keyboard instead of opening the sheet, because UIKit drops sheet presentations during keyboard dismissal animation.
+
+The root cause: there should be no chevron at all. The quick capture row should behave like Todoist — an inline persistent field that commits text on defocus but stays visible. A chevron makes no sense in this model.
+
+### Changes
+
+#### 1. Remove chevron button
+
+Delete the chevron button from `quickCaptureRow` in both views. This includes:
+- The `Button` with `chevron.right.circle` image
+- The `accessibilityIdentifier("quick-capture-detail")` modifier
+
+#### 2. Delete `openQuickCaptureEditor()`
+
+Remove the method from both files entirely. No callers remain after the chevron is removed.
+
+#### 3. Change `onChange(of: isQuickCaptureFocused)` handler
+
+**Before**: On defocus, just clears the row — bad UX (text discarded).
 
 ```swift
-private func openQuickCaptureEditor() {
-    let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-    let (initialDate, initialTitle) = viewModel?.openQuickCaptureEditor(text: text, captureDate: activeCaptureDate) ?? (nil, "")
-    newReminderConfig = NewReminderConfig(
-        initialDate: initialDate,
-        initialListID: nil,
-        initialTitle: initialTitle
-    )
-    quickCaptureText = ""
-    activeCaptureDate = nil
+.onChange(of: isQuickCaptureFocused) { _, focused in
+    if !focused {
+        DispatchQueue.main.async {
+            guard !skipNextDismiss else { ... }
+            withAnimation { activeCaptureDate = nil; quickCaptureText = "" }
+        }
+    }
 }
 ```
 
-### The bug
+**After**: On defocus, commits text (if non-empty), clears text, **row stays**.
 
-When the user taps the chevron, two things happen in a single SwiftUI transaction:
+```swift
+.onChange(of: isQuickCaptureFocused) { _, focused in
+    if !focused {
+        DispatchQueue.main.async {
+            guard !skipNextDismiss else {
+                skipNextDismiss = false
+                return
+            }
+            let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                viewModel?.commitQuickCapture(text: text, captureDate: activeCaptureDate)
+            }
+            quickCaptureText = ""
+        }
+    }
+}
+```
 
-1. The button action fires `openQuickCaptureEditor()` which sets `newReminderConfig` (triggers sheet) AND `activeCaptureDate = nil` (removes the TextField from hierarchy) in the same state update
-2. The List's `.simultaneousGesture(TapGesture)` fires `isQuickCaptureFocused = false`
+The row stays alive because `activeCaptureDate` / `isQuickCapturing` is never set to false on defocus. The only ways to dismiss the row are swipe-to-cancel or tab switch.
 
-The `activeCaptureDate = nil` removes the quickCaptureRow, which removes the TextField, which triggers keyboard dismissal. UIKit begins the keyboard dismissal animation. When SwiftUI then tries to present the sheet (from `newReminderConfig`), **UIKit silently drops the presentation** because it is in the middle of a transition (the keyboard dismissal animation).
+Note: `TimelineView` passes `captureDate:` while `DetailView` passes `listID:` — the pattern is the same, just with different ViewModel signatures.
 
-`commitQuickCapture()` works because it sets `skipNextDismiss = true` and re-focuses the field (`isQuickCaptureFocused = true`), keeping the keyboard up. `openQuickCaptureEditor()` does neither.
+#### 4. `commitQuickCapture()` (Enter key) — unchanged
 
-### Fix
+The Enter-key path stays as-is:
 
-Decouple the sheet presentation from the view hierarchy change by scheduling it on the next runloop tick, after the keyboard dismissal animation has begun:
+```swift
+private func commitQuickCapture() {
+    let text = ...
+    guard !text.isEmpty else { return }
+    skipNextDismiss = true
+    viewModel?.commitQuickCapture(...)
+    quickCaptureText = ""
+    isQuickCaptureFocused = true  // re-focus for chaining
+}
+```
 
-1. Set `skipNextDismiss = true` — prevents the `onChange(of: isQuickCaptureFocused)` async block from running (it would redundantly clear already-cleared values)
-2. Clear `quickCaptureText` and `activeCaptureDate` synchronously — removes the quickCaptureRow
-3. Set `newReminderConfig` in a `Task { @MainActor in }` block — delays sheet presentation until the next runloop tick, after UIKit has started processing the keyboard dismissal
+Enter commits, keeps the row alive, and re-focuses for rapid chaining.
+
+#### 5. `onChange(of: tasks)` — unchanged
+
+The handler stays in place. With the row staying alive (never dismissed on defocus), there's no competing-transition race. The @Query update fires naturally and the ViewModel re-syncs without visual glitch.
+
+## Flow Summary
+
+```
+FAB tap       → Row appears, keyboard focused
+Type          → User types
+Enter         → commit + re-focus (chaining) ✓
+Tap outside   → commit (if text) + keyboard hides, row stays ✓
+Tap back      → keyboard returns, text preserved ✓
+Swipe cancel  → dismiss row, no commit ✓
+```
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Chevron tap opens the editor sheet reliably, even when the keyboard is visible
-- Keep the existing UX: sheet pre-fills the title and date from context
+- Quick capture behaves like Todoist — persistent inline field, commits on defocus, stays visible
+- Remove the broken, unreachable chevron control
+- No change to Enter-key chaining behavior
 
 **Non-Goals:**
-- No changes to `commitQuickCapture`, chevron visual appearance, hit target, or gesture handling
-- No changes to swipe actions, list gestures, or keyboard behavior
+- No ViewModel changes
 - No spec-level behavior changes
+- No model or data flow changes
 
 ## Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Sheet scheduling | `Task { @MainActor in }` (next runloop tick) | Avoids UIKit transition conflict. `DispatchQueue.main.async` would also work but `Task` is the Swift-idiomatic async dispatch. |
-| `skipNextDismiss` | Set to `true` | Prevents the `onChange` handler from adding redundant `withAnimation` blocks that might interfere with view updates. |
+| Defocus behavior | Commit + keep row alive | Todoist pattern. Row staying alive prevents hide-and-reshow glitch (no competing transitions). |
+| Enter behavior | Keep unchanged | Rapid chaining is valuable for power users. |
+| Chevron | Remove entirely | Dead control in commit-on-defocus model. |
+| Row dismissal | Swipe-to-cancel only | Consistent swipe gesture, explicit user intent. |
 
-## Risks / Trade-offs
+## Risks
 
-- **[None] Timing reliability**: `Task { @MainActor in }` runs on the very next main actor tick — milliseconds after the synchronous code. The keyboard animation starts synchronously when `resignFirstResponder` is called, so by the time the `Task` runs, the keyboard dismissal is already queued and no longer blocks new presentations.
-- **[None] User-perceived delay**: The delay is ~1 frame (16ms at 60fps). Imperceptible.
+- **[Low] Accidental commits**: Tapping outside with text creates a task with no confirmation. This matches Todoist and Apple Reminders behavior. Users can edit or delete the created task.
+- **[Low] Racy tap-on-task**: If the user taps a task row while the quick capture is focused, `isQuickCaptureFocused` fires first (via `.simultaneousGesture`), committing the quick capture, then the task row's `onTap` fires to open the editor. This is the same order as the current code with `skipNextDismiss` and is fine — the task is committed before the navigation.
+- **[Low] Row lingers after commit**: After committing, the row stays with an empty text field. This is by design — users can tap back to add another task, or swipe-to-cancel to dismiss.

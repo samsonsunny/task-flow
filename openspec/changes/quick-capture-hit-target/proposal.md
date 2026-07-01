@@ -1,23 +1,32 @@
 ## Why
 
-Tapping the chevron button on the quick capture row (which should open the full ReminderEditorView sheet) dismisses the keyboard instead. The editor never appears. This makes the "open full editor" action from quick capture completely broken, forcing users to retype their task if they need notes, list assignment, or subtasks.
+The quick capture chevron button doesn't open the editor sheet — tapping it just dismisses the keyboard and the row disappears. The root cause is that the chevron exists at all: with commit-on-defocus behavior (Apple Reminders model), the chevron is unreachable because tapping outside the field commits the task first.
+
+Rather than fighting UIKit's presentation mechanics with hacks, the fix is to align with the standard pattern:
+
+1. **Remove the chevron** — it's a dead control in commit-on-defocus model
+2. **Switch to commit-on-defocus** — tapping outside the quick capture field commits the task (if text exists), matching Apple Reminders behavior
 
 ## What Changes
 
-- Fix `openQuickCaptureEditor()` in `TimelineView.swift` and `DetailView.swift` to properly present the editor sheet
-- No behavioral changes — the sheet still opens with the same pre-filled context (title, date)
-- No hit-target or visual changes to the chevron button itself
+- Remove the chevron button (`chevron.right.circle`) from both `TimelineView.swift` and `DetailView.swift`
+- Remove the `openQuickCaptureEditor()` method from both files
+- Change the `onChange(of: isQuickCaptureFocused)` handler to commit the task on defocus (instead of just clearing)
+- `commitQuickCapture()` (Enter key) stays unchanged — it re-focuses for rapid chaining
 
-## Capabilities
+## Behavioral Matrix
 
-### New Capabilities
-*(none)*
-
-### Modified Capabilities
-*(none — no spec-level behavior changes)*
+| Trigger | Current | New |
+|---------|---------|-----|
+| Tap FAB | Row appears, keyboard auto-focuses | Same |
+| Type text | Text entered | Same |
+| Press Enter | Task committed, row stays, re-focused | Same |
+| Tap outside | Row + text discarded (BAD) | Task committed (if text), row dismissed |
+| Chevron tap | Sheet broken (keyboard dismissal race) | Removed — no longer exists |
+| Swipe cancel | Row + text dismissed | Same |
 
 ## Impact
 
-- `TaskFlow/Features/Tasks/Timeline/TimelineView.swift`: ~2 lines changed in `openQuickCaptureEditor()`
-- `TaskFlow/Features/Lists/DetailView.swift`: same change in the structurally identical `openQuickCaptureEditor()`
-- No model, ViewModel, data flow, or view hierarchy changes
+- `TaskFlow/Features/Tasks/Timeline/TimelineView.swift`
+- `TaskFlow/Features/Lists/DetailView.swift`
+- No model, ViewModel, data flow, or spec changes
