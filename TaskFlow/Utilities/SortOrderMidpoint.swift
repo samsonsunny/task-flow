@@ -11,6 +11,8 @@ private func charFrom(_ value: Int) -> Character {
 }
 
 func midpoint(between lower: String?, and upper: String?) -> String? {
+    if lower == nil && upper == "" { return nil }
+
     let lowChars = Array(lower ?? "")
     let upChars = upper.map(Array.init)
     var result = ""

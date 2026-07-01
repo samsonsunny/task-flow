@@ -134,7 +134,7 @@ final class ListsTabViewModel {
         var mutableLists = source
         let sortedFrom = fromOffsets.sorted()
 
-        let moved = sortedFrom.reversed().map { mutableLists.remove(at: $0) }
+        let moved = sortedFrom.reversed().map { mutableLists.remove(at: $0) }.reversed()
         let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
         let insertAt = min(adjustedTo, mutableLists.count)
 

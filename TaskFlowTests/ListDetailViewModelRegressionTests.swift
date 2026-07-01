@@ -1,18 +1,18 @@
-import XCTest
+import Testing
 import SwiftData
 @testable import TaskFlow
 
 @MainActor
-final class ListDetailViewModelRegressionTests: XCTestCase {
-    private var container: ModelContainer!
-    private var context: ModelContext!
+struct ListDetailViewModelRegressionTests {
+    var container: ModelContainer
+    var context: ModelContext
 
-    override func setUp() {
+    init() {
         container = TaskPreviewData.container()
         context = container.mainContext
     }
 
-    func testFlatNodesMatchBeforeAndAfterRefactor() {
+    @Test func flatNodesMatchBeforeAndAfterRefactor() {
         let list = ReminderList(name: "Test")
         context.insert(list)
 
@@ -42,19 +42,19 @@ final class ListDetailViewModelRegressionTests: XCTestCase {
         let allTasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
         vm.update(tasks: allTasks, lists: [], allTasks: allTasks)
 
-        XCTAssertEqual(vm.flatNodes.count, 4)
-        XCTAssertEqual(vm.flatNodes[0].task.safeTitle, "Root")
-        XCTAssertEqual(vm.flatNodes[0].depth, 0)
-        XCTAssertEqual(vm.flatNodes[0].subtaskCount, 2)
-        XCTAssertEqual(vm.flatNodes[1].task.safeTitle, "Child 1")
-        XCTAssertEqual(vm.flatNodes[1].depth, 1)
-        XCTAssertEqual(vm.flatNodes[2].task.safeTitle, "Grandchild")
-        XCTAssertEqual(vm.flatNodes[2].depth, 2)
-        XCTAssertEqual(vm.flatNodes[3].task.safeTitle, "Child 2")
-        XCTAssertEqual(vm.flatNodes[3].depth, 1)
+        #expect(vm.flatNodes.count == 4)
+        #expect(vm.flatNodes[0].task.safeTitle == "Root")
+        #expect(vm.flatNodes[0].depth == 0)
+        #expect(vm.flatNodes[0].subtaskCount == 2)
+        #expect(vm.flatNodes[1].task.safeTitle == "Child 1")
+        #expect(vm.flatNodes[1].depth == 1)
+        #expect(vm.flatNodes[2].task.safeTitle == "Grandchild")
+        #expect(vm.flatNodes[2].depth == 2)
+        #expect(vm.flatNodes[3].task.safeTitle == "Child 2")
+        #expect(vm.flatNodes[3].depth == 1)
     }
 
-    func testCollapseInListDetailStillWorks() {
+    @Test func collapseInListDetailStillWorks() {
         let list = ReminderList(name: "Test")
         context.insert(list)
 
@@ -73,12 +73,12 @@ final class ListDetailViewModelRegressionTests: XCTestCase {
         let allTasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
         vm.update(tasks: allTasks, lists: [], allTasks: allTasks)
 
-        XCTAssertEqual(vm.flatNodes.count, 2)
+        #expect(vm.flatNodes.count == 2)
 
         vm.toggleCollapse(root)
-        XCTAssertEqual(vm.flatNodes.count, 1)
+        #expect(vm.flatNodes.count == 1)
 
         vm.toggleCollapse(root)
-        XCTAssertEqual(vm.flatNodes.count, 2)
+        #expect(vm.flatNodes.count == 2)
     }
 }

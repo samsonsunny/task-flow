@@ -1,15 +1,16 @@
-import XCTest
+import Testing
+import Foundation
 import SwiftData
 @testable import TaskFlow
 
 @MainActor
-final class ReminderSegmentViewModelTests: XCTestCase {
-    private var container: ModelContainer!
-    private var context: ModelContext!
-    private var now: Date!
-    private var calendar: Calendar!
+struct ReminderSegmentViewModelTests {
+    let container: ModelContainer
+    let context: ModelContext
+    let now: Date
+    let calendar: Calendar
 
-    override func setUp() {
+    init() {
         container = TaskPreviewData.container()
         context = container.mainContext
         var cal = Calendar(identifier: .gregorian)
@@ -37,115 +38,115 @@ final class ReminderSegmentViewModelTests: XCTestCase {
 
     // MARK: - Rule 1: Parent-driven display
 
-    func testParentDueToday_ChildDueToday_BothInline() {
+    @Test func parentDueToday_ChildDueToday_BothInline() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        XCTAssertEqual(vm.flatNodes.count, 2)
-        XCTAssertEqual(vm.flatNodes[0].task.safeTitle, "Parent")
-        XCTAssertEqual(vm.flatNodes[0].depth, 0)
-        XCTAssertEqual(vm.flatNodes[1].task.safeTitle, "Child")
-        XCTAssertEqual(vm.flatNodes[1].depth, 1)
+        #expect(vm.flatNodes.count == 2)
+        #expect(vm.flatNodes[0].task.safeTitle == "Parent")
+        #expect(vm.flatNodes[0].depth == 0)
+        #expect(vm.flatNodes[1].task.safeTitle == "Child")
+        #expect(vm.flatNodes[1].depth == 1)
     }
 
-    func testParentDueToday_ChildDueTomorrow_BothInlineInToday() {
+    @Test func parentDueToday_ChildDueTomorrow_BothInlineInToday() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: tomorrow, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
-        XCTAssertEqual(todayVM.flatNodes.count, 2)
-        XCTAssertEqual(todayVM.flatNodes[1].task.safeTitle, "Child")
-        XCTAssertEqual(todayVM.flatNodes[1].depth, 1)
+        #expect(todayVM.flatNodes.count == 2)
+        #expect(todayVM.flatNodes[1].task.safeTitle == "Child")
+        #expect(todayVM.flatNodes[1].depth == 1)
     }
 
-    func testParentDueToday_ChildNoDate_ChildVisibleInToday() {
+    @Test func parentDueToday_ChildNoDate_ChildVisibleInToday() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: nil, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        XCTAssertEqual(vm.flatNodes.count, 2)
-        XCTAssertEqual(vm.flatNodes[1].task.safeTitle, "Child")
+        #expect(vm.flatNodes.count == 2)
+        #expect(vm.flatNodes[1].task.safeTitle == "Child")
     }
 
     // MARK: - Rule 2: Orphan subtasks
 
-    func testChildDueToday_ParentNoDate_OrphanStandalone() {
+    @Test func childDueToday_ParentNoDate_OrphanStandalone() {
         let child = makeTask(title: "Child", date: now)
 
         let vm = makeVM(segment: .today)
-        XCTAssertEqual(vm.flatNodes.count, 1)
-        XCTAssertEqual(vm.flatNodes[0].task.safeTitle, "Child")
-        XCTAssertEqual(vm.flatNodes[0].depth, 0)
+        #expect(vm.flatNodes.count == 1)
+        #expect(vm.flatNodes[0].task.safeTitle == "Child")
+        #expect(vm.flatNodes[0].depth == 0)
     }
 
-    func testChildDueToday_ParentDueTomorrow_OrphanInToday_InlineInTomorrow() {
+    @Test func childDueToday_ParentDueTomorrow_OrphanInToday_InlineInTomorrow() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: tomorrow)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
-        XCTAssertEqual(todayVM.flatNodes.count, 1)
-        XCTAssertEqual(todayVM.flatNodes[0].task.safeTitle, "Child")
-        XCTAssertEqual(todayVM.flatNodes[0].depth, 0)
+        #expect(todayVM.flatNodes.count == 1)
+        #expect(todayVM.flatNodes[0].task.safeTitle == "Child")
+        #expect(todayVM.flatNodes[0].depth == 0)
 
         let tomorrowVM = makeVM(segment: .tomorrow)
-        XCTAssertEqual(tomorrowVM.flatNodes.count, 2)
-        XCTAssertEqual(tomorrowVM.flatNodes[0].task.safeTitle, "Parent")
-        XCTAssertEqual(tomorrowVM.flatNodes[1].task.safeTitle, "Child")
+        #expect(tomorrowVM.flatNodes.count == 2)
+        #expect(tomorrowVM.flatNodes[0].task.safeTitle == "Parent")
+        #expect(tomorrowVM.flatNodes[1].task.safeTitle == "Child")
     }
 
     // MARK: - Dedup
 
-    func testDedup_ChildNotDuplicatedWhenUnderParent() {
+    @Test func dedup_ChildNotDuplicatedWhenUnderParent() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        XCTAssertEqual(vm.flatNodes.count, 2)
+        #expect(vm.flatNodes.count == 2)
     }
 
     // MARK: - Collapse / Expand
 
-    func testCollapseHidesChildren() {
+    @Test func collapseHidesChildren() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
         vm.toggleCollapse(parent)
-        XCTAssertEqual(vm.flatNodes.count, 1)
-        XCTAssertEqual(vm.flatNodes[0].task.safeTitle, "Parent")
+        #expect(vm.flatNodes.count == 1)
+        #expect(vm.flatNodes[0].task.safeTitle == "Parent")
     }
 
-    func testExpandShowsChildren() {
+    @Test func expandShowsChildren() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
         vm.toggleCollapse(parent)
-        XCTAssertEqual(vm.flatNodes.count, 1)
+        #expect(vm.flatNodes.count == 1)
         vm.toggleCollapse(parent)
-        XCTAssertEqual(vm.flatNodes.count, 2)
+        #expect(vm.flatNodes.count == 2)
     }
 
-    func testCollapseStateIsPerViewModelInstance() {
+    @Test func collapseStateIsPerViewModelInstance() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
         todayVM.toggleCollapse(parent)
-        XCTAssertEqual(todayVM.flatNodes.count, 1)
+        #expect(todayVM.flatNodes.count == 1)
 
         let todayVM2 = makeVM(segment: .today)
-        XCTAssertEqual(todayVM2.flatNodes.count, 2)
+        #expect(todayVM2.flatNodes.count == 2)
     }
 }
