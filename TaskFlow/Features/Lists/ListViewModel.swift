@@ -134,9 +134,8 @@ final class ListsTabViewModel {
         var mutableLists = source
         let sortedFrom = fromOffsets.sorted()
 
-        let moved = sortedFrom.reversed().map { mutableLists.remove(at: $0) }.reversed()
-        let adjustedTo = toOffset > sortedFrom.first! ? toOffset - moved.count : toOffset
-        let insertAt = min(adjustedTo, mutableLists.count)
+        let moved = Array(sortedFrom.reversed().map { mutableLists.remove(at: $0) }.reversed())
+        let insertAt = min(toOffset, mutableLists.count)
 
         mutableLists.insert(contentsOf: moved, at: insertAt)
 
@@ -144,7 +143,9 @@ final class ListsTabViewModel {
         for i in insertAt..<(insertAt + moved.count) {
             let upper = (i + 1) < mutableLists.count ? mutableLists[i + 1].sortOrder : nil
 
-            if let newOrder = midpoint(between: lower, and: upper) {
+            if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
+                mutableLists[i].sortOrder = existing
+            } else if let newOrder = midpoint(between: lower, and: upper) {
                 mutableLists[i].sortOrder = newOrder
             } else {
                 if let upperStr = upper {

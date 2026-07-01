@@ -306,14 +306,3 @@ final class ListDetailViewModel {
         allLists.filter { $0.persistentModelID != listID }
     }
 }
-
-private func isBetween(_ value: String, lower: String?, upper: String?) -> Bool {
-    if let lower, let upper {
-        return lower < value && value < upper
-    } else if let lower {
-        return lower < value
-    } else if let upper {
-        return value < upper
-    }
-    return true
-}

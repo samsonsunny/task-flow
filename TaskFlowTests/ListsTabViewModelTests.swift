@@ -17,6 +17,109 @@ struct ListsTabViewModelTests {
         return vm
     }
 
+    @Test func moveFirstListToLastPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 0), toOffset: 4, in: lists, group: group)
+
+        let sorted = sortedBySortOrder(lists)
+        #expect(sorted.map { $0.name } == ["List 1", "List 2", "List 3", "List 0"])
+        assertValidListSortOrders(lists)
+    }
+
+    @Test func moveLastListToFirstPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 3), toOffset: 0, in: lists, group: group)
+
+        let sorted = sortedBySortOrder(lists)
+        #expect(sorted.map { $0.name } == ["List 3", "List 0", "List 1", "List 2"])
+        assertValidListSortOrders(lists)
+    }
+
+    @Test func moveFirstListToSecondPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 0), toOffset: 1, in: lists, group: group)
+
+        let sorted = sortedBySortOrder(lists)
+        #expect(sorted.map { $0.name } == ["List 1", "List 0", "List 2", "List 3"])
+        assertValidListSortOrders(lists)
+    }
+
+    @Test func moveSecondListToThirdPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 1), toOffset: 2, in: lists, group: group)
+
+        let sorted = sortedBySortOrder(lists)
+        #expect(sorted.map { $0.name } == ["List 0", "List 2", "List 1", "List 3"])
+        assertValidListSortOrders(lists)
+    }
+
+    @Test func moveSecondListToFirstPosition() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 1), toOffset: 0, in: lists, group: group)
+
+        let sorted = sortedBySortOrder(lists)
+        #expect(sorted.map { $0.name } == ["List 1", "List 0", "List 2", "List 3"])
+        assertValidListSortOrders(lists)
+    }
+
+    @Test func moveListToSameIndexIsNoOp() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Group")
+        context.insert(group)
+        let lists = makeLists(sortOrders: ["a", "m", "t", "z"])
+        lists.forEach { $0.group = group; context.insert($0) }
+        try? context.save()
+
+        let beforeOrders = lists.map { $0.sortOrder }
+        let vm = createViewModel(lists: lists, groups: [group], allTasks: [], context: context)
+        vm.moveLists(fromOffsets: IndexSet(integer: 1), toOffset: 1, in: lists, group: group)
+
+        let afterOrders = lists.map { $0.sortOrder }
+        #expect(beforeOrders == afterOrders)
+        assertValidListSortOrders(lists)
+    }
+
     @Test func moveListWithinSameGroup() throws {
         let container = TaskPreviewData.container()
         let context = container.mainContext

@@ -48,3 +48,15 @@ func makeTasks(sortOrders: [String?]) -> [TaskItem] {
 func sortedBySortOrder(_ tasks: [TaskItem]) -> [TaskItem] {
     tasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
 }
+
+func makeLists(sortOrders: [String?]) -> [ReminderList] {
+    sortOrders.enumerated().map { (i, order) in
+        let list = ReminderList(name: "List \(i)")
+        list.sortOrder = order
+        return list
+    }
+}
+
+func sortedBySortOrder(_ lists: [ReminderList]) -> [ReminderList] {
+    lists.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+}
