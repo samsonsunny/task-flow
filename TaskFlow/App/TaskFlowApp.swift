@@ -40,6 +40,12 @@ struct TaskFlowApp: App {
             return container
         }
 
+        if arguments.contains("UITEST_FIXTURE_SUBTASKS_INLINE") {
+            let container = TaskPreviewData.container()
+            TaskPreviewData.seedSubtasksInlineFixture(into: container, now: Date())
+            return container
+        }
+
         do {
             return try ModelContainer(
                 for: Schema(versionedSchema: TaskFlowSchemaV8.self),

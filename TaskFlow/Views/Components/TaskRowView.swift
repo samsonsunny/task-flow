@@ -199,6 +199,7 @@ struct TaskRowView: View {
                 .frame(width: 20, height: 20)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("subtask-chevron")
     }
 
     private var completionButton: some View {

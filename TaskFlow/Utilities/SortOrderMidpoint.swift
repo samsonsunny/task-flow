@@ -11,6 +11,8 @@ private func charFrom(_ value: Int) -> Character {
 }
 
 func midpoint(between lower: String?, and upper: String?) -> String? {
+    if lower == nil && upper == "" { return nil }
+
     let lowChars = Array(lower ?? "")
     let upChars = upper.map(Array.init)
     var result = ""
@@ -45,4 +47,15 @@ func midpoint(between lower: String?, and upper: String?) -> String? {
 
 func widen(_ bound: String) -> String {
     bound + "z"
+}
+
+func isBetween(_ value: String, lower: String?, upper: String?) -> Bool {
+    if let lower, let upper {
+        return lower < value && value < upper
+    } else if let lower {
+        return lower < value
+    } else if let upper {
+        return value < upper
+    }
+    return true
 }

@@ -105,9 +105,33 @@ final class TaskFlowUITests: XCTestCase {
 
     @MainActor
     func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()
         }
+    }
+
+    @MainActor
+    func testQuickCaptureChevronOpensEditor() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        // Tap FAB to show quick capture row on Today tab
+        app.buttons["reminder-create-button"].tap()
+
+        // Wait for quick capture field to appear
+        let quickCaptureField = app.textFields["quick-capture-field"]
+        XCTAssertTrue(quickCaptureField.waitForExistence(timeout: 2))
+
+        // Type text to ensure keyboard is active
+        quickCaptureField.tap()
+        quickCaptureField.typeText("Test task")
+
+        // Tap the chevron button to open the full editor
+        app.buttons["quick-capture-detail"].tap()
+
+        // Verify the ReminderEditorView sheet appears by checking for the title field
+        let editorTitleField = app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch
+        XCTAssertTrue(editorTitleField.waitForExistence(timeout: 3))
     }
 }

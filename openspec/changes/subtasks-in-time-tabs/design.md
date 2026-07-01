@@ -1,78 +1,139 @@
 ## Context
 
-TaskFlow supports nested subtasks via `TaskItem.parentTask` (inverse of `subtasks`). Currently:
+TaskFlow's `TaskItem` model already supports parent-child subtask relationships via `parentTask` / `subtasks`. The `ListDetailViewModel` recursively flattens subtrees into `FlatTaskNode[]` with depth, subtask count, and collapse/expand. `TaskRowView` accepts `nestingDepth`, `subtaskCount`, `isCollapsed`, and `onToggleCollapse` parameters and renders hierarchy (indentation, chevron, metadata).
 
-- **List view** (`ListDetailView`): Uses `ListDetailViewModel.flattenTasks()` to recursively build `FlatTaskNode` array with `depth`/`subtaskCount`. Renders with indentation, collapse chevron, and inline children.
-- **Time tabs** (`ReminderSegmentDetailView`): Uses `ReminderSegmentViewModel` which filters tasks by `dueDate` via `ReminderSegmentLogic.filteredTasks()`. Subtasks pass the filter independently if they have their own due date, and render as flat rows with no nesting info passed to `TaskRowView`.
+**Current gap**: The time tabs pipeline (`ReminderSegmentViewModel` → `ReminderSegmentDetailView`) has no hierarchy awareness:
+- `ReminderSegmentViewModel` filters tasks by `dueDate` and sorts them flat — no flattening, no collapse state
+- `taskListRow()` in the view creates `TaskRowView` without any hierarchy parameters
+- Subtasks only appear if they independently match the time filter; undated subtasks are invisible
 
-## The Gap
+## Goals / Non-Goals
 
-`ReminderSegmentViewModel` has no hierarchy awareness. The `taskListRow()` function in `ReminderSegmentDetailView` creates `TaskRowView` without:
-- `nestingDepth`
-- `subtaskCount`
-- `isCollapsed`
-- `onToggleCollapse`
+**Goals:**
+- Time tabs (Today, Tomorrow, Upcoming) render subtasks inline under their parent with indentation, collapse/expand chevrons, and subtask counts
+- Two core rules:
+  1. When a parent passes a time filter → ALL descendants appear inline (expandable/collapsible), regardless of their own due dates
+  2. When a subtask independently passes a time filter but its parent does not → standalone at depth 0, no parent context pulled in
+- Deduplication within the same view: if a subtask was already included via inline nesting, skip its standalone occurrence
+- Shared `TaskTreeFlattener` utility extracted from `ListDetailViewModel` and used by both list and time tab VMs
+- Collapse/expand state is per-view (each time tab + list detail maintain independent collapse sets)
 
-A subtask without its own `dueDate` never appears in time tabs at all (the filter excludes it).
+**Non-Goals:**
+- No changes to the data model (parentTask/subtasks already exists)
+- No changes to drag-drop reparenting (already in list detail only)
+- No changes to the editor view's subtask section
+- No "parent surfaces based on child's date" behavior
+- No auto-expand/collapse synchronization between views
 
-## Explored Approaches
+## Decisions
 
-### Option A: Apple's Model (as documented)
-Parent in smart lists shows a blue "2 subtasks" link. Subtasks with their own due date appear as flat standalone rows. Subtasks without due dates are invisible (drill into parent to see them). **No inline nesting.**
+### D1: Shared TaskTreeFlattener utility
 
-This is what the original design implemented (minus the blue link). Users find this frustrating — per Apple Community threads and blog posts.
-
-### Option B: Todoist-style inline nesting
-Parent tasks in Today/Upcoming are expandable with children nested beneath them. Children with their own due dates appear inline under parent (deduplicated — not also standalone). Children without due dates appear inline under parent.
-
-This is more ambitious than Apple and matches the existing `ListDetailView` UX.
-
-### Option C: Mixed
-Subtasks without their own due date → nest under parent (inheriting parent's date context). Subtasks with their own due date → appear in their own time-slot section, but with indentation and hierarchy context preserved.
-
-## Open Questions (Deferred)
-
-1. **Upcoming deduplication**: When a subtask's due date differs from its parent, which date section does it render in? The parent's (destroying the subtask's independent date) or its own (breaking hierarchy continuity)?
-
-2. **Collapse state scope**: Should collapse state be shared between list view and time tabs? Likely no — different contexts.
-
-3. **Subtask count accuracy**: If a parent appears in Today with 3 subtasks but only 1 is visible (the other 2 have different dates), should the count show 3 (data model) or 1 (visible)?
-
-4. **Apple vs Todoist deeper research**: Exact behavior of both apps in edge cases — subtask with date T+1 under parent due today, shown in Tomorrow tab? Shown in both?
-
-5. **Animations**: Collapse/expand transitions in `List` context (can be janky if not done carefully).
-
-## Proposed Solution Sketch (Tentative)
+Extract the flatten/collapse logic into a shared utility so both `ListDetailViewModel` and `ReminderSegmentViewModel` use identical logic.
 
 ```
-Shared: TaskTreeFlattener
-├── struct TaskTreeNode { task, depth, subtaskCount }
-├── func flatten(roots, collapsed, shouldInclude: (TaskItem) -> Bool) -> [TaskTreeNode]
-└── handles deduplication: if a subtask was included via a parent, skip its standalone occurrence
+struct FlatTaskNode: Identifiable {
+    let id: PersistentIdentifier
+    let task: TaskItem
+    let depth: Int
+    let subtaskCount: Int
+}
 
-Used by:
-├── ListDetailViewModel (replace inline flattenTask/flattenNode)
-└── ReminderSegmentViewModel (new: build tree from filtered roots + include all children)
+struct TaskTreeFlattener {
+    static func flatten(
+        roots: [TaskItem],
+        collapsed: Set<PersistentIdentifier>,
+        includeCompleted: Bool = false
+    ) -> [FlatTaskNode]
+}
 ```
 
-For time tabs specifically:
-1. Run `ReminderSegmentLogic.filteredTasks()` to get root tasks that match
-2. For each matched root, recursively include ALL descendants (regardless of their own dates)
-3. Deduplicate: skip any subtask that was included via a parent from appearing standalone
-4. For subtasks that matched the filter but whose parent didn't: render standalone at depth 0
+The flattener recursively walks subtrees. At each node:
+1. Count non-completed direct subtasks (or all if `includeCompleted` is true)
+2. If the node is collapsed, emit just the node and stop recursion
+3. Otherwise emit the node, then recurse into children (sorted by `sortOrder`)
 
-## Files Affected
+**Rationale**: The list detail already has working flatten logic (lines 100-117 of `ListDetailViewModel.swift`). Extracting it avoids duplication and ensures consistent behavior.
 
-| File | Change |
-|---|---|
-| New: `TaskTreeFlattener.swift` (shared utility) | `TaskTreeNode` + `flatten()` |
-| `ListDetailViewModel.swift` | Replace inline `flattenTasks`/`flattenNode` with shared utility |
-| `ReminderSegmentViewModel.swift` | Add tree flattening, `flatNodes`, `collapsedTasks` |
-| `ReminderSegmentDetailView.swift` | Pass `nestingDepth`/`subtaskCount`/`onToggleCollapse` to `TaskRowView` |
-| `openspec/specs/app-mental-model/spec.md` | Update mental model — subtasks included under parent in time tabs |
+### D2: Time tab flattening pipeline
 
-## Risks
+```
+Current pipeline:
+  @Query → ReminderSegmentVM.update()
+    → filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment)
+    → sortedFlatTasks = sorted(filteredTasks)
+    → groupedSections / upcomingGroups (sectioned by date)
 
-- **Behavior mismatch with Apple**: If the goal is to match Apple, this over-delivers (more nesting than Apple provides). If the goal is better UX, this is fine — but the decision needs to be conscious.
-- **Upcoming section grouping complexity**: The current section/group code assumes flat tasks. Tree-flattening before sectioning adds complexity.
-- **Performance on large hierarchies**: Fine for typical use but needs consideration for 100+ item lists.
+New pipeline:
+  @Query → ReminderSegmentVM.update()
+    → matchedRoots = ReminderSegmentLogic.filteredTasks(tasks, for: segment)
+    → build dedup set: union of all descendants of matchedRoots
+    → standaloneTasks = tasks that match filter but are NOT descendants of any matchedRoot
+    → flatNodes = TaskTreeFlattener.flatten(roots: matchedRoots, collapsed: collapsedTasks)
+      + standaloneTasks as depth-0 nodes
+    → sortedFlatTasks = sorted(flatNodes by their earliest date context)
+    → upcomingGroups / groupedSections: build from flatNodes instead of raw tasks
+```
+
+**Rationale**: This cleanly separates the two rules. `matchedRoots` applies Rule 1 (include all descendants). `standaloneTasks` applies Rule 2 (orphan subtasks appear on their own). Dedup is handled by excluding any task already reachable from a root.
+
+### D3: Collapse state per-view
+
+Each `ReminderSegmentViewModel` instance (one per time tab) holds its own `collapsedTasks: Set<PersistentIdentifier>`. Separate from `ListDetailViewModel.collapsedTasks`.
+
+**Rationale**: A user might want subtasks expanded in Today but collapsed in Upcoming. Different contexts have different density needs. Shared state would leak intent across screens.
+
+### D4: Dedup via descendant check
+
+When a subtask passes the time filter AND its parent also passes (or a higher ancestor passes), the subtask appears inline under the parent. It is NOT shown as a standalone row.
+
+Implementation: After computing `matchedRoots` (roots that pass the filter), build a `Set<PersistentIdentifier>` of all reachable descendants. Any task that passes the filter but is NOT in that set becomes a standalone depth-0 node.
+
+```
+let rootIds = Set(matchedRoots.map(\.persistentModelID))
+var allInlineIds = Set<PersistentIdentifier>()
+for root in matchedRoots {
+    collectDescendantIds(root, into: &allInlineIds)
+}
+
+let standalone = filteredTasks.filter { !rootIds.contains($0.persistentModelID) && !allInlineIds.contains($0.persistentModelID) }
+```
+
+**Rationale**: A task that's already visible under its parent doesn't need a duplicate row. This matches Todoist's approach and keeps the list clean.
+
+### D5: Upcoming section grouping with tree-flattened data
+
+The upcoming tab sections tasks by day/month. With tree flattening, a parent tree might span multiple days:
+```
+Parent due: MON
+├── ChildA due: MON    → under parent in MON section ✓
+├── ChildB due: TUE    → under parent in MON section (inherits parent's date context)
+└── ChildC due: WED    → under parent in MON section
+```
+
+The entire flattened tree renders under the section that contains its root. Children are not independently sectioned.
+
+**Rationale**: A tree is a conceptual unit. Splitting it across sections would destroy the hierarchy visual. The parent's date determines which section the tree belongs to. Children with different dates remain visible via collapse/expand (user can collapse to reduce noise).
+
+### D6: Subtask count semantics
+
+The count shows **total direct subtasks** (data model), not visible-in-context count.
+
+**Rationale**: Consistent with list detail view. A user deciding whether to expand a parent needs to know how many children exist, not how many coincidentally share the same time slot.
+
+## Risks / Trade-offs
+
+- **Upcoming section complexity**: Current sectioning (`upcomingGroups`) assumes flat tasks. Tree-flattened input means entire subtrees live in one section even if children have different dates. The section rendering code must be adapted to handle `FlatTaskNode[]` instead of `TaskItem[]`.
+  - *Mitigation*: Adapt the section builder to work with flat nodes directly. The group structure (day/month sections) stays the same — just the content inside each section switches from `[TaskItem]` to `[FlatTaskNode]`.
+
+- **Performance with deep hierarchies**: Repeated `isDescendant` checks for dedup could be O(n²) on large flattened lists.
+  - *Mitigation*: Pre-build the descendant ID set once (O(n) total), then check membership in O(1). Typical hierarchies are shallow (<5 levels) so this is unlikely to be an issue.
+
+- **Collapse/expand animation in List**: SwiftUI `List` with row insertion/removal can be janky with `.animation()`.
+  - *Mitigation*: Use `.animation(.easeInOut(duration: 0.2))` scoped to the right value, matching the existing pattern in `todayLikeContent`. Test on device.
+
+- **Undated children newly visible**: Users who relied on subtasks being hidden in time tabs may be surprised when undated children appear.
+  - *Mitigation*: This is the intended UX improvement. The collapse default is expanded, so users can collapse parents they don't want to see expanded.
+
+- **Shared flattener changes existing behavior**: Extracting the flattener from `ListDetailViewModel` must not change its behavior.
+  - *Mitigation*: Extract without changing logic. Verify `flatNodes` output matches before/after for the same inputs.

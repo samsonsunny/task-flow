@@ -127,10 +127,11 @@ struct ListDetailView: View {
                         skipNextDismiss = false
                         return
                     }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isQuickCapturing = false
-                        quickCaptureText = ""
+                    let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !text.isEmpty {
+                        viewModel?.commitQuickCapture(text: text, in: listID)
                     }
+                    quickCaptureText = ""
                 }
             }
         }
@@ -252,14 +253,6 @@ struct ListDetailView: View {
                 .submitLabel(.done)
                 .accessibilityIdentifier("quick-capture-field")
 
-            Button {
-                openQuickCaptureEditor()
-            } label: {
-                Image(systemName: "chevron.right.circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-            }
-            .accessibilityIdentifier("quick-capture-detail")
         }
         .id("quick-capture")
         .padding(.vertical, 9)
@@ -289,10 +282,4 @@ struct ListDetailView: View {
         isQuickCaptureFocused = true
     }
 
-    private func openQuickCaptureEditor() {
-        let (title, targetListID) = viewModel?.openQuickCaptureEditor(text: quickCaptureText, listID: listID) ?? (quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines), listID)
-        newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: targetListID, initialTitle: title)
-        quickCaptureText = ""
-        isQuickCapturing = false
-    }
 }
