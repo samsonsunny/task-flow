@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Only run during the weekly release workflow on main
+if [ "$CI_BRANCH" != "main" ] || [ "$CI_WORKFLOW" != "Weekly Release" ]; then
+  exit 0
+fi
+
+git config user.name "TaskFlow CI"
+git config user.email "ci@taskflow.app"
+
+# Wednesday after release = dev version
+# Wednesday after release = dev version
+DEV=$(date -v +1d -v +Wed -v +7d '+%y.%-m.%-d')
+
+CURRENT=$(grep -m1 "MARKETING_VERSION" TaskFlow.xcodeproj/project.pbxproj | grep -oE '\d+\.\d+\.\d+')
+if [ "$CURRENT" != "$DEV" ]; then
+  sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = $DEV;/" \
+    TaskFlow.xcodeproj/project.pbxproj
+  git add TaskFlow.xcodeproj/project.pbxproj
+  git commit -m "Set dev version to $DEV"
+  git push origin main
+  echo "Set dev version to $DEV"
+fi
