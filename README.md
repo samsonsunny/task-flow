@@ -54,6 +54,39 @@ TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors
 
 If you want to add sync later, you can reintroduce CloudKit and entitlements.
 
+## Branching Strategy
+
+TaskFlow follows **trunk-based development** with a single long-lived branch:
+
+- **`main`** — only permanent branch. All development lands here directly.
+- **Tags** (`v26.7.8`) mark weekly releases. Tags are permanent records of shipped code.
+- **Branch protection** is enabled on `main`: force pushes and deletions are blocked.
+
+### Versioning
+
+Calendar-based `YY.M.W` format (e.g., `26.7.8` = 2026, July, week 8).
+
+### Making a Release
+
+```bash
+# Bump version in Xcode project
+# Commit changes on main
+git tag v26.7.8
+git push origin main --tags
+# CI/CD builds and ships from the tag
+```
+
+## Xcode Cloud Workflows
+
+Two workflows are configured in App Store Connect:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** | **Branch changes** on `main` | Builds and runs tests on every push. Fast feedback. |
+| **Weekly Release** | Schedule — Wednesday | Builds, tests, tags (`vYY.M.WW`), and distributes to App Store Connect. No manual build needed — just submit for review. |
+
+The `ci_scripts/ci_post_clone.sh` script auto-creates a git tag during the Weekly Release workflow.
+
 ## Notes
 
 This README is generated from the current codebase; if behavior changes, update the feature list to keep it accurate.
