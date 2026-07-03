@@ -25,25 +25,22 @@ while true; do
   WEEKS=$((WEEKS + 1))
 done
 
-# Check if already on this version
-CURRENT=$(grep -m1 "MARKETING_VERSION" TaskFlow.xcodeproj/project.pbxproj | grep -oE '\d+\.\d+\.\d+')
-if [ "$CURRENT" = "$VERSION" ]; then
-  echo "Already at $VERSION — nothing to bump"
-  exit 0
-fi
-
 # Set git config for Xcode Cloud environment
 git config user.name "TaskFlow CI"
 git config user.email "ci@taskflow.app"
 
-# Update MARKETING_VERSION in Xcode project
-sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = $VERSION;/" \
-  TaskFlow.xcodeproj/project.pbxproj
+# Check if project already has this version
+CURRENT=$(grep -m1 "MARKETING_VERSION" TaskFlow.xcodeproj/project.pbxproj | grep -oE '\d+\.\d+\.\d+')
+if [ "$CURRENT" != "$VERSION" ]; then
+  sed -i '' "s/MARKETING_VERSION = .*;/MARKETING_VERSION = $VERSION;/" \
+    TaskFlow.xcodeproj/project.pbxproj
+  git add TaskFlow.xcodeproj/project.pbxproj
+  git commit -m "Bump version to $VERSION"
+  git push origin main
+  echo "Bumped project to $VERSION"
+fi
 
-# Commit the bump, tag, and push
-git add TaskFlow.xcodeproj/project.pbxproj
-git commit -m "Bump version to $VERSION"
+# Create tag and push it
 git tag "$TAG"
-git push origin main --tags
-
-echo "Bumped to $VERSION, tagged $TAG"
+git push origin "$TAG"
+echo "Tagged $TAG"
