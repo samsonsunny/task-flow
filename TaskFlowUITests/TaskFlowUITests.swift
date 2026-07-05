@@ -59,7 +59,12 @@ final class TaskFlowUITests: XCTestCase {
 
         // All future tasks appear — D+2 → +∞ per mental model spec
         XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Quarterly planning"].waitForExistence(timeout: 2))
+        // Scroll down to reveal lazy-loaded List content outside visible area
+        for _ in 0..<5 {
+            if app.staticTexts["Quarterly planning"].exists { break }
+            app.collectionViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["Quarterly planning"].exists)
     }
 
     @MainActor

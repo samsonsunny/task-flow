@@ -21,6 +21,11 @@ struct TaskFlowApp: App {
 
     var sharedModelContainer: ModelContainer = {
         let arguments = ProcessInfo.processInfo.arguments
+
+        if arguments.contains(where: { $0.hasPrefix("UITEST_FIXED_NOW_") }) {
+            NSTimeZone.default = TimeZone(secondsFromGMT: 0)!
+        }
+
         let fixedNow: Date = {
             for arg in arguments {
                 let prefix = "UITEST_FIXED_NOW_"
@@ -28,6 +33,7 @@ struct TaskFlowApp: App {
                     let dateStr = String(arg.dropFirst(prefix.count))
                     let formatter = DateFormatter()
                     formatter.dateFormat = "yyyy_MM_dd"
+                    formatter.timeZone = TimeZone(secondsFromGMT: 0)
                     return formatter.date(from: dateStr) ?? Date()
                 }
             }
