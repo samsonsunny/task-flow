@@ -21,28 +21,40 @@ struct TaskFlowApp: App {
 
     var sharedModelContainer: ModelContainer = {
         let arguments = ProcessInfo.processInfo.arguments
+        let fixedNow: Date = {
+            for arg in arguments {
+                let prefix = "UITEST_FIXED_NOW_"
+                if arg.hasPrefix(prefix) {
+                    let dateStr = String(arg.dropFirst(prefix.count))
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy_MM_dd"
+                    return formatter.date(from: dateStr) ?? Date()
+                }
+            }
+            return Date()
+        }()
 
         if arguments.contains("UITEST_FIXTURE_UPCOMING_SECTIONS") {
             let container = TaskPreviewData.container()
-            TaskPreviewData.seedUpcomingSectionsFixture(into: container, now: Date())
+            TaskPreviewData.seedUpcomingSectionsFixture(into: container, now: fixedNow)
             return container
         }
 
         if arguments.contains("UITEST_FIXTURE_UPCOMING_EMPTY") {
             let container = TaskPreviewData.container()
-            TaskPreviewData.seedFarFutureUpcomingFixture(into: container, now: Date())
+            TaskPreviewData.seedFarFutureUpcomingFixture(into: container, now: fixedNow)
             return container
         }
 
         if arguments.contains("UITEST_FIXTURE_REMINDER_HOME") {
             let container = TaskPreviewData.container()
-            TaskPreviewData.seedReminderHomeFixture(into: container, now: Date())
+            TaskPreviewData.seedReminderHomeFixture(into: container, now: fixedNow)
             return container
         }
 
         if arguments.contains("UITEST_FIXTURE_SUBTASKS_INLINE") {
             let container = TaskPreviewData.container()
-            TaskPreviewData.seedSubtasksInlineFixture(into: container, now: Date())
+            TaskPreviewData.seedSubtasksInlineFixture(into: container, now: fixedNow)
             return container
         }
 

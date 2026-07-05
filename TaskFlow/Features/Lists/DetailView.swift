@@ -43,58 +43,53 @@ struct ListDetailView: View {
     @State private var editingTask: TaskItem?
     @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
-    @State private var skipNextDismiss = false
-    @FocusState private var isQuickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                if isQuickCapturing {
-                    quickCaptureRow
-                }
-
                 if let vm = viewModel {
-                if vm.flatNodes.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(vm.flatNodes) { node in
-                        taskListRow(node)
-                            .transition(.scale.combined(with: .opacity))
+                    if vm.flatNodes.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(vm.flatNodes) { node in
+                            taskListRow(node)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                        .onMove { fromOffsets, toOffset in
+                            let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+                            let taskToOffset = flatToTaskIndex(toOffset)
+                            vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+                        }
                     }
-                    .onMove { fromOffsets, toOffset in
-                        let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
-                        let taskToOffset = flatToTaskIndex(toOffset)
-                        vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
-                    }
-
-                    rootDropZone
                 }
-            }
+
+                if isQuickCapturing {
+                    QuickCaptureRow(
+                        text: $quickCaptureText,
+                        onSubmit: { viewModel?.commitQuickCapture(text: $0, in: listID) },
+                        onDismiss: { isQuickCapturing = false }
+                    )
+                }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
-        .scrollDismissesKeyboard(.interactively)
-        .simultaneousGesture(
-            TapGesture().onEnded { isQuickCaptureFocused = false }
-        )
-        .navigationTitle(viewModel?.list?.name ?? "")
+            .background(AppTheme.colors.appBackground)
+            .scrollDismissesKeyboard(.interactively)
+            .simultaneousGesture(
+                TapGesture().onEnded { isQuickCapturing = false }
+            )
+            .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
             .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
-            .onChange(of: isQuickCapturing) { _, newValue in
-                if newValue {
-                    withAnimation { proxy.scrollTo("quick-capture", anchor: .top) }
-                }
-            }
+            .quickCaptureScroll(isActive: isQuickCapturing, proxy: proxy)
         }
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isQuickCapturing = true
                 }
-                isQuickCaptureFocused = true
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
@@ -120,21 +115,6 @@ struct ListDetailView: View {
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
         }
-        .onChange(of: isQuickCaptureFocused) { _, focused in
-            if !focused {
-                DispatchQueue.main.async {
-                    guard !skipNextDismiss else {
-                        skipNextDismiss = false
-                        return
-                    }
-                    let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !text.isEmpty {
-                        viewModel?.commitQuickCapture(text: text, in: listID)
-                    }
-                    quickCaptureText = ""
-                }
-            }
-        }
         .onAppear {
             viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
             viewModel?.update(tasks: allTasks, lists: allLists, allTasks: allTasks, now: Date())
@@ -145,19 +125,6 @@ struct ListDetailView: View {
         .onChange(of: allLists) { _, newLists in
             viewModel?.update(tasks: allTasks, lists: newLists, allTasks: allTasks)
         }
-    }
-
-    private var rootDropZone: some View {
-        Color.clear
-            .frame(height: 1)
-            .contentShape(Rectangle())
-            .onDrop(of: [.text], isTargeted: nil) { _ in
-                viewModel?.moveTaskToRoot()
-                return true
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
     }
 
     private var emptyState: some View {
@@ -235,51 +202,6 @@ struct ListDetailView: View {
     }
 
     private func presentScheduleSheet(for task: TaskItem) {
-        viewModel?.presentScheduleSheet(for: task)
         scheduleConfig = ScheduleConfig(task: task)
     }
-
-    private var quickCaptureRow: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(AppTheme.colors.primaryAction)
-                .frame(width: 20, height: 20)
-
-            TextField("New Reminder", text: $quickCaptureText)
-                .font(.system(size: 17))
-                .foregroundStyle(AppTheme.colors.textPrimary)
-                .focused($isQuickCaptureFocused)
-                .onSubmit(commitQuickCapture)
-                .submitLabel(.done)
-                .accessibilityIdentifier("quick-capture-field")
-
-        }
-        .id("quick-capture")
-        .padding(.vertical, 9)
-        .padding(.horizontal, 16)
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isQuickCapturing = false
-                    quickCaptureText = ""
-                }
-            } label: {
-                Label("Cancel", systemImage: "xmark")
-            }
-        }
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-
-    private func commitQuickCapture() {
-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        skipNextDismiss = true
-        viewModel?.commitQuickCapture(text: text, in: listID)
-        quickCaptureText = ""
-        isQuickCaptureFocused = true
-    }
-
 }

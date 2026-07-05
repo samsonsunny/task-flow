@@ -94,9 +94,9 @@ final class TaskFlowSubtasksUITests: XCTestCase {
         app.launch()
 
         app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.staticTexts["Inbox"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["default-list-link"].waitForExistence(timeout: 2))
 
-        app.staticTexts["Inbox"].tap()
+        app.buttons["default-list-link"].tap()
         XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
 
         let chevrons = app.buttons.matching(identifier: "subtask-chevron")

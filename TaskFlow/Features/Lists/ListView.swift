@@ -31,7 +31,7 @@ struct ListsTabView: View {
                 Button {
                     onSettings()
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis")
                 }
             }
         }
@@ -172,6 +172,7 @@ struct ListsTabView: View {
                 } label: {
                     listRow(list: defaultList)
                 }
+                .accessibilityIdentifier("default-list-link")
                 .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)

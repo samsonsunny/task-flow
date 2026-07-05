@@ -67,6 +67,8 @@ final class TaskFlowUITests: XCTestCase {
         app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
         app.launch()
 
+        // Switch to Upcoming tab where FAB opens the full editor
+        app.tabBars.buttons["Upcoming"].tap()
         app.buttons["reminder-create-button"].tap()
 
         let saveButton = app.buttons["reminder-editor-save"]
@@ -85,7 +87,8 @@ final class TaskFlowUITests: XCTestCase {
 
         saveButton.tap()
 
-        // Verify it shows up in Today (the default tab)
+        // Verify it shows up in Today
+        app.tabBars.buttons["Today"].tap()
         XCTAssertTrue(app.staticTexts["Weekend plan"].waitForExistence(timeout: 2))
     }
 
@@ -111,7 +114,7 @@ final class TaskFlowUITests: XCTestCase {
     }
 
     @MainActor
-    func testQuickCaptureChevronOpensEditor() throws {
+    func testQuickCaptureCommitsOnEnter() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
         app.launch()
@@ -119,19 +122,20 @@ final class TaskFlowUITests: XCTestCase {
         // Tap FAB to show quick capture row on Today tab
         app.buttons["reminder-create-button"].tap()
 
-        // Wait for quick capture field to appear
+        // Wait for quick capture field to appear (already focused from FAB tap)
         let quickCaptureField = app.textFields["quick-capture-field"]
         XCTAssertTrue(quickCaptureField.waitForExistence(timeout: 2))
 
-        // Type text to ensure keyboard is active
-        quickCaptureField.tap()
-        quickCaptureField.typeText("Test task")
+        // Wait for keyboard to appear
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 3))
 
-        // Tap the chevron button to open the full editor
-        app.buttons["quick-capture-detail"].tap()
+        // Type text and press Enter to commit
+        quickCaptureField.typeText("Test task\n")
 
-        // Verify the ReminderEditorView sheet appears by checking for the title field
-        let editorTitleField = app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch
-        XCTAssertTrue(editorTitleField.waitForExistence(timeout: 3))
+        // Verify the task appears in the list
+        XCTAssertTrue(app.staticTexts["Test task"].waitForExistence(timeout: 2))
+
+        // Quick capture field stays visible for rapid chaining
+        XCTAssertTrue(quickCaptureField.exists)
     }
 }

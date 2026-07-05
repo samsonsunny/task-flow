@@ -180,7 +180,7 @@ enum ReminderSegmentLogic {
             let lhsCreatedAt = lhs.createdAt ?? .distantPast
             let rhsCreatedAt = rhs.createdAt ?? .distantPast
             if lhsCreatedAt != rhsCreatedAt {
-                return lhsCreatedAt > rhsCreatedAt
+                return lhsCreatedAt < rhsCreatedAt
             }
 
             return TaskUIModel.taskKey(for: lhs) < TaskUIModel.taskKey(for: rhs)
