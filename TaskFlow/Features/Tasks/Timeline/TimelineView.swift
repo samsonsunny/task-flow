@@ -92,7 +92,6 @@ struct ReminderSegmentDetailView: View {
         .simultaneousGesture(
             TapGesture().onEnded { /* tap dismiss handled by QuickCaptureRow internally */ }
         )
-        .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
         .quickCaptureScroll(isActive: activeCaptureDate != nil, proxy: proxy)
     }
         .overlay(alignment: .bottomTrailing) {
@@ -109,7 +108,7 @@ struct ReminderSegmentDetailView: View {
             .padding(.bottom, 24)
         }
         .onReceive(refreshTimer) { _ in
-            viewModel?.refreshNow()
+            viewModel?.refreshNow(now: appState.currentDate)
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
@@ -131,21 +130,21 @@ struct ReminderSegmentDetailView: View {
         }
         .onAppear {
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists)
+            viewModel?.update(tasks: newTasks, lists: reminderLists, now: appState.currentDate)
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists)
+            viewModel?.update(tasks: tasks, lists: newLists, now: appState.currentDate)
         }
         .onChange(of: editingTask) { _, task in
             if task == nil {
-                viewModel?.update(tasks: tasks, lists: reminderLists)
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
             }
         }
         .onChange(of: appState.mutationCount) { _, _ in
-            viewModel?.update(tasks: tasks, lists: reminderLists)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
         }
     }
 

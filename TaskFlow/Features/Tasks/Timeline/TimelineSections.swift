@@ -230,6 +230,7 @@ struct TaskUIModel {
     static let compactDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
+        formatter.locale = Locale(identifier: "en_US")
         return formatter
     }()
 

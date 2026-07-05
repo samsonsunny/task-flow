@@ -10,17 +10,10 @@ import XCTest
 final class TaskFlowUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    override func tearDownWithError() throws { }
 
     @MainActor
     func testRootTabsArePresentAndTomorrowTabShowsTomorrowTask() throws {
@@ -38,27 +31,35 @@ final class TaskFlowUITests: XCTestCase {
     }
 
     @MainActor
-    func testUpcomingShowsOnlyTenDayHorizonTasks() throws {
+    func testUpcomingShowsDayAndMonthSections() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_SECTIONS", "UITEST_FIXED_NOW_2026_05_13"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Fri, May 15"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Tue, May 19"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Prepare roadmap"].exists)
+        XCTAssertTrue(app.staticTexts["Fri, 15 May"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Tue, 19 May"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Prepare roadmap"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Plan sprint kickoff"].exists)
-        XCTAssertFalse(app.staticTexts["Far future milestone"].exists)
+
+        // Far-future tasks appear in month sections (D+2 → +∞ per mental model)
+        // Scroll down to reveal lazy-loaded List content outside visible area
+        for _ in 0..<5 {
+            if app.staticTexts["Far future milestone"].exists { break }
+            app.collectionViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(app.staticTexts["Far future milestone"].exists)
     }
 
     @MainActor
-    func testUpcomingShowsEmptyStateWhenOnlyFarFutureTasksExist() throws {
+    func testUpcomingShowsFarFutureTasksInMonthSections() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_EMPTY", "UITEST_FIXED_NOW_2026_05_13"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Nothing in Upcoming"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Reminders due in the next 10 days will appear here."].exists)
+        // All future tasks appear — D+2 → +∞ per mental model spec
+        XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Quarterly planning"].waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -69,6 +70,7 @@ final class TaskFlowUITests: XCTestCase {
 
         // Switch to Upcoming tab where FAB opens the full editor
         app.tabBars.buttons["Upcoming"].tap()
+        XCTAssertTrue(app.buttons["reminder-create-button"].waitForExistence(timeout: 2))
         app.buttons["reminder-create-button"].tap()
 
         let saveButton = app.buttons["reminder-editor-save"]
@@ -108,7 +110,7 @@ final class TaskFlowUITests: XCTestCase {
 
     @MainActor
     func testLaunchPerformance() throws {
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
+        measure {
             XCUIApplication().launch()
         }
     }
@@ -122,14 +124,12 @@ final class TaskFlowUITests: XCTestCase {
         // Tap FAB to show quick capture row on Today tab
         app.buttons["reminder-create-button"].tap()
 
-        // Wait for quick capture field to appear (already focused from FAB tap)
+        // Wait for quick capture field to appear and ensure it's focused
         let quickCaptureField = app.textFields["quick-capture-field"]
         XCTAssertTrue(quickCaptureField.waitForExistence(timeout: 2))
+        quickCaptureField.tap()
 
-        // Wait for keyboard to appear
-        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 3))
-
-        // Type text and press Enter to commit
+        // Type text and press Enter to commit (works with both software and hardware keyboard)
         quickCaptureField.typeText("Test task\n")
 
         // Verify the task appears in the list

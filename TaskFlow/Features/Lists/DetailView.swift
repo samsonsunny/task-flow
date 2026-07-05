@@ -82,7 +82,6 @@ struct ListDetailView: View {
             )
             .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
-            .animation(.easeInOut, value: viewModel?.flatNodes.count ?? 0)
             .quickCaptureScroll(isActive: isQuickCapturing, proxy: proxy)
         }
         .overlay(alignment: .bottomTrailing) {

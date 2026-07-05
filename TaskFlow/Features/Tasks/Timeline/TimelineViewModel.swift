@@ -27,8 +27,8 @@ final class ReminderSegmentViewModel {
         self.segment = segment
     }
 
-    func refreshNow() {
-        update(tasks: allTasks, lists: lists, now: Date())
+    func refreshNow(now: Date = Date()) {
+        update(tasks: allTasks, lists: lists, now: now)
     }
 
     func toggleShowOverdue() {
@@ -142,7 +142,7 @@ final class ReminderSegmentViewModel {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak task] in
                     guard let self, let task, task.isCompleted == true else { return }
                     self.justCompleted.remove(id)
-                    self.update(tasks: self.allTasks, lists: self.lists)
+                    self.update(tasks: self.allTasks, lists: self.lists, now: self.now)
                 }
             }
         } else if let id = task.taskId {
@@ -156,7 +156,7 @@ final class ReminderSegmentViewModel {
             }
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -181,7 +181,7 @@ final class ReminderSegmentViewModel {
         modelContext.insert(task)
         try? modelContext.save()
         allTasks.append(task)
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -203,7 +203,7 @@ final class ReminderSegmentViewModel {
         modelContext.delete(task)
         try? modelContext.save()
         allTasks.removeAll { $0.persistentModelID == task.persistentModelID }
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -211,7 +211,7 @@ final class ReminderSegmentViewModel {
         task.reminderList = list
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
     }
 
     private func assignSortOrder(for task: TaskItem, in list: ReminderList) {
@@ -242,7 +242,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = nil
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -252,7 +252,7 @@ final class ReminderSegmentViewModel {
         }
         task.dueDate = Calendar.current.startOfDay(for: now)
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -264,7 +264,7 @@ final class ReminderSegmentViewModel {
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -274,7 +274,7 @@ final class ReminderSegmentViewModel {
         }
         task.dueDate = nil
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 

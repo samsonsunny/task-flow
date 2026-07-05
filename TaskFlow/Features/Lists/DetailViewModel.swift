@@ -44,7 +44,7 @@ final class ListDetailViewModel {
         } else {
             collapsedTasks.insert(task.persistentModelID)
         }
-        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
+        recompute()
     }
 
     func toggleCompletion(for task: TaskItem) {

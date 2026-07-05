@@ -4,6 +4,7 @@ import SwiftData
 struct ReminderEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
     @Query(sort: \ReminderTag.label) private var reminderTags: [ReminderTag]
 
@@ -171,14 +172,14 @@ struct ReminderEditorView: View {
 
     private var dateBinding: Binding<Date> {
         .init(
-            get: { viewModel?.draft.dueDate ?? initialDate ?? Date() },
+            get: { viewModel?.draft.dueDate ?? initialDate ?? appState.currentDate },
             set: { viewModel?.draft.dueDate = $0 }
         )
     }
 
     private var timeBinding: Binding<Date> {
         .init(
-            get: { viewModel?.draft.dueDate ?? initialDate ?? Date() },
+            get: { viewModel?.draft.dueDate ?? initialDate ?? appState.currentDate },
             set: { viewModel?.draft.dueDate = $0 }
         )
     }
@@ -200,7 +201,7 @@ struct ReminderEditorView: View {
                 get: { viewModel?.draft.dueDate != nil },
                 set: { isEnabled in
                     if isEnabled {
-                        viewModel?.draft.dueDate = viewModel?.draft.dueDate ?? initialDate ?? Date()
+                        viewModel?.draft.dueDate = viewModel?.draft.dueDate ?? initialDate ?? appState.currentDate
                         expandedPicker = .date
                     } else {
                         viewModel?.draft.dueDate = nil
@@ -255,7 +256,7 @@ struct ReminderEditorView: View {
                         if let date = viewModel?.draft.dueDate {
                             baseDate = date
                         } else {
-                            baseDate = initialDate ?? Date()
+                            baseDate = initialDate ?? appState.currentDate
                         }
                         var dayComponents = calendar.dateComponents([.year, .month, .day], from: baseDate)
                         let rounded = nearestRoundedHour()
