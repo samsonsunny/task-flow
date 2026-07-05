@@ -28,6 +28,7 @@ The system SHALL allow the user to create a task inline within any day section o
 - **THEN** a new task is created with that text
 - **AND** the task's `dueDate` is set to that day's date
 - **AND** the inline field clears and remains focused for rapid entry
+- **AND** the keyboard stays visible for continued input
 
 #### Scenario: Chevron opens full editor with date pre-filled
 - **WHEN** the user taps the chevron button on the inline field

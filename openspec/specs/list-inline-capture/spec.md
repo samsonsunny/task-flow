@@ -19,6 +19,7 @@ The system SHALL provide inline quick capture in ListDetailView when the user ta
 - **AND** the task has no `dueDate`
 - **AND** the new task appears directly above the inline field
 - **AND** the inline field clears and remains focused for rapid entry
+- **AND** the keyboard stays visible for continued input
 
 #### Scenario: Tapping away dismisses inline field
 - **WHEN** the user taps outside the quick capture field after entering text
@@ -28,7 +29,7 @@ The system SHALL provide inline quick capture in ListDetailView when the user ta
 #### Scenario: Empty commit is ignored
 - **WHEN** the user presses return on an empty inline field
 - **THEN** no task is created
-- **AND** the field remains visible
+- **AND** the inline field is dismissed
 
 #### Scenario: Tapping + while field is active refocuses it
 - **WHEN** the user taps the floating `+` button while the quick capture field is already active
@@ -55,6 +56,7 @@ Tasks within Today/Tomorrow SHALL be sorted by `createdAt` ascending (oldest fir
 - **AND** the task's `dueDate` is set to the segment's date
 - **AND** the new task appears above the inline field (adjacent to it at the bottom of the list)
 - **AND** the field clears and remains focused
+- **AND** the keyboard stays visible for continued input
 
 #### Scenario: Tap-away dismisses field
 - **WHEN** the user taps outside the field

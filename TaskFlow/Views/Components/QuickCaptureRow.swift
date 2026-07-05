@@ -1,11 +1,15 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let quickCaptureCommitted = Notification.Name("quickCaptureCommitted")
+}
+
 struct QuickCaptureRow: View {
     @Binding var text: String
     let onSubmit: (String) -> Void
     let onDismiss: () -> Void
 
-    @FocusState private var isFocused
+    @State private var isFocused = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -13,13 +17,12 @@ struct QuickCaptureRow: View {
                 .fill(AppTheme.colors.primaryAction)
                 .frame(width: 20, height: 20)
 
-            TextField("New Reminder", text: $text)
-                .font(.system(size: 17))
-                .foregroundStyle(AppTheme.colors.textPrimary)
-                .focused($isFocused)
-                .onSubmit(handleSubmit)
-                .submitLabel(.done)
-                .accessibilityIdentifier("quick-capture-field")
+            NonDismissingTextField(
+                text: $text,
+                onSubmit: handleSubmit,
+                isFocused: $isFocused
+            )
+            .accessibilityIdentifier("quick-capture-field")
         }
         .id("quick-capture")
         .padding(.vertical, 9)
@@ -41,10 +44,13 @@ struct QuickCaptureRow: View {
 
     private func handleSubmit() {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
+        guard !t.isEmpty else {
+            isFocused = false
+            return
+        }
         text = ""
-        isFocused = true
         onSubmit(t)
+        NotificationCenter.default.post(name: .quickCaptureCommitted, object: nil)
     }
 }
 
@@ -59,6 +65,14 @@ extension View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                guard isActive else { return }
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(fieldID, anchor: .bottom)
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .quickCaptureCommitted)) { _ in
                 guard isActive else { return }
                 DispatchQueue.main.async {
                     withAnimation(.easeOut(duration: 0.25)) {
