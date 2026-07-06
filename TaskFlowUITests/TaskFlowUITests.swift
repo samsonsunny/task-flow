@@ -37,8 +37,8 @@ final class TaskFlowUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Fri, 15 May"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Tue, 19 May"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Fri, May 15"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Tue, May 19"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Prepare roadmap"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Plan sprint kickoff"].exists)
 

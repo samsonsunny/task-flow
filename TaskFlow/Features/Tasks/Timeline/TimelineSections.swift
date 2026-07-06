@@ -187,34 +187,36 @@ struct TaskUIModel {
         let refYear = calendar.component(.year, from: reference)
 
         let formatter = DateFormatter()
+        formatter.locale = .current
         if year == refYear {
             formatter.setLocalizedDateFormatFromTemplate("MMMM")
         } else {
             formatter.setLocalizedDateFormatFromTemplate("MMM yyyy")
         }
         formatter.calendar = calendar
-        formatter.locale = .current
         formatter.timeZone = calendar.timeZone
         return formatter.string(from: calendar.date(from: DateComponents(year: year, month: month, day: 1)) ?? monthStart)
     }
 
     static func tabDateTitle(for date: Date, calendar: Calendar = .current) -> String {
         let formatter = DateFormatter()
+        formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
         formatter.calendar = calendar
-        formatter.locale = .current
         formatter.timeZone = calendar.timeZone
         return formatter.string(from: calendar.startOfDay(for: date))
     }
 
     static let tabDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
         return formatter
     }()
 
     static let chipDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("MMM d")
         return formatter
     }()
@@ -222,6 +224,7 @@ struct TaskUIModel {
     /// "Friday, May 29"
     static let upcomingDayTitleFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("EEEE, MMM d")
         return formatter
     }()
@@ -229,8 +232,8 @@ struct TaskUIModel {
     /// "Wed, Jun 18" — used outside the 7-day horizon
     static let compactDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
         formatter.locale = Locale(identifier: "en_US")
+        formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
         return formatter
     }()
 

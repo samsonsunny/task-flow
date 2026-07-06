@@ -14,6 +14,10 @@ This project follows the **MVVM (Model-View-ViewModel)** pattern. All view-layer
 6. **UI-only state** (`@FocusState`, `@State` for sheet booleans, `@Environment(\.dismiss)`) stays in the view.
 7. **Every mutation must call `update()` after `modelContext.save()`.** `onChange(of:)` uses `Equatable` comparison; `@Model` objects compare equal by `persistentModelID`, so property-only changes are invisible to `onChange`. Explicit `update()` is the only reliable way to recompute derived state after a mutation. For inserts/deletes, update `allTasks` (add/remove) before calling `update()`.
 
+### Date formatting
+
+When using `DateFormatter.setLocalizedDateFormatFromTemplate()`, always set `formatter.locale` **before** calling the template method. The template parsing is locale-sensitive — it uses whatever locale is set at call time to determine component order (e.g., "May 15" vs "15 May"). Setting locale afterward only affects component names, not their order.
+
 ### File organization
 
 Features are split into domain-based folders under `Features/`. Each screen co-locates its View and ViewModel in the same folder. Truly shared files stay at the feature root or in `Views/Components/`.
