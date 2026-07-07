@@ -181,4 +181,118 @@ struct ListsTabViewModelTests {
         #expect(list.group?.persistentModelID == group.persistentModelID)
         #expect(list.sortOrder != nil)
     }
+
+    // MARK: - List & Group Creation Tests
+
+    @Test func createListWithoutGroup() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        try? context.save()
+
+        let vm = createViewModel(lists: [], groups: [], allTasks: [], context: context)
+
+        let descriptor = FetchDescriptor<ReminderList>(sortBy: [SortDescriptor(\.name)])
+        #expect((try? context.fetch(descriptor))?.isEmpty == true)
+
+        vm.createList(name: "Shopping")
+
+        let lists = try? context.fetch(descriptor)
+        #expect(lists?.count == 1)
+        #expect(lists?.first?.name == "Shopping")
+        #expect(lists?.first?.group == nil)
+    }
+
+    @Test func createListWithGroup() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let group = ReminderListGroup(name: "Home")
+        context.insert(group)
+        try? context.save()
+
+        let vm = createViewModel(lists: [], groups: [group], allTasks: [], context: context)
+        vm.createList(name: "Groceries", group: group)
+
+        let descriptor = FetchDescriptor<ReminderList>(sortBy: [SortDescriptor(\.name)])
+        let lists = try? context.fetch(descriptor)
+        #expect(lists?.count == 1)
+        #expect(lists?.first?.name == "Groceries")
+        #expect(lists?.first?.group?.persistentModelID == group.persistentModelID)
+    }
+
+    @Test func createGroupWithoutList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        try? context.save()
+
+        let vm = createViewModel(lists: [], groups: [], allTasks: [], context: context)
+
+        let descriptor = FetchDescriptor<ReminderListGroup>(sortBy: [SortDescriptor(\.name)])
+        #expect((try? context.fetch(descriptor))?.isEmpty == true)
+
+        vm.createGroup(name: "Work", sourceList: nil)
+
+        let groups = try? context.fetch(descriptor)
+        #expect(groups?.count == 1)
+        #expect(groups?.first?.name == "Work")
+    }
+
+    @Test func createGroupWithList() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Tasks")
+        list.sortOrder = "m"
+        context.insert(list)
+        try? context.save()
+
+        let vm = createViewModel(lists: [list], groups: [], allTasks: [], context: context)
+        vm.createGroup(name: "Projects", sourceList: list)
+
+        let groupDescriptor = FetchDescriptor<ReminderListGroup>(sortBy: [SortDescriptor(\.name)])
+        let groups = try? context.fetch(groupDescriptor)
+        #expect(groups?.count == 1)
+        #expect(groups?.first?.name == "Projects")
+        #expect(list.group?.persistentModelID == groups?.first?.persistentModelID)
+    }
+
+    @Test func createListRespectsSortOrder() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        try? context.save()
+
+        let vm = createViewModel(lists: [], groups: [], allTasks: [], context: context)
+
+        vm.createList(name: "First")
+        vm.createList(name: "Second")
+        vm.createList(name: "Third")
+
+        let descriptor = FetchDescriptor<ReminderList>(sortBy: [SortDescriptor(\.name)])
+        let lists = try? context.fetch(descriptor)
+        #expect(lists?.count == 3)
+        for list in lists ?? [] {
+            #expect(list.sortOrder != nil)
+        }
+        let orders = lists?.compactMap { $0.sortOrder } ?? []
+        #expect(Set(orders).count == orders.count, "sortOrders should be unique")
+    }
+
+    @Test func createGroupRespectsSortOrder() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        try? context.save()
+
+        let vm = createViewModel(lists: [], groups: [], allTasks: [], context: context)
+
+        vm.createGroup(name: "Alpha", sourceList: nil)
+        vm.createGroup(name: "Beta", sourceList: nil)
+        vm.createGroup(name: "Gamma", sourceList: nil)
+
+        let descriptor = FetchDescriptor<ReminderListGroup>(sortBy: [SortDescriptor(\.name)])
+        let groups = try? context.fetch(descriptor)
+        #expect(groups?.count == 3)
+        for group in groups ?? [] {
+            #expect(group.sortOrder != nil)
+        }
+        let orders = groups?.compactMap { $0.sortOrder } ?? []
+        #expect(Set(orders).count == orders.count, "sortOrders should be unique")
+    }
 }

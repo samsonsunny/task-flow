@@ -143,4 +143,91 @@ final class TaskFlowUITests: XCTestCase {
         // Quick capture field stays visible for rapid chaining
         XCTAssertTrue(quickCaptureField.exists)
     }
+
+    // MARK: - Later Tab Inline Creation Tests
+
+    @MainActor
+    func testLaterTabShowsInlineCreationRows() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        app.tabBars.buttons["Later"].tap()
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+
+        XCTAssertTrue(app.staticTexts["New List"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["New Group"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testLaterTabFABRemoved() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        app.tabBars.buttons["Later"].tap()
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+
+        let fab = app.buttons["reminder-create-button"]
+        XCTAssertFalse(fab.waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testListCreationSheetCreateDisabledWhenEmpty() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        app.tabBars.buttons["Later"].tap()
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+
+        app.staticTexts["New List"].tap()
+
+        let createButton = app.buttons["Create"]
+        XCTAssertTrue(createButton.waitForExistence(timeout: 2))
+        XCTAssertFalse(createButton.isEnabled)
+    }
+
+    @MainActor
+    func testListCreationSheetCancelDismisses() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        app.tabBars.buttons["Later"].tap()
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+
+        app.staticTexts["New List"].tap()
+
+        let cancelButton = app.buttons["Cancel"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 2))
+
+        cancelButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testListCreationViaSheet() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+        app.launch()
+
+        app.tabBars.buttons["Later"].tap()
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+
+        app.staticTexts["New List"].tap()
+
+        let textField = app.textFields["List Name"]
+        XCTAssertTrue(textField.waitForExistence(timeout: 2))
+        textField.tap()
+        textField.typeText("Test List\n")
+
+        let createButton = app.buttons["Create"]
+        XCTAssertTrue(createButton.isEnabled)
+        createButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Test List"].waitForExistence(timeout: 2))
+    }
 }

@@ -95,6 +95,16 @@ final class ListsTabViewModel {
         try? modelContext.save()
     }
 
+    func createList(name: String, group: ReminderListGroup?) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let list = ReminderList(name: trimmed)
+        list.group = group
+        modelContext.insert(list)
+        list.assignInitialSortOrder(in: modelContext)
+        try? modelContext.save()
+    }
+
     func renameList(_ list: ReminderList, to newName: String) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }

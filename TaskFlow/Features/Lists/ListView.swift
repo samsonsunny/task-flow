@@ -9,6 +9,9 @@ struct ListsTabView: View {
     let onSettings: () -> Void
 
     @State private var viewModel: ListsTabViewModel?
+    @State private var showListCreationSheet = false
+    @State private var showGroupCreationSheet = false
+    @State private var groupCreationSourceList: ReminderList?
 
     var body: some View {
         NavigationStack {
@@ -35,46 +38,28 @@ struct ListsTabView: View {
                 }
             }
         }
-        .overlay(alignment: .bottomTrailing) {
-            ReminderFloatingAddButton {
-                viewModel?.newListName = ""
-                viewModel?.isCreatingList = true
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 24)
-        }
     }
 
     private var alertsContainer: some View {
         listContent
-            .alert("New List", isPresented: Binding(
-                get: { viewModel?.isCreatingList ?? false },
-                set: { viewModel?.isCreatingList = $0 }
-            )) {
-                TextField("List Name", text: Binding(
-                    get: { viewModel?.newListName ?? "" },
-                    set: { viewModel?.newListName = $0 }
-                ))
-                Button("Cancel", role: .cancel) { }
-                Button("Create") {
-                    viewModel?.createList(name: viewModel?.newListName ?? "")
-                }
+            .sheet(isPresented: $showListCreationSheet) {
+                ListCreationSheet(
+                    modelContext: modelContext,
+                    onCreate: { name, group in
+                        viewModel?.createList(name: name, group: group)
+                        viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+                    }
+                )
             }
-            .alert("New Group", isPresented: Binding(
-                get: { viewModel?.isCreatingGroup ?? false },
-                set: { viewModel?.isCreatingGroup = $0 }
-            )) {
-                TextField("Group Name", text: Binding(
-                    get: { viewModel?.newGroupName ?? "" },
-                    set: { viewModel?.newGroupName = $0 }
-                ))
-                Button("Cancel", role: .cancel) {
-                    viewModel?.groupSourceList = nil
-                }
-                Button("Create") {
-                    viewModel?.createGroup(name: viewModel?.newGroupName ?? "", sourceList: viewModel?.groupSourceList)
-                    viewModel?.groupSourceList = nil
-                }
+            .sheet(isPresented: $showGroupCreationSheet) {
+                GroupCreationSheet(
+                    modelContext: modelContext,
+                    initialList: groupCreationSourceList,
+                    onCreate: { name, sourceList in
+                        viewModel?.createGroup(name: name, sourceList: sourceList)
+                        viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+                    }
+                )
             }
             .alert("Rename List", isPresented: Binding(
                 get: { viewModel?.isRenamePresented ?? false },
@@ -191,25 +176,31 @@ struct ListsTabView: View {
 
     private var ungroupedSection: some View {
         let items = viewModel?.ungroupedLists ?? []
-        return Group {
-            if !items.isEmpty {
-                Section {
-                    ForEach(items) { list in
-                        listNavigationLink(for: list)
-                    }
-                    .onMove { fromOffsets, toOffset in
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items)
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Text("Lists")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                        Spacer()
-                    }
+        return Section {
+            ForEach(items) { list in
+                listNavigationLink(for: list)
+            }
+            .onMove { fromOffsets, toOffset in
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items)
                 }
+            }
+
+            newListRow
+        } header: {
+            HStack {
+                Text("Lists")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Spacer()
+                Button {
+                    showListCreationSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.primaryAction)
+                }
+                .contentShape(Rectangle())
             }
         }
     }
@@ -263,14 +254,76 @@ struct ListsTabView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
+
+            newGroupRow
         } header: {
             HStack {
                 Text("Groups")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textSecondary)
                 Spacer()
+                Button {
+                    groupCreationSourceList = nil
+                    showGroupCreationSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.primaryAction)
+                }
+                .contentShape(Rectangle())
             }
         }
+    }
+
+    // MARK: - Inline Creation Rows
+
+    private var newListRow: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                .frame(width: 20, height: 20)
+
+            Text("New List")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showListCreationSheet = true
+        }
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+        .accessibilityIdentifier("new-list-row")
+    }
+
+    private var newGroupRow: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                .foregroundStyle(AppTheme.colors.addReminderCircle)
+                .frame(width: 20, height: 20)
+
+            Text("New Group")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            groupCreationSourceList = nil
+            showGroupCreationSheet = true
+        }
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+        .accessibilityIdentifier("new-group-row")
     }
 
     // MARK: - List Navigation Link
@@ -301,9 +354,8 @@ struct ListsTabView: View {
             }
 
             Button("Create New Group") {
-                viewModel?.newGroupName = ""
-                viewModel?.groupSourceList = list
-                viewModel?.isCreatingGroup = true
+                groupCreationSourceList = list
+                showGroupCreationSheet = true
             }
 
             if !groups.isEmpty {
@@ -321,9 +373,8 @@ struct ListsTabView: View {
                         }
                     }
                     Button("New Group...") {
-                        viewModel?.newGroupName = ""
-                        viewModel?.groupSourceList = list
-                        viewModel?.isCreatingGroup = true
+                        groupCreationSourceList = list
+                        showGroupCreationSheet = true
                     }
                 }
             }
