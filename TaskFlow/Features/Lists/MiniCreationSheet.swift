@@ -7,12 +7,14 @@ struct MiniCreationSheet: View {
     let onCreate: (String) -> Void
 
     @State private var name = ""
+    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         NavigationStack {
             Form {
                 TextField(placeholder, text: $name)
                     .autocorrectionDisabled()
+                    .focused($isNameFocused)
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -28,6 +30,9 @@ struct MiniCreationSheet: View {
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+        }
+        .onAppear {
+            isNameFocused = true
         }
     }
 }
