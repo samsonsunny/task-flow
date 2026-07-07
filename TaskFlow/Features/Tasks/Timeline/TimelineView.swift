@@ -108,7 +108,7 @@ struct ReminderSegmentDetailView: View {
             .padding(.bottom, 24)
         }
         .onReceive(refreshTimer) { _ in
-            viewModel?.refreshNow(now: appState.currentDate)
+            viewModel?.refreshNow()
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
@@ -130,21 +130,21 @@ struct ReminderSegmentDetailView: View {
         }
         .onAppear {
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists, now: appState.currentDate)
+            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date())
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists, now: appState.currentDate)
+            viewModel?.update(tasks: tasks, lists: newLists, now: Date())
         }
         .onChange(of: editingTask) { _, task in
             if task == nil {
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
             }
         }
         .onChange(of: appState.mutationCount) { _, _ in
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: appState.currentDate)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
         }
     }
 

@@ -149,4 +149,36 @@ struct ReminderSegmentViewModelTests {
         let todayVM2 = makeVM(segment: .today)
         #expect(todayVM2.flatNodes.count == 2)
     }
+
+    // MARK: - Refresh / Time advancement
+
+    @Test func refreshNowAdvancesStoredNow() {
+        let vm = ReminderSegmentViewModel(modelContext: context, segment: .today)
+        let past = calendar.date(byAdding: .hour, value: -1, to: now)!
+        vm.update(tasks: [], lists: [], now: past)
+        #expect(vm.now == past)
+
+        vm.refreshNow()
+
+        #expect(vm.now >= now)
+    }
+
+    @Test func overdueTasksUpdatesWhenNowAdvances() {
+        let earlyNow = calendar.date(from: DateComponents(year: 2026, month: 6, day: 15, hour: 10))!
+        let lateNow = calendar.date(from: DateComponents(year: 2026, month: 6, day: 15, hour: 11))!
+        let dueAt1030 = calendar.date(from: DateComponents(year: 2026, month: 6, day: 15, hour: 10, minute: 30))!
+
+        let task = makeTask(title: "Task", date: dueAt1030)
+
+        let descriptor = FetchDescriptor<TaskItem>()
+        let allTasks = (try? context.fetch(descriptor)) ?? []
+
+        let vm = ReminderSegmentViewModel(modelContext: context, segment: .today)
+        vm.update(tasks: allTasks, lists: [], now: earlyNow)
+        #expect(vm.overdueTasks.isEmpty, "Task due at 10:30 should not be overdue at 10:00")
+
+        vm.update(tasks: allTasks, lists: [], now: lateNow)
+        #expect(vm.overdueTasks.count == 1, "Task due at 10:30 should be overdue at 11:00")
+        #expect(vm.overdueTasks[0].safeTitle == "Task")
+    }
 }
