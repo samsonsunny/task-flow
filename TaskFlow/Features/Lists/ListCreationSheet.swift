@@ -10,6 +10,7 @@ struct ListCreationSheet: View {
     @State private var selectedGroup: ReminderListGroup?
     @State private var groups: [ReminderListGroup] = []
     @State private var showMiniSheet = false
+    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -17,6 +18,7 @@ struct ListCreationSheet: View {
                 Section {
                     TextField("List Name", text: $name)
                         .autocorrectionDisabled()
+                        .focused($isNameFocused)
                 }
 
                 Section {
@@ -79,6 +81,7 @@ struct ListCreationSheet: View {
         }
         .onAppear {
             fetchGroups()
+            isNameFocused = true
         }
     }
 

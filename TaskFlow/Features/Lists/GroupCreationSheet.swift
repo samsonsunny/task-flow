@@ -11,6 +11,7 @@ struct GroupCreationSheet: View {
     @State private var selectedList: ReminderList?
     @State private var ungroupedLists: [ReminderList] = []
     @State private var showMiniSheet = false
+    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -18,6 +19,7 @@ struct GroupCreationSheet: View {
                 Section {
                     TextField("Group Name", text: $name)
                         .autocorrectionDisabled()
+                        .focused($isNameFocused)
                 }
 
                 Section {
@@ -85,6 +87,7 @@ struct GroupCreationSheet: View {
             if let initialList {
                 selectedList = initialList
             }
+            isNameFocused = true
         }
     }
 
