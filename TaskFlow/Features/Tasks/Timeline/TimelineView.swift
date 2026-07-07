@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 import SwiftData
 
 private struct NewReminderConfig: Identifiable {
@@ -28,8 +27,7 @@ struct ReminderSegmentDetailView: View {
     @State private var editingTask: TaskItem?
     @State private var activeCaptureDate: Date?
     @State private var quickCaptureText = ""
-
-    private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @State private var refreshTimer: Timer?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -107,9 +105,6 @@ struct ReminderSegmentDetailView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 24)
         }
-        .onReceive(refreshTimer) { _ in
-            viewModel?.refreshNow()
-        }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
                 isPresented: Binding(
@@ -131,6 +126,11 @@ struct ReminderSegmentDetailView: View {
         .onAppear {
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
             viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
+            scheduleMinuteAlignedTimer()
+        }
+        .onDisappear {
+            refreshTimer?.invalidate()
+            refreshTimer = nil
         }
         .onChange(of: tasks) { _, newTasks in
             viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date())
@@ -510,5 +510,25 @@ struct ReminderSegmentDetailView: View {
 
     private func presentScheduleSheet(for task: TaskItem) {
         scheduleConfig = ScheduleConfig(task: task)
+    }
+
+    private func scheduleMinuteAlignedTimer() {
+        refreshTimer?.invalidate()
+        let interval: TimeInterval = 60
+        let now = Date().timeIntervalSinceReferenceDate
+        let nextMinute = ceil(now / interval) * interval
+        let delay = nextMinute - now
+
+        let timer = Timer(
+            fire: Date().addingTimeInterval(delay),
+            interval: interval,
+            repeats: true
+        ) { [weak viewModel] _ in
+            Task { @MainActor in
+                viewModel?.refreshNow()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 }
