@@ -127,8 +127,8 @@ final class ReminderSegmentViewModel {
         }
     }
 
-    var otherLists: [ReminderList] {
-        lists
+    var listSections: [ListSection] {
+        buildListSections(from: lists)
     }
 
     // MARK: - Mutations

@@ -161,7 +161,7 @@ struct ListDetailView: View {
             onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
-            availableLists: viewModel?.otherLists ?? [],
+            listSections: viewModel?.listSections ?? [],
             onDelete: { viewModel?.delete(task: task) },
             onTap: {
                 isQuickCapturing = false

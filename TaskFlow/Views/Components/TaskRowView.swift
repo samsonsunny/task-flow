@@ -17,7 +17,7 @@ struct TaskRowView: View {
     var onMoveToLater: (() -> Void)? = nil
     var onSchedule: (() -> Void)? = nil
     var onMoveToList: ((ReminderList) -> Void)? = nil
-    var availableLists: [ReminderList] = []
+    var listSections: [ListSection] = []
     var onDelete: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
@@ -52,11 +52,15 @@ struct TaskRowView: View {
                         schedule()
                     }
                 }
-                if let moveToList = onMoveToList, !availableLists.isEmpty {
+                if let moveToList = onMoveToList, !listSections.isEmpty {
                     Menu("Move to List") {
-                        ForEach(availableLists) { list in
-                            Button(list.name) {
-                                moveToList(list)
+                        ForEach(listSections) { section in
+                            Section(section.title ?? "") {
+                                ForEach(section.lists) { list in
+                                    Button(list.name) {
+                                        moveToList(list)
+                                    }
+                                }
                             }
                         }
                     }
