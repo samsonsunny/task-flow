@@ -70,7 +70,7 @@
     {
       "id": "US-002",
       "title": "Create TaskScheduleDatePickerViewModel",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [],
       "description": "Create the ViewModel file with @Observable class, init, and date/time toggle methods using the shared rounding utility.",
       "acceptanceCriteria": [
@@ -81,13 +81,14 @@
         "toggleTime(isEnabled:) with rounding via shared utility (2.5)"
       ],
       "startedAt": "2026-06-26T20:15:59.760563+00:00",
-      "completedAt": null,
+      "completedAt": "2026-07-07T00:00:00+00:00",
       "updatedAt": "2026-06-26T20:15:59.760737+00:00"
     },
     {
       "id": "US-003",
       "title": "Refactor TaskScheduleDatePickerSheet to use ViewModel and verify",
-      "status": "open",
+      "status": "done",
+      "completedAt": "2026-07-07T00:00:00+00:00",
       "dependsOn": [
         "US-001",
         "US-002"
