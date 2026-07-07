@@ -302,7 +302,7 @@ final class ListDetailViewModel {
         return !Calendar.current.isDateInTomorrow(dueDate)
     }
 
-    var otherLists: [ReminderList] {
-        allLists.filter { $0.persistentModelID != listID }
+    var listSections: [ListSection] {
+        buildListSections(from: allLists, excluding: listID)
     }
 }

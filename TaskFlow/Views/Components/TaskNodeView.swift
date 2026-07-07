@@ -12,7 +12,7 @@ struct TaskNodeView: View {
     var onMoveToLater: (() -> Void)?
     var onSchedule: (() -> Void)?
     var onMoveToList: ((ReminderList) -> Void)?
-    var availableLists: [ReminderList]
+    var listSections: [ListSection]
     var onDelete: (() -> Void)?
     var onTap: (() -> Void)?
     var showsDueDate: Bool
@@ -28,7 +28,7 @@ struct TaskNodeView: View {
             onMoveToLater: onMoveToLater,
             onSchedule: onSchedule,
             onMoveToList: onMoveToList,
-            availableLists: availableLists,
+            listSections: listSections,
             onDelete: onDelete,
             onTap: onTap,
             showsDueDate: showsDueDate,
