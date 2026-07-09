@@ -76,7 +76,11 @@ final class ListDetailViewModel {
     private func recompute() {
         list = allLists.first { $0.persistentModelID == listID }
         tasks = computeTasks().sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        rootTasks = tasks.filter { $0.parentTask == nil }
+        let taskIDs = Set(tasks.map(\.persistentModelID))
+        rootTasks = tasks.filter {
+            guard let parent = $0.parentTask else { return true }
+            return !taskIDs.contains(parent.persistentModelID)
+        }
         flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
     }
 
@@ -127,6 +131,7 @@ final class ListDetailViewModel {
 
     func moveTask(_ task: TaskItem, to list: ReminderList) {
         task.reminderList = list
+        task.parentTask = nil
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
         recompute()

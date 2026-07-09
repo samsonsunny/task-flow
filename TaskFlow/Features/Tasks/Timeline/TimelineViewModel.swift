@@ -209,6 +209,7 @@ final class ReminderSegmentViewModel {
 
     func moveTask(_ task: TaskItem, to list: ReminderList) {
         task.reminderList = list
+        task.parentTask = nil
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
         update(tasks: allTasks, lists: lists, now: now)
