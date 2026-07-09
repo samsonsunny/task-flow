@@ -17,9 +17,11 @@ final class ListDetailViewModel {
     private(set) var now: Date = Date()
     var draggedTaskId: String?
     private(set) var scheduledTask: TaskItem?
+    private(set) var listSections: [ListSection] = []
 
-    private var allTasks: [TaskItem] = []
-    private var allLists: [ReminderList] = []
+    private(set) var allTasks: [TaskItem] = []
+    private(set) var allLists: [ReminderList] = []
+    private var displayTasks: [TaskItem] = []
 
     init(modelContext: ModelContext, listID: ReminderList.ID) {
         self.modelContext = modelContext
@@ -32,6 +34,7 @@ final class ListDetailViewModel {
     }
 
     func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date()) {
+        self.displayTasks = tasks
         self.allTasks = allTasks
         self.allLists = lists
         self.now = now
@@ -78,10 +81,11 @@ final class ListDetailViewModel {
         tasks = computeTasks().sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
         rootTasks = tasks.filter { $0.parentTask == nil }
         flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
+        listSections = buildListSections(from: allLists, excluding: listID)
     }
 
     private func computeTasks() -> [TaskItem] {
-        allTasks.filter {
+        displayTasks.filter {
             guard $0.reminderList?.persistentModelID == listID else { return false }
             if $0.isCompleted == true {
                 return justCompleted.contains($0.taskId ?? "")
@@ -302,7 +306,4 @@ final class ListDetailViewModel {
         return !Calendar.current.isDateInTomorrow(dueDate)
     }
 
-    var listSections: [ListSection] {
-        buildListSections(from: allLists, excluding: listID)
-    }
 }

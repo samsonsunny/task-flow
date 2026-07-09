@@ -116,13 +116,16 @@ struct ListDetailView: View {
         }
         .onAppear {
             viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
-            viewModel?.update(tasks: allTasks, lists: allLists, allTasks: allTasks, now: Date())
+            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
         }
         .onChange(of: allTasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: allLists, allTasks: newTasks)
+            let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }
+            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: newTasks)
         }
         .onChange(of: allLists) { _, newLists in
-            viewModel?.update(tasks: allTasks, lists: newLists, allTasks: allTasks)
+            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+            viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks)
         }
     }
 
