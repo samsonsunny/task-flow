@@ -7,8 +7,9 @@
 
 
 import SwiftUI
+import SwiftData
 
-struct TaskRowView: View {
+struct TaskRowView: View, Equatable {
     let task: TaskItem
     var isCompletedVisualState: Bool = false
     var onToggleCompletion: () -> Void
@@ -27,7 +28,19 @@ struct TaskRowView: View {
     var isCollapsed: Bool = false
     var onToggleCollapse: (() -> Void)? = nil
 
+    private static let cachedDetector: NSDataDetector? = {
+        try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+    }()
+
     @State private var chipScale: CGFloat = 1
+
+    static func == (lhs: TaskRowView, rhs: TaskRowView) -> Bool {
+        lhs.task.persistentModelID == rhs.task.persistentModelID
+            && lhs.isCompletedVisualState == rhs.isCompletedVisualState
+            && lhs.subtaskCount == rhs.subtaskCount
+            && lhs.isCollapsed == rhs.isCollapsed
+            && lhs.nestingDepth == rhs.nestingDepth
+    }
     
     var body: some View {
         rowContent
@@ -114,6 +127,7 @@ struct TaskRowView: View {
                     .font(.system(size: 14, weight: .regular))
                     .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
                     .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                    .lineLimit(4)
                     .lineSpacing(2)
                     .multilineTextAlignment(.leading)
             }
@@ -134,7 +148,7 @@ struct TaskRowView: View {
         var attributed = AttributedString(raw)
         let nsRange = NSRange(raw.startIndex..<raw.endIndex, in: raw)
 
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+        guard let detector = Self.cachedDetector else {
             return attributed
         }
 

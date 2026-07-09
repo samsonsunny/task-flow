@@ -18,9 +18,10 @@ final class ReminderSegmentViewModel {
     private(set) var groupedSections: [TaskUIModel.DatedSection] = []
     private(set) var upcomingGroups: [TaskUIModel.UpcomingGroup] = []
     private(set) var sortedFlatTasks: [TaskItem] = []
+    private(set) var listSections: [ListSection] = []
 
-    private var lists: [ReminderList] = []
-    private var allTasks: [TaskItem] = []
+    private(set) var lists: [ReminderList] = []
+    private(set) var allTasks: [TaskItem] = []
 
     init(modelContext: ModelContext, segment: ReminderSegment) {
         self.modelContext = modelContext
@@ -54,6 +55,7 @@ final class ReminderSegmentViewModel {
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
         let displayable = (self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") })
         self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment)
+        self.listSections = buildListSections(from: lists)
         rebuildTree()
     }
 
@@ -125,10 +127,6 @@ final class ReminderSegmentViewModel {
         case .today, .tomorrow: return false
         case .upcoming, .overdue: return true
         }
-    }
-
-    var listSections: [ListSection] {
-        buildListSections(from: lists)
     }
 
     // MARK: - Mutations
