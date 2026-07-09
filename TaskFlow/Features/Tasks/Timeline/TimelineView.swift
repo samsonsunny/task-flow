@@ -97,9 +97,7 @@ struct ReminderSegmentDetailView: View {
                 if segment == .upcoming {
                     newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: nil, initialTitle: "")
                 } else {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeCaptureDate = Date()
-                    }
+                    activeCaptureDate = Date()
                 }
             }
             .padding(.trailing, 20)

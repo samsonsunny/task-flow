@@ -31,7 +31,11 @@ struct QuickCaptureRow: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .onAppear { isFocused = true }
+        .onAppear {
+            DispatchQueue.main.async {
+                isFocused = true
+            }
+        }
         .onChange(of: isFocused) { _, focused in
             if !focused {
                 let t = text.trimmingCharacters(in: .whitespacesAndNewlines)

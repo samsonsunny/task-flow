@@ -86,9 +86,7 @@ struct ListDetailView: View {
         }
         .overlay(alignment: .bottomTrailing) {
             ReminderFloatingAddButton {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isQuickCapturing = true
-                }
+                isQuickCapturing = true
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
