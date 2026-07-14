@@ -2,12 +2,13 @@ import SwiftUI
 
 struct NonDismissingTextField: UIViewRepresentable {
     @Binding var text: String
+    let placeholder: String
     let onSubmit: () -> Void
     @Binding var isFocused: Bool
 
     func makeUIView(context: Context) -> UITextField {
         let textField = UITextField()
-        textField.placeholder = "New Reminder"
+        textField.placeholder = placeholder
         textField.font = .systemFont(ofSize: 17)
         textField.textColor = UIColor(AppTheme.colors.textPrimary)
         textField.delegate = context.coordinator
@@ -46,9 +47,8 @@ struct NonDismissingTextField: UIViewRepresentable {
         }
 
         func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-            DispatchQueue.main.async {
-                self.text = textField.text ?? ""
-            }
+            let currentText = textField.text ?? ""
+            text = (currentText as NSString).replacingCharacters(in: range, with: string)
             return true
         }
 

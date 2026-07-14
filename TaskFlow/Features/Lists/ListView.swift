@@ -12,6 +12,9 @@ struct ListsTabView: View {
     @State private var showListCreationSheet = false
     @State private var showGroupCreationSheet = false
     @State private var groupCreationSourceList: ReminderList?
+    @State private var capturingGroupID: PersistentIdentifier?
+    @State private var captureText = ""
+    @State private var isCaptureFocused = false
 
     var body: some View {
         NavigationStack {
@@ -20,14 +23,40 @@ struct ListsTabView: View {
     }
 
     private var listContent: some View {
-        List {
-            defaultListSection
-            ungroupedSection
-            groupSections
+        ScrollViewReader { proxy in
+            List {
+                defaultListSection
+                ungroupedSection
+                groupSections
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.colors.appBackground)
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: capturingGroupID) { _, id in
+                if id != nil {
+                    DispatchQueue.main.async {
+                        withAnimation { proxy.scrollTo("group-list-capture", anchor: .bottom) }
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                guard capturingGroupID != nil else { return }
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo("group-list-capture", anchor: .bottom)
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .quickCaptureCommitted)) { _ in
+                guard capturingGroupID != nil else { return }
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo("group-list-capture", anchor: .bottom)
+                    }
+                }
+            }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
         .navigationTitle("Later")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -213,7 +242,12 @@ struct ListsTabView: View {
                 let items = viewModel?.listsInGroup(group) ?? []
                 DisclosureGroup(isExpanded: Binding(
                     get: { viewModel?.isGroupExpanded(group) ?? false },
-                    set: { _ in viewModel?.toggleGroupExpanded(group) }
+                    set: { expanded in
+                        viewModel?.toggleGroupExpanded(group)
+                        if !expanded && capturingGroupID == group.persistentModelID {
+                            capturingGroupID = nil
+                        }
+                    }
                 )) {
                     ForEach(items) { list in
                         listNavigationLink(for: list)
@@ -223,6 +257,7 @@ struct ListsTabView: View {
                             viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items, group: group)
                         }
                     }
+                    groupListCaptureRow(for: group)
                 } label: {
                     HStack {
                         Image(systemName: "folder")
@@ -324,6 +359,69 @@ struct ListsTabView: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .accessibilityIdentifier("new-group-row")
+    }
+
+    @ViewBuilder
+    private func groupListCaptureRow(for group: ReminderListGroup) -> some View {
+        if capturingGroupID == group.persistentModelID {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(AppTheme.colors.primaryAction)
+                    .frame(width: 20, height: 20)
+
+                NonDismissingTextField(
+                    text: $captureText,
+                    placeholder: "New List",
+                    onSubmit: {
+                        let t = captureText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !t.isEmpty else {
+                            isCaptureFocused = false
+                            return
+                        }
+                        viewModel?.createList(name: captureText, group: group)
+                        viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+                        captureText = ""
+                        NotificationCenter.default.post(name: .quickCaptureCommitted, object: nil)
+                    },
+                    isFocused: $isCaptureFocused
+                )
+                .onChange(of: isCaptureFocused) { _, focused in
+                    if !focused {
+                        capturingGroupID = nil
+                    }
+                }
+            }
+            .padding(.vertical, 9)
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+            .id("group-list-capture")
+        } else {
+            HStack(spacing: 12) {
+                Circle()
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    .foregroundStyle(AppTheme.colors.addReminderCircle)
+                    .frame(width: 20, height: 20)
+
+                Text("Add List")
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                captureText = ""
+                capturingGroupID = group.persistentModelID
+                DispatchQueue.main.async {
+                    isCaptureFocused = true
+                }
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
+        }
     }
 
     // MARK: - List Navigation Link

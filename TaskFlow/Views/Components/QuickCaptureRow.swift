@@ -19,6 +19,7 @@ struct QuickCaptureRow: View {
 
             NonDismissingTextField(
                 text: $text,
+                placeholder: "New Reminder",
                 onSubmit: handleSubmit,
                 isFocused: $isFocused
             )
