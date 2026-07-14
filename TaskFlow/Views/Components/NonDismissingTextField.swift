@@ -45,6 +45,13 @@ struct NonDismissingTextField: UIViewRepresentable {
             self._isFocused = isFocused
         }
 
+        func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+            DispatchQueue.main.async {
+                self.text = textField.text ?? ""
+            }
+            return true
+        }
+
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
             text = textField.text ?? ""
             onSubmit()
