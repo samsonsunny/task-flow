@@ -7,6 +7,13 @@ fi
 
 set -euo pipefail
 
+cd "${CI_WORKSPACE:-$(cd "$(dirname "$0")" && pwd)/..}"
+
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "error: GITHUB_TOKEN is not set. Add it to Xcode Cloud environment variables."
+  exit 1
+fi
+
 git config user.name "TaskFlow CI"
 git config user.email "ci@taskflow.app"
 
