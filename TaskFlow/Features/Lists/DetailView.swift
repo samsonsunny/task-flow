@@ -90,6 +90,9 @@ struct ListDetailView: View {
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
+            .opacity(isQuickCapturing ? 0 : 1)
+            .allowsHitTesting(!isQuickCapturing)
+            .animation(.easeInOut(duration: 0.15), value: isQuickCapturing)
         }
         .onReceive(refreshTimer) { _ in
             viewModel?.refreshNow()

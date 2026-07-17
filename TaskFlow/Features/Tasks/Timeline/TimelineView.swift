@@ -102,6 +102,9 @@ struct ReminderSegmentDetailView: View {
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
+            .opacity(activeCaptureDate == nil ? 1 : 0)
+            .allowsHitTesting(activeCaptureDate == nil)
+            .animation(.easeInOut(duration: 0.15), value: activeCaptureDate == nil)
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
