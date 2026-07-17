@@ -183,6 +183,22 @@ struct ReminderSegmentDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func reorderableFlatContent(with vm: ReminderSegmentViewModel) -> some View {
+        ForEach(vm.rootedNodes, id: \.root.id) { group in
+            taskListRow(group.root, showsDueDate: vm.shouldShowDueDate(for: segment))
+                .transition(.scale.combined(with: .opacity))
+            ForEach(group.children) { child in
+                taskListRow(child, showsDueDate: vm.shouldShowDueDate(for: segment))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .onMove { fromOffsets, toOffset in
+            let rootTasks = vm.rootedNodes.map(\.root.task)
+            viewModel?.moveTasks(fromOffsets: fromOffsets, toOffset: toOffset, in: rootTasks)
+        }
+    }
+
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(segment.emptyTitle)
@@ -207,7 +223,7 @@ struct ReminderSegmentDetailView: View {
             if vm.flatNodes.isEmpty {
                 emptyState
             } else {
-                flatContent(with: vm)
+                reorderableFlatContent(with: vm)
             }
 
             if activeCaptureDate != nil {

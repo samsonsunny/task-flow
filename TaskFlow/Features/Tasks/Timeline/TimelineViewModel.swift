@@ -22,9 +22,49 @@ final class ReminderSegmentViewModel {
     private(set) var lists: [ReminderList] = []
     private(set) var allTasks: [TaskItem] = []
 
+    private static let dailyOrderKeyPrefix = "daily-order-"
+
     init(modelContext: ModelContext, segment: ReminderSegment) {
         self.modelContext = modelContext
         self.segment = segment
+    }
+
+    // MARK: - Daily Order (UserDefaults)
+
+    private var dailyOrderKey: String {
+        Self.dailyOrderKeyPrefix + segment.rawValue
+    }
+
+    private var overdueOrderKey: String {
+        Self.dailyOrderKeyPrefix + "overdue"
+    }
+
+    func readDailyOrder(forKey key: String? = nil) -> [String: Int] {
+        let ids = UserDefaults.standard.stringArray(forKey: key ?? dailyOrderKey) ?? []
+        return Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($0.element, $0.offset) })
+    }
+
+    func readDailyOrderArray(forKey key: String? = nil) -> [String] {
+        UserDefaults.standard.stringArray(forKey: key ?? dailyOrderKey) ?? []
+    }
+
+    func writeDailyOrder(_ order: [String], forKey key: String? = nil) {
+        UserDefaults.standard.set(order, forKey: key ?? dailyOrderKey)
+    }
+
+    func moveTasks(fromOffsets: IndexSet, toOffset: Int, in source: [TaskItem], orderKey: String? = nil) {
+        let key = orderKey ?? dailyOrderKey
+        var mutableTasks = source
+        let sortedFrom = fromOffsets.sorted()
+
+        let moved = Array(sortedFrom.reversed().map { mutableTasks.remove(at: $0) }.reversed())
+        let insertAt = min(toOffset, mutableTasks.count)
+
+        mutableTasks.insert(contentsOf: moved, at: insertAt)
+
+        let newOrder = mutableTasks.map { $0.persistentModelID.hashValue.description }
+        writeDailyOrder(newOrder, forKey: key)
+        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
     }
 
     func refreshNow(now: Date = Date()) {
@@ -41,7 +81,8 @@ final class ReminderSegmentViewModel {
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
         let displayable = (self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") })
-        self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment)
+        let customOrderIndex = readDailyOrder()
+        self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex)
         self.listSections = buildListSections(from: lists)
         rebuildTree(collapsedTasks: collapsedTasks)
     }
@@ -53,8 +94,36 @@ final class ReminderSegmentViewModel {
             guard let parent = task.parentTask else { return true }
             return !filteredIds.contains(parent.persistentModelID)
         }
-        let sortedRoots = ReminderSegmentLogic.sortedTasks(matchedRoots, for: segment)
+        let customOrderIndex = readDailyOrder()
+        let sortedRoots = ReminderSegmentLogic.sortedTasks(matchedRoots, for: segment, customOrderIndex: customOrderIndex)
         flatNodes = TaskTreeFlattener.flatten(roots: sortedRoots, collapsed: collapsedTasks)
+    }
+
+    var rootedNodes: [(root: FlatTaskNode, children: [FlatTaskNode])] {
+        var result: [(root: FlatTaskNode, children: [FlatTaskNode])] = []
+        var currentChildren: [FlatTaskNode] = []
+        for node in flatNodes {
+            if node.depth == 0 {
+                if !currentChildren.isEmpty, let lastIdx = result.indices.last {
+                    result[lastIdx].children = currentChildren
+                }
+                result.append((root: node, children: []))
+                currentChildren = []
+            } else {
+                currentChildren.append(node)
+            }
+        }
+        if !currentChildren.isEmpty, let lastIdx = result.indices.last {
+            result[lastIdx].children = currentChildren
+        }
+        return result
+    }
+
+    var overdueRootedNodes: (roots: [TaskItem], nodes: [FlatTaskNode]) {
+        let overdueRoots = overdueTasks.filter { $0.parentTask == nil }
+        let sorted = ReminderSegmentLogic.sortedTasks(overdueRoots, for: .overdue, customOrderIndex: readDailyOrder(forKey: overdueOrderKey))
+        let nodes = sorted.map { FlatTaskNode(id: $0.persistentModelID, task: $0, depth: 0, subtaskCount: 0) }
+        return (sorted, nodes)
     }
 
     /// Build flat nodes from section-scoped tasks, respecting collapse state.

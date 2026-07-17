@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 
 enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
     case today
@@ -168,23 +169,39 @@ enum ReminderSegmentLogic {
     static func sortedTasks(
         _ tasks: [TaskItem],
         for segment: ReminderSegment,
+        customOrderIndex: [String: Int]? = nil,
         calendar: Calendar = .current
     ) -> [TaskItem] {
-        tasks.sorted { lhs, rhs in
-            let lhsDue = lhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
-            let rhsDue = rhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
-            if lhsDue != rhsDue {
-                return lhsDue < rhsDue
+        if let customOrderIndex, !customOrderIndex.isEmpty {
+            return tasks.sorted { (lhs: TaskItem, rhs: TaskItem) -> Bool in
+                let lhsOrder = customOrderIndex[lhs.persistentModelID.hashValue.description] ?? Int.max
+                let rhsOrder = customOrderIndex[rhs.persistentModelID.hashValue.description] ?? Int.max
+                if lhsOrder != rhsOrder {
+                    return lhsOrder < rhsOrder
+                }
+                return defaultSort(lhs, rhs: rhs, calendar: calendar)
             }
-
-            let lhsCreatedAt = lhs.createdAt ?? .distantPast
-            let rhsCreatedAt = rhs.createdAt ?? .distantPast
-            if lhsCreatedAt != rhsCreatedAt {
-                return lhsCreatedAt < rhsCreatedAt
-            }
-
-            return TaskUIModel.taskKey(for: lhs) < TaskUIModel.taskKey(for: rhs)
         }
+
+        return tasks.sorted { (lhs: TaskItem, rhs: TaskItem) -> Bool in
+            defaultSort(lhs, rhs: rhs, calendar: calendar)
+        }
+    }
+
+    private static func defaultSort(_ lhs: TaskItem, rhs: TaskItem, calendar: Calendar) -> Bool {
+        let lhsDue = lhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
+        let rhsDue = rhs.dueDate.map { calendar.startOfDay(for: $0) } ?? .distantFuture
+        if lhsDue != rhsDue {
+            return lhsDue < rhsDue
+        }
+
+        let lhsCreatedAt = lhs.createdAt ?? .distantPast
+        let rhsCreatedAt = rhs.createdAt ?? .distantPast
+        if lhsCreatedAt != rhsCreatedAt {
+            return lhsCreatedAt < rhsCreatedAt
+        }
+
+        return TaskUIModel.taskKey(for: lhs) < TaskUIModel.taskKey(for: rhs)
     }
 
     static func upcomingStart(now: Date, calendar: Calendar = .current) -> Date {
