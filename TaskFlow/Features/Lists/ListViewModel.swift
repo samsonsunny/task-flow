@@ -180,6 +180,40 @@ final class ListsTabViewModel {
         try? modelContext.save()
     }
 
+    func moveGroups(fromOffsets: IndexSet, toOffset: Int) {
+        var mutableGroups = groups
+        let sortedFrom = fromOffsets.sorted()
+
+        let moved = Array(sortedFrom.reversed().map { mutableGroups.remove(at: $0) }.reversed())
+        let insertAt = min(toOffset, mutableGroups.count)
+
+        mutableGroups.insert(contentsOf: moved, at: insertAt)
+
+        var lower = insertAt > 0 ? mutableGroups[insertAt - 1].sortOrder : nil
+        for i in insertAt..<(insertAt + moved.count) {
+            let upper = (i + 1) < mutableGroups.count ? mutableGroups[i + 1].sortOrder : nil
+
+            if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
+                mutableGroups[i].sortOrder = existing
+            } else if let newOrder = midpoint(between: lower, and: upper) {
+                mutableGroups[i].sortOrder = newOrder
+            } else {
+                if let upperStr = upper {
+                    let widened = widen(upperStr)
+                    mutableGroups[i + 1].sortOrder = widened
+                    mutableGroups[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
+                } else {
+                    let widened = widen(lower ?? "m")
+                    mutableGroups[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
+                }
+            }
+
+            lower = mutableGroups[i].sortOrder
+        }
+
+        try? modelContext.save()
+    }
+
     // MARK: - List Group Assignment
 
     func assignListToGroup(_ list: ReminderList, group: ReminderListGroup?) {

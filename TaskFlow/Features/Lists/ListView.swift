@@ -238,7 +238,7 @@ struct ListsTabView: View {
 
     private var groupSections: some View {
         Section {
-            ForEach(groups) { group in
+            ForEach(Array(groups.enumerated()), id: \.element.persistentModelID) { index, group in
                 let items = viewModel?.listsInGroup(group) ?? []
                 DisclosureGroup(isExpanded: Binding(
                     get: { viewModel?.isGroupExpanded(group) ?? false },
@@ -288,6 +288,11 @@ struct ListsTabView: View {
                 }
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+            }
+            .onMove { fromOffsets, toOffset in
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    viewModel?.moveGroups(fromOffsets: fromOffsets, toOffset: toOffset)
+                }
             }
 
             newGroupRow
