@@ -15,7 +15,7 @@ A `TaskItem` SHALL support an optional self-referencing parent-child relationshi
 - **AND** it SHALL support all operations that top-level tasks support
 
 ### Requirement: List view displays nested tasks hierarchically
-`ListDetailView` SHALL display tasks in a hierarchical tree. Each subtask SHALL be indented relative to its parent. Parent tasks with children SHALL show a collapse/expand control. The default state for a parent SHALL be expanded.
+`ListDetailView` SHALL display tasks in a hierarchical tree. Each subtask SHALL be indented relative to its parent. Parent tasks with children SHALL show a collapse/expand control. The default state for a parent SHALL be collapsed.
 
 #### Scenario: Subtasks indent under parent
 - **WHEN** a task has subtasks
@@ -36,6 +36,12 @@ A `TaskItem` SHALL support an optional self-referencing parent-child relationshi
 - **WHEN** a task hierarchy has depth of N levels
 - **THEN** each level SHALL indent by `depth * 20` points
 - **AND** the list SHALL render correctly up to any depth (no truncation)
+
+#### Scenario: Subtasks are collapsed by default on view load
+- **WHEN** the list view loads for the first time
+- **THEN** all parent tasks with subtasks SHALL have their subtask trees collapsed
+- **AND** the user SHALL see only the parent task rows (no subtasks visible)
+- **AND** the collapse control SHALL indicate collapsed state for each parent
 
 ### Requirement: Parent completion cascades to subtasks
 When a parent task is marked as completed, all descendant subtasks SHALL also be marked as completed. When a parent task is uncompleted, all descendant subtasks SHALL also be uncompleted.

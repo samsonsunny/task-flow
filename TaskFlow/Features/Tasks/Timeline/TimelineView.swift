@@ -28,13 +28,16 @@ struct ReminderSegmentDetailView: View {
     @State private var activeCaptureDate: Date?
     @State private var quickCaptureText = ""
     @State private var refreshTimer: Timer?
+    @State private var showOverdue = false
+    @State private var collapsedTasks: Set<PersistentIdentifier> = []
+    @State private var defaultCollapsed = true
 
     var body: some View {
         ScrollViewReader { proxy in
             List {
                 if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
                 Section {
-                    if viewModel?.showOverdue ?? true {
+                    if showOverdue {
                         let overdueNodes = (viewModel?.overdueTasks ?? []).map { task in
                             FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskCount: 0)
                         }
@@ -45,7 +48,7 @@ struct ReminderSegmentDetailView: View {
                 } header: {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel?.toggleShowOverdue()
+                            showOverdue.toggle()
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -62,7 +65,7 @@ struct ReminderSegmentDetailView: View {
                             Image(systemName: "chevron.down")
                                 .font(.caption2)
                                 .foregroundStyle(AppTheme.colors.textTertiary)
-                                .rotationEffect(.degrees((viewModel?.showOverdue ?? true) ? 0 : -90))
+                                .rotationEffect(.degrees(showOverdue ? 0 : -90))
                         }
                         .padding(.vertical, 6)
                     }
@@ -125,8 +128,13 @@ struct ReminderSegmentDetailView: View {
             ReminderEditorView(task: task)
         }
         .onAppear {
+            if defaultCollapsed {
+                let parentIDs = Set(tasks.compactMap { $0.parentTask?.persistentModelID })
+                collapsedTasks = parentIDs
+                defaultCollapsed = false
+            }
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
             scheduleMinuteAlignedTimer()
         }
         .onDisappear {
@@ -134,18 +142,18 @@ struct ReminderSegmentDetailView: View {
             refreshTimer = nil
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date())
+            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists, now: Date())
+            viewModel?.update(tasks: tasks, lists: newLists, now: Date(), collapsedTasks: collapsedTasks)
         }
         .onChange(of: editingTask) { _, task in
             if task == nil {
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
             }
         }
         .onChange(of: appState.mutationCount) { _, _ in
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
         }
     }
 
@@ -236,7 +244,7 @@ struct ReminderSegmentDetailView: View {
                     if tasks.isEmpty {
                         emptyDayRow(id: id, title: title, date: date)
                     } else {
-                        let sectionNodes = viewModel?.flatNodes(for: tasks) ?? []
+                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: collapsedTasks) ?? []
                         Section {
                             ForEach(sectionNodes) { node in
                                 taskListRow(node, showsDueDate: false)
@@ -389,7 +397,7 @@ struct ReminderSegmentDetailView: View {
             }
 
             ForEach(dayGroups) { dayGroup in
-                let dayNodes = vm.flatNodes(for: dayGroup.tasks)
+                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: collapsedTasks)
                 Section {
                     ForEach(dayNodes) { node in
                         taskListRow(node, showsDueDate: false)
@@ -494,8 +502,15 @@ struct ReminderSegmentDetailView: View {
             showsDueDate: showsDueDate,
             nestingDepth: node.depth,
             subtaskCount: node.subtaskCount,
-            isCollapsed: viewModel?.collapsedTasks.contains(task.persistentModelID) == true,
-            onToggleCollapse: node.subtaskCount > 0 ? { viewModel?.toggleCollapse(task) } : nil
+            isCollapsed: collapsedTasks.contains(task.persistentModelID),
+            onToggleCollapse: node.subtaskCount > 0 ? {
+                if collapsedTasks.contains(task.persistentModelID) {
+                    collapsedTasks.remove(task.persistentModelID)
+                } else {
+                    collapsedTasks.insert(task.persistentModelID)
+                }
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+            } : nil
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
