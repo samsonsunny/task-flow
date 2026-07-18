@@ -164,6 +164,7 @@ struct ListDetailView: View {
 
     private func taskListRow(_ node: FlatTaskNode) -> some View {
         let task = node.task
+        let sibs = viewModel?.siblings(of: task) ?? []
         return TaskRowView(
             task: task,
             isCompletedVisualState: task.isCompleted == true,
@@ -180,6 +181,8 @@ struct ListDetailView: View {
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
             listSections: viewModel?.listSections ?? [],
             onDelete: { viewModel?.delete(task: task) },
+            onMoveToTop: sibs.count > 1 ? { viewModel?.moveToTop(task: task) } : nil,
+            onMoveToBottom: sibs.count > 1 ? { viewModel?.moveToBottom(task: task) } : nil,
             onTap: {
                 isQuickCapturing = false
                 quickCaptureText = ""

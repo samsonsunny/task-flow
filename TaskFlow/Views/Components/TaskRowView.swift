@@ -20,6 +20,8 @@ struct TaskRowView: View, Equatable {
     var onMoveToList: ((ReminderList) -> Void)? = nil
     var listSections: [ListSection] = []
     var onDelete: (() -> Void)? = nil
+    var onMoveToTop: (() -> Void)? = nil
+    var onMoveToBottom: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
     var showsListName: Bool = true
@@ -63,6 +65,19 @@ struct TaskRowView: View, Equatable {
                 if let schedule = onSchedule {
                     Button("Schedule") {
                         schedule()
+                    }
+                }
+                if onMoveToTop != nil || onMoveToBottom != nil {
+                    Divider()
+                }
+                if let moveTop = onMoveToTop {
+                    Button("Move to Top") {
+                        moveTop()
+                    }
+                }
+                if let moveBottom = onMoveToBottom {
+                    Button("Move to Bottom") {
+                        moveBottom()
                     }
                 }
                 if let moveToList = onMoveToList, !listSections.isEmpty {

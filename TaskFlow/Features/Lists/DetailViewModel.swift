@@ -179,6 +179,34 @@ final class ListDetailViewModel {
         recompute(collapsedTasks: cachedCollapsedTasks)
     }
 
+    // MARK: - Move to Top / Bottom
+
+    func siblings(of task: TaskItem) -> [TaskItem] {
+        if let parent = task.parentTask {
+            return tasks.filter {
+                $0.parentTask?.persistentModelID == parent.persistentModelID &&
+                $0.persistentModelID != task.persistentModelID
+            }
+        }
+        return rootTasks.filter { $0.persistentModelID != task.persistentModelID }
+    }
+
+    func moveToTop(task: TaskItem) {
+        let sibs = siblings(of: task)
+        let firstSortOrder = sibs.compactMap { $0.sortOrder }.sorted().first
+        task.sortOrder = midpoint(between: nil, and: firstSortOrder)
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+    }
+
+    func moveToBottom(task: TaskItem) {
+        let sibs = siblings(of: task)
+        let lastSortOrder = sibs.compactMap { $0.sortOrder }.sorted().last
+        task.sortOrder = midpoint(between: lastSortOrder, and: nil)
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+    }
+
     // MARK: - Drag-Drop Nesting (2.5)
 
     func handleDrop(target: TaskItem, location: CGPoint) {
