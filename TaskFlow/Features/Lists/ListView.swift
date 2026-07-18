@@ -145,7 +145,7 @@ struct ListsTabView: View {
                 get: { viewModel?.deleteList != nil },
                 set: { if !$0 { viewModel?.deleteList = nil } }
             )) {
-                Button("Move tasks to Reminders") {
+                Button("Move tasks to Inbox") {
                     if let list = viewModel?.deleteList {
                         viewModel?.deleteList(list, moveTasksToDefault: true)
                     }
@@ -319,9 +319,9 @@ struct ListsTabView: View {
 
     private var newListRow: some View {
         HStack(spacing: 12) {
-            Circle()
-                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                .foregroundStyle(AppTheme.colors.addReminderCircle)
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppTheme.colors.textSecondary)
                 .frame(width: 20, height: 20)
 
             Text("New List")
@@ -343,9 +343,9 @@ struct ListsTabView: View {
 
     private var newGroupRow: some View {
         HStack(spacing: 12) {
-            Circle()
-                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                .foregroundStyle(AppTheme.colors.addReminderCircle)
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppTheme.colors.textSecondary)
                 .frame(width: 20, height: 20)
 
             Text("New Group")
@@ -403,12 +403,12 @@ struct ListsTabView: View {
             .id("group-list-capture")
         } else {
             HStack(spacing: 12) {
-                Circle()
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                    .foregroundStyle(AppTheme.colors.addReminderCircle)
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
                     .frame(width: 20, height: 20)
 
-                Text("Add List")
+                Text("New List")
                     .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(AppTheme.colors.textSecondary)
 

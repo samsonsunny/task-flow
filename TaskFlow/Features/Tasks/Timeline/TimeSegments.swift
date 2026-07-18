@@ -76,16 +76,16 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         case .today: return "Nothing due today"
         case .tomorrow: return "Nothing due tomorrow"
         case .upcoming: return "Nothing in Upcoming"
-        case .overdue: return "No overdue reminders"
+        case .overdue: return "No overdue tasks"
         }
     }
 
     var emptyMessage: String {
         switch self {
-        case .today: return "Reminders due today will appear here."
-        case .tomorrow: return "Reminders due tomorrow will appear here."
-        case .upcoming: return "Reminders due soon will appear here."
-        case .overdue: return "Reminders past their due date will appear here."
+        case .today: return "Tasks due today will appear here."
+        case .tomorrow: return "Tasks due tomorrow will appear here."
+        case .upcoming: return "Tasks due soon will appear here."
+        case .overdue: return "Tasks past their due date will appear here."
         }
     }
 }

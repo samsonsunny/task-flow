@@ -18,6 +18,7 @@ struct ReminderEditorView: View {
     @State private var pressedRow: ExpandedPicker?
     @State private var newSubtaskTitle = ""
     @State private var editingSubtask: TaskItem?
+    @State private var isNotesSheetPresented = false
     @FocusState private var isTitleFocused: Bool
 
     init(task: TaskItem? = nil, initialDate: Date? = nil, initialListID: ReminderList.ID? = nil, initialTitle: String = "") {
@@ -36,7 +37,7 @@ struct ReminderEditorView: View {
                     subtaskSection(for: parent)
                 }
             }
-            .navigationTitle(task == nil ? "New Reminder" : "Edit Reminder")
+            .navigationTitle(task == nil ? "New Task" : "Edit Task")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 let vm = ReminderEditorViewModel(
@@ -49,7 +50,9 @@ struct ReminderEditorView: View {
                     initialTitle: initialTitle
                 )
                 viewModel = vm
-                isTitleFocused = true
+                if task == nil {
+                    isTitleFocused = true
+                }
             }
             .onChange(of: reminderLists) { _, newValue in
                 viewModel?.update(reminderLists: newValue, reminderTags: reminderTags)
@@ -69,8 +72,10 @@ struct ReminderEditorView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button {
                         saveReminder()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(viewModel?.draft.normalizedTitle.isEmpty ?? true)
                     .accessibilityIdentifier("reminder-editor-save")
@@ -78,6 +83,9 @@ struct ReminderEditorView: View {
             }
             .sheet(item: $editingSubtask) { subtask in
                 ReminderEditorView(task: subtask)
+            }
+            .sheet(isPresented: $isNotesSheetPresented) {
+                notesSheet
             }
             .alert("Discard Changes?", isPresented: discardConfirmationBinding) {
                 Button("Keep Editing", role: .cancel) {}
@@ -112,9 +120,24 @@ struct ReminderEditorView: View {
                 .focused($isTitleFocused)
                 .accessibilityIdentifier("reminder-editor-title")
 
-            TextField("Notes", text: draftBinding.notes, axis: .vertical)
-                .lineLimit(1...4)
-                .accessibilityIdentifier("reminder-editor-notes")
+            if task != nil {
+                notesPreviewCard
+            } else {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: draftBinding.notes)
+                        .font(.body)
+                        .frame(minHeight: 36, maxHeight: 200)
+                        .scrollContentBackground(.hidden)
+                        .accessibilityIdentifier("reminder-editor-notes")
+
+                    if draftBinding.notes.wrappedValue.isEmpty {
+                    Text("Add notes")
+                            .foregroundStyle(.placeholder)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 8)
+                    }
+                }
+            }
 
             HStack {
                 TextField("URL", text: draftBinding.urlString)
@@ -299,6 +322,60 @@ struct ReminderEditorView: View {
         case time
     }
 
+    private var notesPreviewCard: some View {
+        Button {
+            isNotesSheetPresented = true
+        } label: {
+            HStack {
+                if draftBinding.notes.wrappedValue.isEmpty {
+                    Text("Notes")
+                        .font(.body)
+                        .foregroundStyle(.placeholder)
+                } else {
+                    Text(draftBinding.notes.wrappedValue)
+                        .font(.body)
+                        .lineLimit(4)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(AppTheme.colors.textPrimary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("reminder-editor-notes-preview")
+    }
+
+    private var notesSheet: some View {
+        NavigationStack {
+            NotesTextEditor(text: draftBinding.notes)
+                .padding(.horizontal, 16)
+                .navigationTitle("Notes")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            isNotesSheetPresented = false
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            isNotesSheetPresented = false
+                        } label: {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+        }
+    }
+
     private func handleClose() {
         viewModel?.handleClose()
         if viewModel?.isDirty == false {
@@ -361,4 +438,41 @@ struct ReminderEditorView: View {
 
     return ReminderEditorView()
         .modelContainer(container)
+}
+
+private struct NotesTextEditor: UIViewRepresentable {
+    @Binding var text: String
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.text = text
+        textView.font = UIFont.preferredFont(forTextStyle: .body)
+        textView.backgroundColor = .clear
+        textView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+        textView.delegate = context.coordinator
+        textView.becomeFirstResponder()
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(binding: $text)
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        let binding: Binding<String>
+
+        init(binding: Binding<String>) {
+            self.binding = binding
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            binding.wrappedValue = textView.text
+        }
+    }
 }

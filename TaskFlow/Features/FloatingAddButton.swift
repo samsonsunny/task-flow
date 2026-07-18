@@ -17,6 +17,6 @@ struct ReminderFloatingAddButton: View {
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.25), radius: 18, x: 0, y: 10)
         .accessibilityIdentifier("reminder-create-button")
-        .accessibilityLabel("New Reminder")
+        .accessibilityLabel("New Task")
     }
 }

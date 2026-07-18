@@ -378,12 +378,12 @@ struct ReminderSegmentDetailView: View {
 
     private func addReminderButton(date: Date) -> some View {
         HStack(spacing: 12) {
-            Circle()
-                .stroke(style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                .foregroundStyle(AppTheme.colors.addReminderCircle)
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(AppTheme.colors.textSecondary)
                 .frame(width: 20, height: 20)
 
-            Text("Add Reminder")
+            Text("New Reminder")
                 .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(AppTheme.colors.textSecondary)
 

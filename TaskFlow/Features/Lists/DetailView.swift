@@ -145,11 +145,10 @@ struct ListDetailView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("No reminders")
+            Text("No tasks")
                 .font(.headline)
                 .foregroundStyle(AppTheme.colors.textPrimary)
-
-            Text("Tap + to add a reminder to this list.")
+            Text("Tap + to add a task to this list.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.colors.textSecondary)
         }

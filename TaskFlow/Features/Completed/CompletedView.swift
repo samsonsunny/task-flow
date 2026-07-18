@@ -54,10 +54,10 @@ struct CompletedView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("No recently completed reminders")
+            Text("No recently completed tasks")
                 .font(.headline)
                 .foregroundStyle(AppTheme.colors.textPrimary)
-            Text("Reminders you complete will appear here for 30 days.")
+            Text("Tasks you complete will appear here for 30 days.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.colors.textSecondary)
         }
