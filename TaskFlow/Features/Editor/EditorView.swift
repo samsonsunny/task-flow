@@ -19,6 +19,7 @@ struct ReminderEditorView: View {
     @State private var newSubtaskTitle = ""
     @State private var editingSubtask: TaskItem?
     @State private var isNotesSheetPresented = false
+    @State private var isListPickerPresented = false
     @FocusState private var isTitleFocused: Bool
 
     init(task: TaskItem? = nil, initialDate: Date? = nil, initialListID: ReminderList.ID? = nil, initialTitle: String = "") {
@@ -32,6 +33,7 @@ struct ReminderEditorView: View {
         NavigationStack {
             Form {
                 contentSection
+                listSection
                 scheduleSection
                 if let parent = task {
                     subtaskSection(for: parent)
@@ -86,6 +88,26 @@ struct ReminderEditorView: View {
             }
             .sheet(isPresented: $isNotesSheetPresented) {
                 notesSheet
+            }
+            .sheet(isPresented: $isListPickerPresented) {
+                NavigationStack {
+                    ListPickerView(
+                        allLists: reminderLists,
+                        selectedListName: viewModel?.draft.listName ?? "",
+                        onSelect: { selected in
+                            viewModel?.draft.listName = selected
+                            isListPickerPresented = false
+                        }
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                isListPickerPresented = false
+                            }
+                        }
+                    }
+                }
+                .presentationDetents(reminderLists.count <= 8 ? [.medium, .large] : [.large])
             }
             .alert("Discard Changes?", isPresented: discardConfirmationBinding) {
                 Button("Keep Editing", role: .cancel) {}
@@ -157,6 +179,32 @@ struct ReminderEditorView: View {
                     .accessibilityIdentifier("reminder-editor-url-clear")
                 }
             }
+        }
+    }
+
+    private var listSection: some View {
+        Section("List") {
+            HStack {
+                Image(systemName: viewModel?.draft.listName == ReminderDefaults.defaultListName ? "tray" : "list.bullet")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .frame(width: 24)
+
+                Text(viewModel?.draft.listName ?? ReminderDefaults.defaultListName)
+                    .font(.system(size: 17))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                isListPickerPresented = true
+            }
+            .accessibilityIdentifier("reminder-editor-list-row")
         }
     }
 
