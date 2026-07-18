@@ -175,6 +175,7 @@ struct ListDetailView: View {
             },
             onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
             onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
+            onMoveToNextWeek: viewModel?.canMoveToNextWeek(task) == true ? { viewModel?.rescheduleTaskToNextWeek(task) } : nil,
             onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
             onMoveToList: { viewModel?.moveTask(task, to: $0) },

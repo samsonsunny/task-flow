@@ -505,6 +505,7 @@ struct ReminderSegmentDetailView: View {
             onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
             onMoveToToday: (viewModel?.canMoveToToday(task) == true) ? { viewModel?.rescheduleToToday(task) } : nil,
             onMoveToTomorrow: (viewModel?.canMoveToTomorrow(task) == true) ? { viewModel?.rescheduleToTomorrow(task) } : nil,
+            onMoveToNextWeek: (viewModel?.canMoveToNextWeek(task) == true) ? { viewModel?.rescheduleToNextWeek(task) } : nil,
             onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleToLater(task) } : nil,
             onSchedule: { presentScheduleSheet(for: task) },
             onMoveToList: { viewModel?.moveTask(task, to: $0) },

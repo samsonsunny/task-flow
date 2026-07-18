@@ -9,6 +9,7 @@ struct TaskNodeView: View {
     var onToggleCompletion: () -> Void
     var onMoveToToday: (() -> Void)?
     var onMoveToTomorrow: (() -> Void)?
+    var onMoveToNextWeek: (() -> Void)?
     var onMoveToLater: (() -> Void)?
     var onSchedule: (() -> Void)?
     var onMoveToList: ((ReminderList) -> Void)?
@@ -25,6 +26,7 @@ struct TaskNodeView: View {
             onToggleCompletion: onToggleCompletion,
             onMoveToToday: onMoveToToday,
             onMoveToTomorrow: onMoveToTomorrow,
+            onMoveToNextWeek: onMoveToNextWeek,
             onMoveToLater: onMoveToLater,
             onSchedule: onSchedule,
             onMoveToList: onMoveToList,

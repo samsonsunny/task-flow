@@ -319,6 +319,16 @@ final class ListDetailViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
+    func rescheduleTaskToNextWeek(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = ReminderSegmentViewModel.nextMonday(from: now)
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
     // MARK: - Helpers (2.7)
 
     func canMoveToToday(_ task: TaskItem) -> Bool {
@@ -329,6 +339,12 @@ final class ListDetailViewModel {
     func canMoveToTomorrow(_ task: TaskItem) -> Bool {
         guard let dueDate = task.dueDate else { return true }
         return !Calendar.current.isDateInTomorrow(dueDate)
+    }
+
+    func canMoveToNextWeek(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        let nextMon = ReminderSegmentViewModel.nextMonday(from: now)
+        return !Calendar.current.isDate(dueDate, inSameDayAs: nextMon)
     }
 
 }

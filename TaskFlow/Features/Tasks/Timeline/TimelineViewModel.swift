@@ -323,6 +323,16 @@ final class ReminderSegmentViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
+    func rescheduleToNextWeek(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = Self.nextMonday(from: now)
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now)
+        BadgeService.update(modelContext: modelContext)
+    }
+
     func rescheduleToLater(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
@@ -341,5 +351,29 @@ final class ReminderSegmentViewModel {
     func canMoveToTomorrow(_ task: TaskItem) -> Bool {
         guard let dueDate = task.dueDate else { return true }
         return !Calendar.current.isDateInTomorrow(dueDate)
+    }
+
+    func canMoveToNextWeek(_ task: TaskItem) -> Bool {
+        guard let dueDate = task.dueDate else { return true }
+        let nextMon = Self.nextMonday(from: now)
+        return !Calendar.current.isDate(dueDate, inSameDayAs: nextMon)
+    }
+
+    static func nextMonday(from date: Date) -> Date {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: todayStart)
+        let daysUntilMonday: Int
+        switch weekday {
+        case 2: daysUntilMonday = 7
+        case 3: daysUntilMonday = 6
+        case 4: daysUntilMonday = 5
+        case 5: daysUntilMonday = 4
+        case 6: daysUntilMonday = 3
+        case 7: daysUntilMonday = 2
+        case 1: daysUntilMonday = 1
+        default: daysUntilMonday = 7
+        }
+        return calendar.date(byAdding: .day, value: daysUntilMonday, to: todayStart)!
     }
 }
