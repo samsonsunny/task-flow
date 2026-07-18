@@ -45,8 +45,29 @@ struct ListDetailView: View {
     @State private var quickCaptureText = ""
     @State private var collapsedTasks: Set<PersistentIdentifier> = []
     @State private var defaultCollapsed = true
+    @State private var isSelecting = false
+    @State private var selectedTasks: Set<PersistentIdentifier> = []
+    @State private var savedCollapseState: Set<PersistentIdentifier> = []
+    @State private var showDeleteConfirmation = false
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    private func enterSelectionMode() {
+        savedCollapseState = collapsedTasks
+        collapsedTasks = []
+        selectedTasks = []
+        isSelecting = true
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date(), collapsedTasks: collapsedTasks)
+    }
+
+    private func exitSelectionMode() {
+        isSelecting = false
+        selectedTasks = []
+        collapsedTasks = savedCollapseState
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date(), collapsedTasks: collapsedTasks)
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -67,7 +88,7 @@ struct ListDetailView: View {
                     }
                 }
 
-                if isQuickCapturing {
+                if isQuickCapturing && !isSelecting {
                     QuickCaptureRow(
                         text: $quickCaptureText,
                         onSubmit: { viewModel?.commitQuickCapture(text: $0, in: listID) },
@@ -84,6 +105,23 @@ struct ListDetailView: View {
             )
             .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if isSelecting {
+                        Button("Done") {
+                            exitSelectionMode()
+                        }
+                    } else {
+                        Menu {
+                            Button("Select Items") {
+                                enterSelectionMode()
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                        }
+                    }
+                }
+            }
             .quickCaptureScroll(isActive: isQuickCapturing, proxy: proxy)
         }
         .overlay(alignment: .bottomTrailing) {
@@ -92,9 +130,29 @@ struct ListDetailView: View {
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
-            .opacity(isQuickCapturing ? 0 : 1)
-            .allowsHitTesting(!isQuickCapturing)
+            .opacity(isQuickCapturing || isSelecting ? 0 : 1)
+            .allowsHitTesting(!isQuickCapturing && !isSelecting)
             .animation(.easeInOut(duration: 0.15), value: isQuickCapturing)
+        }
+        .overlay(alignment: .bottom) {
+            if isSelecting {
+                BulkActionsToolbar(
+                    selectedCount: selectedTasks.count,
+                    onDelete: { showDeleteConfirmation = true },
+                    onRescheduleToday: { viewModel?.bulkRescheduleToToday(selectedTasks) },
+                    onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
+                    onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
+                    onRescheduleLater: { viewModel?.bulkRescheduleToLater(selectedTasks) },
+                    onRescheduleCustom: { /* custom date picker */ },
+                    onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
+                    listSections: viewModel?.listSections ?? [],
+                    onSetPriority: { viewModel?.bulkSetPriority(selectedTasks, priority: $0) },
+                    onComplete: { bulkToggleCompletion() },
+                    onDone: { exitSelectionMode() }
+                )
+                .transition(.move(edge: .bottom))
+                .animation(.easeInOut(duration: 0.25), value: isSelecting)
+            }
         }
         .onReceive(refreshTimer) { _ in
             viewModel?.refreshNow()
@@ -116,6 +174,14 @@ struct ListDetailView: View {
         }
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
+        }
+        .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                bulkDelete()
+            }
+        } message: {
+            Text("This cannot be undone.")
         }
         .onAppear {
             if defaultCollapsed {
@@ -200,23 +266,36 @@ struct ListDetailView: View {
                     collapsedTasks.insert(task.persistentModelID)
                 }
                 viewModel?.update(tasks: allTasks.filter { $0.reminderList?.persistentModelID == listID }, lists: allLists, allTasks: allTasks, collapsedTasks: collapsedTasks)
+            },
+            isSelecting: isSelecting,
+            isSelected: selectedTasks.contains(task.persistentModelID),
+            onSelectToggle: {
+                if selectedTasks.contains(task.persistentModelID) {
+                    selectedTasks.remove(task.persistentModelID)
+                } else {
+                    selectedTasks.insert(task.persistentModelID)
+                }
             }
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .onDrag {
+            guard !isSelecting else { return NSItemProvider() }
             viewModel?.draggedTaskId = task.taskId
             return NSItemProvider(object: (task.taskId ?? "") as NSString)
         }
         .onDrop(of: [.text], delegate: TaskDropDelegate(targetTask: task) { target, location in
+            guard !isSelecting else { return }
             viewModel?.handleDrop(target: target, location: location)
         })
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                viewModel?.delete(task: task)
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if !isSelecting {
+                Button(role: .destructive) {
+                    viewModel?.delete(task: task)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
     }
@@ -229,5 +308,24 @@ struct ListDetailView: View {
 
     private func presentScheduleSheet(for task: TaskItem) {
         scheduleConfig = ScheduleConfig(task: task)
+    }
+
+    private func bulkDelete() {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+        for id in selectedTasks {
+            if let task = listTasks.first(where: { $0.persistentModelID == id }) {
+                viewModel?.delete(task: task)
+            }
+        }
+        exitSelectionMode()
+    }
+
+    private func bulkToggleCompletion() {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+        for id in selectedTasks {
+            if let task = listTasks.first(where: { $0.persistentModelID == id }) {
+                viewModel?.toggleCompletion(for: task)
+            }
+        }
     }
 }

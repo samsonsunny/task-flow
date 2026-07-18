@@ -132,4 +132,36 @@ final class CompletedViewModel {
         allTasks.removeAll { $0.persistentModelID == task.persistentModelID }
         update(tasks: allTasks)
     }
+
+    // MARK: - Bulk Operations
+
+    func bulkUncomplete(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToUpdate = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToUpdate {
+            task.isCompleted = false
+            task.completionDate = nil
+            if task.safeHasTime {
+                NotificationService.shared.schedule(for: task)
+            }
+        }
+        try? modelContext.save()
+        appState.notifyMutation()
+        update(tasks: allTasks)
+    }
+
+    func bulkDelete(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToDelete = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToDelete {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            modelContext.delete(task)
+        }
+        try? modelContext.save()
+        appState.notifyMutation()
+        for id in taskIDs {
+            allTasks.removeAll { $0.persistentModelID == id }
+        }
+        update(tasks: allTasks)
+    }
 }

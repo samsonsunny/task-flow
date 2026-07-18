@@ -347,4 +347,110 @@ final class ListDetailViewModel {
         return !Calendar.current.isDate(dueDate, inSameDayAs: nextMon)
     }
 
+    // MARK: - Bulk Operations
+
+    func bulkRescheduleToToday(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = Calendar.current.startOfDay(for: now)
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToTomorrow(_ taskIDs: Set<PersistentIdentifier>) {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: todayStart)!
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = tomorrow
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToNextWeek(_ taskIDs: Set<PersistentIdentifier>) {
+        let nextMon = ReminderSegmentViewModel.nextMonday(from: now)
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = nextMon
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToLater(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = nil
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkMoveToList(_ taskIDs: Set<PersistentIdentifier>, list: ReminderList) {
+        let tasksToMove = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToMove {
+            task.reminderList = list
+            task.parentTask = nil
+            assignSortOrder(for: task, in: list)
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+    }
+
+    func bulkToggleCompletion(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToToggle = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToToggle {
+            let next = !(task.isCompleted ?? false)
+            task.isCompleted = next
+            task.completionDate = next ? Date() : nil
+            if next, let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkDelete(_ taskIDs: Set<PersistentIdentifier>) {
+        let tasksToDelete = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToDelete {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.deleteDescendants()
+            modelContext.delete(task)
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkSetPriority(_ taskIDs: Set<PersistentIdentifier>, priority: ReminderPriority) {
+        let tasksToUpdate = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToUpdate {
+            task.priorityRawValue = priority.rawValue
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+    }
 }

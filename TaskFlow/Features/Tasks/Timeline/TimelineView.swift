@@ -20,6 +20,7 @@ struct ReminderSegmentDetailView: View {
     @Query(sort: \ReminderList.name) private var reminderLists: [ReminderList]
 
     let segment: ReminderSegment
+    var isSelecting: Binding<Bool>? = nil
 
     @State private var viewModel: ReminderSegmentViewModel?
     @State private var scheduleConfig: ScheduleConfig?
@@ -31,6 +32,28 @@ struct ReminderSegmentDetailView: View {
     @State private var showOverdue = false
     @State private var collapsedTasks: Set<PersistentIdentifier> = []
     @State private var defaultCollapsed = true
+    @State private var selectedTasks: Set<PersistentIdentifier> = []
+    @State private var savedCollapseState: Set<PersistentIdentifier> = []
+    @State private var showDeleteConfirmation = false
+
+    private var selecting: Bool {
+        isSelecting?.wrappedValue ?? false
+    }
+
+    func enterSelectionMode() {
+        savedCollapseState = collapsedTasks
+        collapsedTasks = []
+        selectedTasks = []
+        isSelecting?.wrappedValue = true
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+    }
+
+    func exitSelectionMode() {
+        isSelecting?.wrappedValue = false
+        selectedTasks = []
+        collapsedTasks = savedCollapseState
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+    }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -105,9 +128,29 @@ struct ReminderSegmentDetailView: View {
             }
             .padding(.trailing, 20)
             .padding(.bottom, 24)
-            .opacity(activeCaptureDate == nil ? 1 : 0)
-            .allowsHitTesting(activeCaptureDate == nil)
+            .opacity(activeCaptureDate == nil && !selecting ? 1 : 0)
+            .allowsHitTesting(activeCaptureDate == nil && !selecting)
             .animation(.easeInOut(duration: 0.15), value: activeCaptureDate == nil)
+        }
+        .overlay(alignment: .bottom) {
+            if selecting {
+                BulkActionsToolbar(
+                    selectedCount: selectedTasks.count,
+                    onDelete: { showDeleteConfirmation = true },
+                    onRescheduleToday: { viewModel?.bulkRescheduleToToday(selectedTasks) },
+                    onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
+                    onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
+                    onRescheduleLater: { viewModel?.bulkRescheduleToLater(selectedTasks) },
+                    onRescheduleCustom: { /* custom date picker */ },
+                    onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
+                    listSections: viewModel?.listSections ?? [],
+                    onSetPriority: { viewModel?.bulkSetPriority(selectedTasks, priority: $0) },
+                    onComplete: { bulkToggleCompletion() },
+                    onDone: { exitSelectionMode() }
+                )
+                .transition(.move(edge: .bottom))
+                .animation(.easeInOut(duration: 0.25), value: selecting)
+            }
         }
         .sheet(item: $scheduleConfig) { config in
             TaskScheduleDatePickerSheet(
@@ -126,6 +169,14 @@ struct ReminderSegmentDetailView: View {
         }
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
+        }
+        .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                bulkDelete()
+            }
+        } message: {
+            Text("This cannot be undone.")
         }
         .onAppear {
             if defaultCollapsed {
@@ -194,6 +245,7 @@ struct ReminderSegmentDetailView: View {
             }
         }
         .onMove { fromOffsets, toOffset in
+            guard !selecting else { return }
             let rootTasks = vm.rootedNodes.map(\.root.task)
             viewModel?.moveTasks(fromOffsets: fromOffsets, toOffset: toOffset, in: rootTasks)
         }
@@ -226,7 +278,7 @@ struct ReminderSegmentDetailView: View {
                 reorderableFlatContent(with: vm)
             }
 
-            if activeCaptureDate != nil {
+            if activeCaptureDate != nil && !selecting {
                 QuickCaptureRow(
                     text: $quickCaptureText,
                     onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: activeCaptureDate) },
@@ -527,16 +579,27 @@ struct ReminderSegmentDetailView: View {
                     collapsedTasks.insert(task.persistentModelID)
                 }
                 viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
-            } : nil
+            } : nil,
+            isSelecting: selecting,
+            isSelected: selectedTasks.contains(task.persistentModelID),
+            onSelectToggle: {
+                if selectedTasks.contains(task.persistentModelID) {
+                    selectedTasks.remove(task.persistentModelID)
+                } else {
+                    selectedTasks.insert(task.persistentModelID)
+                }
+            }
         )
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                viewModel?.delete(task: task)
-            } label: {
-                Label("Delete", systemImage: "trash")
+            if !selecting {
+                Button(role: .destructive) {
+                    viewModel?.delete(task: task)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
     }
@@ -563,5 +626,22 @@ struct ReminderSegmentDetailView: View {
         }
         RunLoop.main.add(timer, forMode: .common)
         refreshTimer = timer
+    }
+
+    private func bulkDelete() {
+        for id in selectedTasks {
+            if let task = tasks.first(where: { $0.persistentModelID == id }) {
+                viewModel?.delete(task: task)
+            }
+        }
+        exitSelectionMode()
+    }
+
+    private func bulkToggleCompletion() {
+        for id in selectedTasks {
+            if let task = tasks.first(where: { $0.persistentModelID == id }) {
+                viewModel?.toggleCompletion(for: task)
+            }
+        }
     }
 }

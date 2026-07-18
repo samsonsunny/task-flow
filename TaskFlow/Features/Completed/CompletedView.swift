@@ -8,6 +8,9 @@ struct CompletedView: View {
 
     @State private var viewModel: CompletedViewModel?
     @State private var editingTask: TaskItem?
+    @State private var isSelecting = false
+    @State private var selectedTasks: Set<PersistentIdentifier> = []
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         List {
@@ -19,13 +22,6 @@ struct CompletedView: View {
                         Section {
                             ForEach(tasks) { task in
                                 completedTaskRow(task)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button(role: .destructive) {
-                                            viewModel?.delete(task)
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
                             }
                         } header: {
                             Text(sectionTitle)
@@ -40,6 +36,48 @@ struct CompletedView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(AppTheme.colors.appBackground)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if isSelecting {
+                    Button("Done") {
+                        isSelecting = false
+                        selectedTasks = []
+                    }
+                } else {
+                    Menu {
+                        Button("Select Items") {
+                            isSelecting = true
+                            selectedTasks = []
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if isSelecting {
+                BulkActionsToolbar(
+                    selectedCount: selectedTasks.count,
+                    onDelete: { showDeleteConfirmation = true },
+                    onRescheduleToday: { },
+                    onRescheduleTomorrow: { },
+                    onRescheduleNextWeek: { },
+                    onRescheduleLater: { },
+                    onRescheduleCustom: { },
+                    onMoveToList: { _ in },
+                    listSections: [],
+                    onSetPriority: { _ in },
+                    onComplete: { },
+                    onDone: {
+                        isSelecting = false
+                        selectedTasks = []
+                    }
+                )
+                .transition(.move(edge: .bottom))
+                .animation(.easeInOut(duration: 0.25), value: isSelecting)
+            }
+        }
         .sheet(item: $editingTask) { task in
             ReminderEditorView(task: task)
         }
@@ -49,6 +87,14 @@ struct CompletedView: View {
         }
         .onChange(of: allTasks) { _, newTasks in
             viewModel?.update(tasks: newTasks)
+        }
+        .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                bulkDelete()
+            }
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 
@@ -69,30 +115,51 @@ struct CompletedView: View {
         .listRowBackground(Color.clear)
     }
 
+    private func bulkDelete() {
+        for id in selectedTasks {
+            if let task = allTasks.first(where: { $0.persistentModelID == id }) {
+                viewModel?.delete(task)
+            }
+        }
+        isSelecting = false
+        selectedTasks = []
+    }
+
     private func completedTaskRow(_ task: TaskItem) -> some View {
         let isUncompleting = viewModel?.justUncompleted.contains(task.taskId ?? "") ?? false
 
         return HStack(alignment: .center, spacing: 12) {
-            Button {
-                viewModel?.beginUncomplete(task)
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(isUncompleting ? AppTheme.colors.border : AppTheme.colors.primaryAction, lineWidth: 1.5)
-                        .background(Circle().fill(isUncompleting ? AppTheme.colors.surface : AppTheme.colors.primaryAction))
-                        .frame(width: 20, height: 20)
-
-                    if !isUncompleting {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
-                            .transition(.scale.combined(with: .opacity))
+            if isSelecting {
+                SelectionCircle(isSelected: selectedTasks.contains(task.persistentModelID))
+                    .onTapGesture {
+                        if selectedTasks.contains(task.persistentModelID) {
+                            selectedTasks.remove(task.persistentModelID)
+                        } else {
+                            selectedTasks.insert(task.persistentModelID)
+                        }
                     }
+            } else {
+                Button {
+                    viewModel?.beginUncomplete(task)
+                } label: {
+                    ZStack {
+                        Circle()
+                            .stroke(isUncompleting ? AppTheme.colors.border : AppTheme.colors.primaryAction, lineWidth: 1.5)
+                            .background(Circle().fill(isUncompleting ? AppTheme.colors.surface : AppTheme.colors.primaryAction))
+                            .frame(width: 20, height: 20)
+
+                        if !isUncompleting {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.18), value: isUncompleting)
                 }
-                .animation(.easeInOut(duration: 0.18), value: isUncompleting)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Un-complete task")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Un-complete task")
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.safeTitle)
@@ -110,8 +177,29 @@ struct CompletedView: View {
         }
         .contentShape(Rectangle())
         .padding(.vertical, 8)
+        .background(
+            selectedTasks.contains(task.persistentModelID) ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
+        )
+        .animation(.easeInOut(duration: 0.18), value: selectedTasks.contains(task.persistentModelID))
         .onTapGesture {
-            editingTask = task
+            if isSelecting {
+                if selectedTasks.contains(task.persistentModelID) {
+                    selectedTasks.remove(task.persistentModelID)
+                } else {
+                    selectedTasks.insert(task.persistentModelID)
+                }
+            } else {
+                editingTask = task
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !isSelecting {
+                Button(role: .destructive) {
+                    viewModel?.delete(task)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
         }
     }
 }

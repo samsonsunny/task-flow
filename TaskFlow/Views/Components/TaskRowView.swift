@@ -30,6 +30,9 @@ struct TaskRowView: View, Equatable {
     var subtaskCount: Int = 0
     var isCollapsed: Bool = false
     var onToggleCollapse: (() -> Void)? = nil
+    var isSelecting: Bool = false
+    var isSelected: Bool = false
+    var onSelectToggle: (() -> Void)? = nil
 
     private static let cachedDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -43,79 +46,97 @@ struct TaskRowView: View, Equatable {
             && lhs.subtaskCount == rhs.subtaskCount
             && lhs.isCollapsed == rhs.isCollapsed
             && lhs.nestingDepth == rhs.nestingDepth
+            && lhs.isSelecting == rhs.isSelecting
+            && lhs.isSelected == rhs.isSelected
     }
     
     var body: some View {
         rowContent
+            .background(
+                isSelected ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
+            )
+            .animation(.easeInOut(duration: 0.18), value: isSelected)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isSelecting {
+                    onSelectToggle?()
+                } else {
+                    onTap?()
+                }
+            }
+            .disabled(isSelecting && onSelectToggle == nil)
             .contextMenu {
-                if let moveToday = onMoveToToday {
-                    Button("Today") {
-                        moveToday()
+                if !isSelecting {
+                    if let moveToday = onMoveToToday {
+                        Button("Today") {
+                            moveToday()
+                        }
                     }
-                }
-                if let moveTomorrow = onMoveToTomorrow {
-                    Button("Tomorrow") {
-                        moveTomorrow()
+                    if let moveTomorrow = onMoveToTomorrow {
+                        Button("Tomorrow") {
+                            moveTomorrow()
+                        }
                     }
-                }
-                if let moveNextWeek = onMoveToNextWeek {
-                    Button("Next Week") {
-                        moveNextWeek()
+                    if let moveNextWeek = onMoveToNextWeek {
+                        Button("Next Week") {
+                            moveNextWeek()
+                        }
                     }
-                }
-                if let moveLater = onMoveToLater {
-                    Button("Later") {
-                        moveLater()
+                    if let moveLater = onMoveToLater {
+                        Button("Later") {
+                            moveLater()
+                        }
                     }
-                }
-                if let schedule = onSchedule {
-                    Button("Schedule") {
-                        schedule()
+                    if let schedule = onSchedule {
+                        Button("Schedule") {
+                            schedule()
+                        }
                     }
-                }
-                if onMoveToTop != nil || onMoveToBottom != nil {
-                    Divider()
-                }
-                if let moveTop = onMoveToTop {
-                    Button("Move to Top") {
-                        moveTop()
+                    if onMoveToTop != nil || onMoveToBottom != nil {
+                        Divider()
                     }
-                }
-                if let moveBottom = onMoveToBottom {
-                    Button("Move to Bottom") {
-                        moveBottom()
+                    if let moveTop = onMoveToTop {
+                        Button("Move to Top") {
+                            moveTop()
+                        }
                     }
-                }
-                if let moveToList = onMoveToList, !listSections.isEmpty {
-                    Menu("Move to List") {
-                        ForEach(listSections) { section in
-                            Section(section.title ?? "") {
-                                ForEach(section.lists) { list in
-                                    Button(list.name) {
-                                        moveToList(list)
+                    if let moveBottom = onMoveToBottom {
+                        Button("Move to Bottom") {
+                            moveBottom()
+                        }
+                    }
+                    if let moveToList = onMoveToList, !listSections.isEmpty {
+                        Menu("Move to List") {
+                            ForEach(listSections) { section in
+                                Section(section.title ?? "") {
+                                    ForEach(section.lists) { list in
+                                        Button(list.name) {
+                                            moveToList(list)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
-                if let delete = onDelete {
-                    Divider()
-                    Button(role: .destructive) {
-                        delete()
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                    if let delete = onDelete {
+                        Divider()
+                        Button(role: .destructive) {
+                            delete()
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
-            }
-            .onTapGesture {
-                onTap?()
             }
     }
 
     private var rowContent: some View {
         HStack(alignment: .center, spacing: 12) {
-            completionButton
+            if isSelecting {
+                SelectionCircle(isSelected: isSelected)
+            } else {
+                completionButton
+            }
 
             titleView
 
@@ -124,7 +145,6 @@ struct TaskRowView: View, Equatable {
             }
         }
         .padding(.leading, CGFloat(nestingDepth) * 20)
-        .contentShape(Rectangle())
         .padding(.vertical, 10)
     }
 
