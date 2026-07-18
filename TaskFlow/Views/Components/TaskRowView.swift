@@ -15,6 +15,7 @@ struct TaskRowView: View, Equatable {
     var onToggleCompletion: () -> Void
     var onMoveToToday: (() -> Void)? = nil
     var onMoveToTomorrow: (() -> Void)? = nil
+    var onMoveToNextWeek: (() -> Void)? = nil
     var onMoveToLater: (() -> Void)? = nil
     var onSchedule: (() -> Void)? = nil
     var onMoveToList: ((ReminderList) -> Void)? = nil
@@ -55,6 +56,11 @@ struct TaskRowView: View, Equatable {
                 if let moveTomorrow = onMoveToTomorrow {
                     Button("Tomorrow") {
                         moveTomorrow()
+                    }
+                }
+                if let moveNextWeek = onMoveToNextWeek {
+                    Button("Next Week") {
+                        moveNextWeek()
                     }
                 }
                 if let moveLater = onMoveToLater {
@@ -109,13 +115,13 @@ struct TaskRowView: View, Equatable {
 
     private var rowContent: some View {
         HStack(alignment: .center, spacing: 12) {
-            if subtaskCount > 0 {
-                chevronButton
-            }
-
             completionButton
 
             titleView
+
+            if subtaskCount > 0 {
+                chevronButton
+            }
         }
         .padding(.leading, CGFloat(nestingDepth) * 20)
         .contentShape(Rectangle())
@@ -229,7 +235,8 @@ struct TaskRowView: View, Equatable {
                 .font(.caption2)
                 .foregroundStyle(AppTheme.colors.textSecondary)
                 .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                .frame(width: 20, height: 20)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("subtask-chevron")
@@ -258,6 +265,8 @@ struct TaskRowView: View, Equatable {
                     .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
             }
             .scaleEffect(chipScale)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isCompletedVisualState ? "Mark active" : "Mark complete")
