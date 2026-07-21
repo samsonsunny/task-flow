@@ -14,7 +14,7 @@ struct ListsTabView: View {
     @State private var groupCreationSourceList: ReminderList?
     @State private var capturingGroupID: PersistentIdentifier?
     @State private var captureText = ""
-    @State private var isCaptureFocused = false
+    @FocusState private var isCaptureFocused: Bool
 
     var body: some View {
         NavigationStack {

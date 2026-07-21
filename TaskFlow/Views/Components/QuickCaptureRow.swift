@@ -9,7 +9,7 @@ struct QuickCaptureRow: View {
     let onSubmit: (String) -> Void
     let onDismiss: () -> Void
 
-    @State private var isFocused = false
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         HStack(spacing: 12) {
