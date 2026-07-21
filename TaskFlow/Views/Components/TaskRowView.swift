@@ -21,6 +21,7 @@ struct TaskRowView: View, Equatable {
     var onMoveToList: ((ReminderList) -> Void)? = nil
     var listSections: [ListSection] = []
     var onDelete: (() -> Void)? = nil
+    var onSwipeNextDay: (() -> Void)? = nil
     var onMoveToTop: (() -> Void)? = nil
     var onMoveToBottom: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
@@ -65,6 +66,22 @@ struct TaskRowView: View, Equatable {
                 }
             }
             .disabled(isSelecting && onSelectToggle == nil)
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                if let onSwipeNextDay, !isSelecting {
+                    Button {
+                        onSwipeNextDay()
+                    } label: {
+                        Label("Next Day", systemImage: "arrow.right")
+                    }
+                    .tint(AppTheme.colors.primaryAction)
+                } else if let onDelete, !isSelecting {
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
             .contextMenu {
                 if !isSelecting {
                     if let moveToday = onMoveToToday {

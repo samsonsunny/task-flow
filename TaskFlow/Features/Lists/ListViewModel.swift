@@ -44,7 +44,7 @@ final class ListsTabViewModel {
     }
 
     func toggleGroupExpanded(_ group: ReminderListGroup) {
-        let key = expandedDefaultsPrefix + group.persistentModelID.hashValue.description
+            let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
         if expandedGroupIDs.contains(group.persistentModelID) {
             expandedGroupIDs.remove(group.persistentModelID)
             UserDefaults.standard.set(false, forKey: key)
@@ -57,7 +57,7 @@ final class ListsTabViewModel {
     private func restoreExpandedState() {
         var ids = Set<PersistentIdentifier>()
         for group in groups {
-            let key = expandedDefaultsPrefix + group.persistentModelID.hashValue.description
+        let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
             if UserDefaults.standard.bool(forKey: key) {
                 ids.insert(group.persistentModelID)
             }
@@ -268,3 +268,4 @@ final class ListsTabViewModel {
         try? modelContext.save()
     }
 }
+

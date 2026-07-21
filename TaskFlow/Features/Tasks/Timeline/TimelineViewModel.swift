@@ -62,7 +62,7 @@ final class ReminderSegmentViewModel {
 
         mutableTasks.insert(contentsOf: moved, at: insertAt)
 
-        let newOrder = mutableTasks.map { $0.persistentModelID.hashValue.description }
+        let newOrder = mutableTasks.map { $0.persistentModelID.stableKey }
         writeDailyOrder(newOrder, forKey: key)
         update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
     }
@@ -312,6 +312,18 @@ final class ReminderSegmentViewModel {
     }
 
     func rescheduleToTomorrow(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func rescheduleToNextDay(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
         }

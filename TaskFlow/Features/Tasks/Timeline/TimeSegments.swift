@@ -174,8 +174,8 @@ enum ReminderSegmentLogic {
     ) -> [TaskItem] {
         if let customOrderIndex, !customOrderIndex.isEmpty {
             return tasks.sorted { (lhs: TaskItem, rhs: TaskItem) -> Bool in
-                let lhsOrder = customOrderIndex[lhs.persistentModelID.hashValue.description] ?? Int.max
-                let rhsOrder = customOrderIndex[rhs.persistentModelID.hashValue.description] ?? Int.max
+                let lhsOrder = customOrderIndex[lhs.persistentModelID.stableKey] ?? Int.max
+                let rhsOrder = customOrderIndex[rhs.persistentModelID.stableKey] ?? Int.max
                 if lhsOrder != rhsOrder {
                     return lhsOrder < rhsOrder
                 }
@@ -332,3 +332,4 @@ enum ReminderSegmentLogic {
         return groups
     }
 }
+

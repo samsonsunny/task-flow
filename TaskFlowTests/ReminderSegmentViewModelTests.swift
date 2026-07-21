@@ -181,4 +181,31 @@ struct ReminderSegmentViewModelTests {
         #expect(vm.overdueTasks.count == 1, "Task due at 10:30 should be overdue at 11:00")
         #expect(vm.overdueTasks[0].safeTitle == "Task")
     }
+
+    // MARK: - Swipe reschedule
+
+    @Test func rescheduleToNextDay_setsDueDateToNextCalendarDayStart() {
+        let task = makeTask(title: "Push me", date: now)
+        let vm = makeVM(segment: .today)
+
+        vm.rescheduleToNextDay(task)
+
+        let expectedNextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+        #expect(task.dueDate == expectedNextDay, "Task due date should be start of next day")
+    }
+
+    @Test func rescheduleToNextDay_persistsAfterSave() {
+        let task = makeTask(title: "Persist", date: now)
+        let vm = makeVM(segment: .today)
+
+        vm.rescheduleToNextDay(task)
+
+        let descriptor = FetchDescriptor<TaskItem>(
+            predicate: #Predicate { $0.taskTitle == "Persist" }
+        )
+        let fetched = try? context.fetch(descriptor).first
+        #expect(fetched != nil)
+        let expectedNextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+        #expect(fetched?.dueDate == expectedNextDay)
+    }
 }

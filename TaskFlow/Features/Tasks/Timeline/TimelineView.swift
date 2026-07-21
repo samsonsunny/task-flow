@@ -563,6 +563,7 @@ struct ReminderSegmentDetailView: View {
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
             listSections: viewModel?.listSections ?? [],
             onDelete: { viewModel?.delete(task: task) },
+            onSwipeNextDay: (segment == .today || segment == .tomorrow) ? { viewModel?.rescheduleToNextDay(task) } : nil,
             onTap: {
                 activeCaptureDate = nil
                 quickCaptureText = ""
@@ -593,15 +594,6 @@ struct ReminderSegmentDetailView: View {
         .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !selecting {
-                Button(role: .destructive) {
-                    viewModel?.delete(task: task)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
     }
 
     private func presentScheduleSheet(for task: TaskItem) {
