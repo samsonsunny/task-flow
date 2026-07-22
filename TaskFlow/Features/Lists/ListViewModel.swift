@@ -54,6 +54,16 @@ final class ListsTabViewModel {
         }
     }
 
+    func setGroupExpanded(_ group: ReminderListGroup, expanded: Bool) {
+        let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
+        if expanded {
+            expandedGroupIDs.insert(group.persistentModelID)
+        } else {
+            expandedGroupIDs.remove(group.persistentModelID)
+        }
+        UserDefaults.standard.set(expanded, forKey: key)
+    }
+
     private func restoreExpandedState() {
         var ids = Set<PersistentIdentifier>()
         for group in groups {

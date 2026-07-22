@@ -243,7 +243,7 @@ struct ListsTabView: View {
                 DisclosureGroup(isExpanded: Binding(
                     get: { viewModel?.isGroupExpanded(group) ?? false },
                     set: { expanded in
-                        viewModel?.toggleGroupExpanded(group)
+                        viewModel?.setGroupExpanded(group, expanded: expanded)
                         if !expanded && capturingGroupID == group.persistentModelID {
                             capturingGroupID = nil
                         }
@@ -384,9 +384,8 @@ struct ListsTabView: View {
                             return
                         }
                         viewModel?.createList(name: captureText, group: group)
-                        viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
                         captureText = ""
-                        NotificationCenter.default.post(name: .quickCaptureCommitted, object: nil)
+                        isCaptureFocused = false
                     },
                     isFocused: $isCaptureFocused
                 )

@@ -30,7 +30,6 @@ struct ReminderSegmentDetailView: View {
     @State private var quickCaptureText = ""
     @State private var refreshTimer: Timer?
     @State private var showOverdue = false
-    @State private var collapsedTasks: Set<PersistentIdentifier> = []
     @State private var defaultCollapsed = true
     @State private var selectedTasks: Set<PersistentIdentifier> = []
     @State private var savedCollapseState: Set<PersistentIdentifier> = []
@@ -41,18 +40,18 @@ struct ReminderSegmentDetailView: View {
     }
 
     func enterSelectionMode() {
-        savedCollapseState = collapsedTasks
-        collapsedTasks = []
+        savedCollapseState = appState.collapsedTasks
+        appState.collapsedTasks = []
         selectedTasks = []
         isSelecting?.wrappedValue = true
-        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
     }
 
     func exitSelectionMode() {
         isSelecting?.wrappedValue = false
         selectedTasks = []
-        collapsedTasks = savedCollapseState
-        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+        appState.collapsedTasks = savedCollapseState
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
     }
 
     var body: some View {
@@ -180,12 +179,14 @@ struct ReminderSegmentDetailView: View {
         }
         .onAppear {
             if defaultCollapsed {
-                let parentIDs = Set(tasks.compactMap { $0.parentTask?.persistentModelID })
-                collapsedTasks = parentIDs
+                if appState.collapsedTasks.isEmpty {
+                    let parentIDs = Set(tasks.compactMap { $0.parentTask?.persistentModelID })
+                    appState.collapsedTasks = parentIDs
+                }
                 defaultCollapsed = false
             }
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
             scheduleMinuteAlignedTimer()
         }
         .onDisappear {
@@ -193,18 +194,18 @@ struct ReminderSegmentDetailView: View {
             refreshTimer = nil
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists, now: Date(), collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: newLists, now: Date(), collapsedTasks: appState.collapsedTasks)
         }
         .onChange(of: editingTask) { _, task in
             if task == nil {
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
             }
         }
         .onChange(of: appState.mutationCount) { _, _ in
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
         }
     }
 
@@ -312,7 +313,7 @@ struct ReminderSegmentDetailView: View {
                     if tasks.isEmpty {
                         emptyDayRow(id: id, title: title, date: date)
                     } else {
-                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: collapsedTasks) ?? []
+                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: appState.collapsedTasks) ?? []
                         Section {
                             ForEach(sectionNodes) { node in
                                 taskListRow(node, showsDueDate: false)
@@ -465,7 +466,7 @@ struct ReminderSegmentDetailView: View {
             }
 
             ForEach(dayGroups) { dayGroup in
-                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: collapsedTasks)
+                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: appState.collapsedTasks)
                 Section {
                     ForEach(dayNodes) { node in
                         taskListRow(node, showsDueDate: false)
@@ -572,14 +573,10 @@ struct ReminderSegmentDetailView: View {
             showsDueDate: showsDueDate,
             nestingDepth: node.depth,
             subtaskCount: node.subtaskCount,
-            isCollapsed: collapsedTasks.contains(task.persistentModelID),
+            isCollapsed: appState.collapsedTasks.contains(task.persistentModelID),
             onToggleCollapse: node.subtaskCount > 0 ? {
-                if collapsedTasks.contains(task.persistentModelID) {
-                    collapsedTasks.remove(task.persistentModelID)
-                } else {
-                    collapsedTasks.insert(task.persistentModelID)
-                }
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: collapsedTasks)
+                appState.toggleTaskCollapsed(task.persistentModelID)
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
             } : nil,
             isSelecting: selecting,
             isSelected: selectedTasks.contains(task.persistentModelID),
