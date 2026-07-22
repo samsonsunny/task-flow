@@ -67,19 +67,22 @@ struct TaskRowView: View, Equatable {
             }
             .disabled(isSelecting && onSelectToggle == nil)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                if let onSwipeNextDay, !isSelecting {
-                    Button {
-                        onSwipeNextDay()
-                    } label: {
-                        Label("Next Day", systemImage: "arrow.right")
-                    }
-                    .tint(AppTheme.colors.primaryAction)
-                } else if let onDelete, !isSelecting {
+                if let onDelete, !isSelecting {
                     Button(role: .destructive) {
                         onDelete()
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                }
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                if let onSwipeNextDay, !isSelecting {
+                    Button {
+                        onSwipeNextDay()
+                    } label: {
+                        Label("Postpone", systemImage: "arrow.right")
+                    }
+                    .tint(AppTheme.colors.primaryAction)
                 }
             }
             .contextMenu {
@@ -244,6 +247,10 @@ struct TaskRowView: View, Equatable {
 
     private var metadataText: String? {
         var components: [String] = []
+
+        if let deferCount = task.deferCount, deferCount >= 2 {
+            components.append("\(deferCount)x deferred")
+        }
 
         if hasTime, let timeText {
             components.append(timeText)

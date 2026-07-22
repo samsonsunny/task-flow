@@ -329,7 +329,10 @@ final class ReminderSegmentViewModel {
         }
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: now)
-        task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+        let taskDueStart = task.dueDate.map { calendar.startOfDay(for: $0) } ?? todayStart
+        let baseDate = max(taskDueStart, todayStart)
+        task.dueDate = calendar.date(byAdding: .day, value: 1, to: baseDate)
+        task.deferCount = (task.deferCount ?? 0) + 1
         try? modelContext.save()
         update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)

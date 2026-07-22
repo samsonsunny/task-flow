@@ -66,8 +66,7 @@ struct TaskFlowApp: App {
 
         do {
             return try ModelContainer(
-                for: Schema(versionedSchema: TaskFlowSchemaV8.self),
-                migrationPlan: TaskFlowMigrationPlan.self
+                for: Schema(versionedSchema: TaskFlowSchemaV9.self)
             )
         } catch {
             fatalError("Could not create ModelContainer: \(error)")

@@ -1,30 +1,27 @@
 ## MODIFIED Requirements
 
 ### Requirement: Task row swipe actions adapt to segment context
-In Today, Tomorrow, and Overdue segment views, the task row SHALL display a single trailing swipe action that reschedules the task to the next day. The swipe SHALL allow full swipe activation. The existing destructive delete swipe action SHALL NOT be shown in these segment views (delete remains available via context menu and bulk selection). In all other views (Upcoming, Later, List Detail), swipe actions SHALL remain unchanged.
+In Today, Tomorrow, and Overdue segment views, the task row SHALL display a leading (left) swipe action that reschedules the task to the next day, and a trailing (right) swipe action for delete. The reschedule swipe SHALL allow full swipe activation. In all other views (Upcoming, Later, List Detail), only the trailing delete swipe action is shown.
 
-#### Scenario: Today view shows reschedule swipe
+#### Scenario: Today view shows leading reschedule and trailing delete
 - **WHEN** a task row is rendered in the Today view
-- **THEN** a trailing swipe action is configured to reschedule the task to the next day
-- **AND** the swipe action allows full swipe activation
-- **AND** no delete swipe action is shown
+- **THEN** a leading swipe action reschedules the task to the next day
+- **AND** a trailing swipe action deletes the task
 
-#### Scenario: Tomorrow view shows reschedule swipe
+#### Scenario: Tomorrow view shows leading reschedule and trailing delete
 - **WHEN** a task row is rendered in the Tomorrow view
-- **THEN** a trailing swipe action is configured to reschedule the task to the next day
-- **AND** the swipe action allows full swipe activation
-- **AND** no delete swipe action is shown
+- **THEN** a leading swipe action reschedules the task to the next day
+- **AND** a trailing swipe action deletes the task
 
-#### Scenario: Overdue section in Today shows reschedule swipe
+#### Scenario: Overdue section in Today shows leading reschedule and trailing delete
 - **WHEN** a task row is rendered in the Overdue section of the Today view
-- **THEN** a trailing swipe action is configured to reschedule the task to the next day
-- **AND** the swipe action allows full swipe activation
-- **AND** no delete swipe action is shown
+- **THEN** a leading swipe action reschedules the task to the next day
+- **AND** a trailing swipe action deletes the task
 
-#### Scenario: Upcoming view retains delete swipe
+#### Scenario: Upcoming view retains delete swipe only
 - **WHEN** a task row is rendered in the Upcoming view
-- **THEN** the existing trailing swipe actions are unchanged (delete remains available)
+- **THEN** only the trailing delete swipe action is shown
 
-#### Scenario: List detail view retains delete swipe
+#### Scenario: List detail view retains delete swipe only
 - **WHEN** a task row is rendered in a List Detail view
-- **THEN** the existing trailing swipe actions are unchanged (delete remains available)
+- **THEN** only the trailing delete swipe action is shown

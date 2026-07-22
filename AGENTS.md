@@ -63,3 +63,10 @@ Read `openspec/specs/app-mental-model/spec.md` before making architectural or na
 ### Existing specs
 
 Feature specs are in `openspec/specs/`. Active changes with implementation tasks are in `openspec/changes/`.
+
+### SwiftData schema migrations
+
+When adding a new property to an existing `@Model`, you have two options:
+
+1. **Preferred (simple additions):** Add the property directly to the latest schema version and remove `migrationPlan:` from `ModelContainer`. SwiftData does implicit lightweight migration without checksum validation.
+2. **Full versioned schema:** Create a new schema version (e.g., `TaskFlowSchemaV10`), add the property there, update typealiases, and update `Schema(versionedSchema:)` in `TaskFlowApp.swift` and `TaskPreviewData.swift`. **Do NOT add a `migrationPlan:`** — it triggers checksum validation which can collide with existing stages for minimal schema changes.

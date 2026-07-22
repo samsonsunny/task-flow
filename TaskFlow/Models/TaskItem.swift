@@ -710,7 +710,127 @@ enum TaskFlowSchemaV8: VersionedSchema {
     }
 }
 
+enum TaskFlowSchemaV9: VersionedSchema {
+    static var versionIdentifier = Schema.Version(9, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [TaskItem.self, ReminderList.self, ReminderTag.self, ReminderListGroup.self]
+    }
+
+    @Model
+    final class TaskItem {
+        var taskId: String?
+        var taskTitle: String?
+        var taskDescription: String?
+        var isCompleted: Bool?
+        var isFlagged: Bool?
+        var completionDate: Date?
+        var dueDate: Date?
+        var createdAt: Date?
+
+        var urlString: String?
+        var priorityRawValue: String?
+        var assignedContactName: String?
+        var imageAttachmentReference: String?
+        @Relationship(inverse: \ReminderList.reminders) var reminderList: ReminderList?
+        @Relationship var tags: [ReminderTag]
+
+        var sortOrder: String?
+        var hasTime: Bool?
+        var deferCount: Int?
+
+        @Relationship(inverse: \TaskItem.subtasks) var parentTask: TaskItem?
+        @Relationship var subtasks: [TaskItem]
+
+        init(
+            taskId: String? = UUID().uuidString,
+            taskTitle: String? = "",
+            taskDescription: String? = "",
+            dueDate: Date? = nil,
+            createdAt: Date? = Date(),
+            urlString: String? = nil,
+            priorityRawValue: String? = ReminderPriority.none.rawValue,
+            assignedContactName: String? = nil,
+            imageAttachmentReference: String? = nil,
+            reminderList: ReminderList? = nil,
+            tags: [ReminderTag] = [],
+            sortOrder: String? = nil,
+            hasTime: Bool? = nil,
+            deferCount: Int? = nil,
+            parentTask: TaskItem? = nil
+        ) {
+            self.taskId = taskId
+            self.taskTitle = taskTitle
+            self.taskDescription = taskDescription
+            self.isCompleted = false
+            self.isFlagged = false
+            self.dueDate = dueDate
+            self.createdAt = createdAt
+            self.urlString = urlString
+            self.priorityRawValue = priorityRawValue
+            self.assignedContactName = assignedContactName
+            self.imageAttachmentReference = imageAttachmentReference
+            self.reminderList = reminderList
+            self.tags = tags
+            self.sortOrder = sortOrder
+            self.hasTime = hasTime
+            self.deferCount = deferCount
+            self.parentTask = parentTask
+            self.subtasks = []
+        }
+    }
+
+    @Model
+    final class ReminderList {
+        var name: String
+        var createdAt: Date
+        var reminders: [TaskItem]
+        var sortOrder: String?
+        var group: ReminderListGroup?
+
+        init(name: String, createdAt: Date = Date(), reminders: [TaskItem] = [], sortOrder: String? = nil, group: ReminderListGroup? = nil) {
+            self.name = name
+            self.createdAt = createdAt
+            self.reminders = reminders
+            self.sortOrder = sortOrder
+            self.group = group
+        }
+    }
+
+    @Model
+    final class ReminderTag {
+        var label: String
+        var normalizedLabel: String
+
+        init(label: String) {
+            self.label = label
+            self.normalizedLabel = ReminderTag.normalize(label)
+        }
+
+        static func normalize(_ label: String) -> String {
+            label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+    }
+
+    @Model
+    final class ReminderListGroup {
+        var name: String
+        var sortOrder: String?
+        var createdAt: Date
+        var lists: [ReminderList]
+
+        init(name: String, sortOrder: String? = nil, createdAt: Date = Date(), lists: [ReminderList] = []) {
+            self.name = name
+            self.sortOrder = sortOrder
+            self.createdAt = createdAt
+            self.lists = lists
+        }
+    }
+}
+
 enum TaskFlowMigrationPlan: SchemaMigrationPlan {
+    // NOTE: When adding a new schema version, also update the Schema(versionedSchema:)
+    // in TaskFlowApp.swift and TaskPreviewData.swift to reference the latest schema.
     static var schemas: [any VersionedSchema.Type] {
         [TaskFlowSchemaV1.self, TaskFlowSchemaV2.self, TaskFlowSchemaV3.self, TaskFlowSchemaV4.self, TaskFlowSchemaV5.self, TaskFlowSchemaV6.self, TaskFlowSchemaV7.self, TaskFlowSchemaV8.self]
     }
@@ -728,13 +848,13 @@ enum TaskFlowMigrationPlan: SchemaMigrationPlan {
     }
 }
 
-typealias TaskItem = TaskFlowSchemaV8.TaskItem
+typealias TaskItem = TaskFlowSchemaV9.TaskItem
 
-typealias ReminderList = TaskFlowSchemaV8.ReminderList
+typealias ReminderList = TaskFlowSchemaV9.ReminderList
 
-typealias ReminderTag = TaskFlowSchemaV8.ReminderTag
+typealias ReminderTag = TaskFlowSchemaV9.ReminderTag
 
-typealias ReminderListGroup = TaskFlowSchemaV8.ReminderListGroup
+typealias ReminderListGroup = TaskFlowSchemaV9.ReminderListGroup
 
 enum ReminderPriority: String, CaseIterable, Identifiable {
     case none
