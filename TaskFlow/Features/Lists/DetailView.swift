@@ -289,15 +289,6 @@ struct ListDetailView: View {
             guard !isSelecting else { return }
             viewModel?.handleDrop(target: target, location: location)
         })
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !isSelecting {
-                Button(role: .destructive) {
-                    viewModel?.delete(task: task)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
     }
 
     private func flatToTaskIndex(_ flatIndex: Int) -> Int {
