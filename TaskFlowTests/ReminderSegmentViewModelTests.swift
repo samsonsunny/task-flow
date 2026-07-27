@@ -120,7 +120,9 @@ struct ReminderSegmentViewModelTests {
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        vm.toggleCollapse(parent)
+        let descriptor = FetchDescriptor<TaskItem>()
+        let allTasks = (try? context.fetch(descriptor)) ?? []
+        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
         #expect(vm.flatNodes.count == 1)
         #expect(vm.flatNodes[0].task.safeTitle == "Parent")
     }
@@ -131,9 +133,11 @@ struct ReminderSegmentViewModelTests {
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        vm.toggleCollapse(parent)
+        let descriptor = FetchDescriptor<TaskItem>()
+        let allTasks = (try? context.fetch(descriptor)) ?? []
+        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
         #expect(vm.flatNodes.count == 1)
-        vm.toggleCollapse(parent)
+        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [])
         #expect(vm.flatNodes.count == 2)
     }
 
@@ -142,8 +146,11 @@ struct ReminderSegmentViewModelTests {
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
+        let descriptor = FetchDescriptor<TaskItem>()
+        let allTasks = (try? context.fetch(descriptor)) ?? []
+
         let todayVM = makeVM(segment: .today)
-        todayVM.toggleCollapse(parent)
+        todayVM.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
         #expect(todayVM.flatNodes.count == 1)
 
         let todayVM2 = makeVM(segment: .today)

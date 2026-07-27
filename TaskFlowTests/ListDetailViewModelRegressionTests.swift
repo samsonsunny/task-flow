@@ -71,14 +71,14 @@ struct ListDetailViewModelRegressionTests {
 
         let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
         let allTasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
-        vm.update(tasks: allTasks, lists: [], allTasks: allTasks)
 
+        vm.update(tasks: allTasks, lists: [], allTasks: allTasks, collapsedTasks: [])
         #expect(vm.flatNodes.count == 2)
 
-        vm.toggleCollapse(root)
+        vm.update(tasks: allTasks, lists: [], allTasks: allTasks, collapsedTasks: [root.persistentModelID])
         #expect(vm.flatNodes.count == 1)
 
-        vm.toggleCollapse(root)
+        vm.update(tasks: allTasks, lists: [], allTasks: allTasks, collapsedTasks: [])
         #expect(vm.flatNodes.count == 2)
     }
 }

@@ -139,7 +139,7 @@ final class ListDetailViewModel {
             $0.persistentModelID != task.persistentModelID
         }
         let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
+        task.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
     }
 
     // MARK: - Drag-Drop Reorder (2.4)
@@ -159,17 +159,8 @@ final class ListDetailViewModel {
 
             if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
                 mutableTasks[i].sortOrder = existing
-            } else if let newOrder = midpoint(between: lower, and: upper) {
-                mutableTasks[i].sortOrder = newOrder
             } else {
-                if let upperStr = upper {
-                    let widened = widen(upperStr)
-                    mutableTasks[i + 1].sortOrder = widened
-                    mutableTasks[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
-                } else {
-                    let widened = widen(lower ?? "m")
-                    mutableTasks[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
-                }
+                mutableTasks[i].sortOrder = midpointOrWiden(between: lower, and: upper)
             }
 
             lower = mutableTasks[i].sortOrder
@@ -193,16 +184,26 @@ final class ListDetailViewModel {
 
     func moveToTop(task: TaskItem) {
         let sibs = siblings(of: task)
-        let firstSortOrder = sibs.compactMap { $0.sortOrder }.sorted().first
-        task.sortOrder = midpoint(between: nil, and: firstSortOrder)
+        var sorted = sibs.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        sorted.insert(task, at: 0)
+        var previous: String? = nil
+        for t in sorted {
+            t.sortOrder = midpointOrWiden(between: previous, and: nil)
+            previous = t.sortOrder
+        }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)
     }
 
     func moveToBottom(task: TaskItem) {
         let sibs = siblings(of: task)
-        let lastSortOrder = sibs.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpoint(between: lastSortOrder, and: nil)
+        var sorted = sibs.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        sorted.append(task)
+        var previous: String? = nil
+        for t in sorted {
+            t.sortOrder = midpointOrWiden(between: previous, and: nil)
+            previous = t.sortOrder
+        }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)
     }
@@ -228,14 +229,14 @@ final class ListDetailViewModel {
             let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
             if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
                 let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
-                draggedTask.sortOrder = midpoint(between: prev, and: target.sortOrder)
+                draggedTask.sortOrder = midpointOrWiden(between: prev, and: target.sortOrder)
             }
         } else {
             draggedTask.parentTask = target
             let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
                 .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
             let lastOrder = subbies.last?.sortOrder ?? target.sortOrder
-            draggedTask.sortOrder = midpoint(between: lastOrder, and: nil)
+            draggedTask.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
         }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)

@@ -112,7 +112,7 @@ final class ReminderEditorViewModel {
         let sorted = parent.subtasks
             .filter { $0.persistentModelID != subtask.persistentModelID }
             .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        subtask.sortOrder = midpoint(between: sorted.last?.sortOrder, and: nil)
+        subtask.sortOrder = midpointOrWiden(between: sorted.last?.sortOrder, and: nil)
         modelContext.insert(subtask)
     }
 
@@ -139,6 +139,6 @@ final class ReminderEditorViewModel {
             .compactMap { $0.sortOrder }
             .sorted()
             .last
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
+        task.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
     }
 }

@@ -96,3 +96,33 @@ import Testing
     #expect(recovered > "f")
     #expect(recovered < widened)
 }
+
+// MARK: - midpointOrWiden
+
+@Test func midpointOrWidenNeverReturnsNil() throws {
+    let r1 = midpointOrWiden(between: nil, and: "a")
+    let r2 = midpointOrWiden(between: nil, and: "aa")
+    let r3 = midpointOrWiden(between: "f", and: "fa")
+    let r4 = midpointOrWiden(between: nil, and: nil)
+    let r5 = midpointOrWiden(between: nil, and: "")
+    #expect(r1 > "")
+    #expect(r2 > "")
+    #expect(r3 > "f")
+    #expect(r4 == "m")
+    #expect(r5 > "")
+}
+
+@Test func midpointOrWidenAlwaysProducesValidOrder() throws {
+    let a = midpointOrWiden(between: nil, and: nil)
+    let b = midpointOrWiden(between: a, and: nil)
+    let c = midpointOrWiden(between: b, and: nil)
+    let d = midpointOrWiden(between: c, and: nil)
+    #expect(a < b)
+    #expect(b < c)
+    #expect(c < d)
+}
+
+@Test func midpointOrWidenBeforeA() throws {
+    let result = midpointOrWiden(between: nil, and: "a")
+    #expect(result < "a")
+}

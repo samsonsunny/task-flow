@@ -59,3 +59,26 @@ func isBetween(_ value: String, lower: String?, upper: String?) -> Bool {
     }
     return true
 }
+
+func midpointOrWiden(between lower: String?, and upper: String?) -> String {
+    if let result = midpoint(between: lower, and: upper) {
+        return result
+    }
+    if let upper {
+        let widened = widen(upper)
+        return midpointOrWiden(between: lower, and: widened)
+    } else {
+        return (lower ?? "m") + "z"
+    }
+}
+
+func repairNilSortOrders(_ tasks: [TaskItem]) {
+    let nilTasks = tasks.filter { $0.sortOrder == nil }
+    guard !nilTasks.isEmpty else { return }
+    let sorted = nilTasks.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
+    var previous: String? = nil
+    for task in sorted {
+        task.sortOrder = midpointOrWiden(between: previous, and: nil)
+        previous = task.sortOrder
+    }
+}
