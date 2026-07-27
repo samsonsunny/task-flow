@@ -149,21 +149,20 @@ final class ListDetailViewModel {
         let sortedFrom = fromOffsets.sorted()
 
         let moved = Array(sortedFrom.reversed().map { mutableTasks.remove(at: $0) }.reversed())
-        let insertAt = min(toOffset, mutableTasks.count)
+
+        var adjustedOffset = toOffset
+        for idx in sortedFrom where idx < toOffset {
+            adjustedOffset -= 1
+        }
+        let insertAt = min(adjustedOffset, mutableTasks.count)
 
         mutableTasks.insert(contentsOf: moved, at: insertAt)
 
-        var lower = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
+        var previous: String? = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
         for i in insertAt..<(insertAt + moved.count) {
             let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
-
-            if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
-                mutableTasks[i].sortOrder = existing
-            } else {
-                mutableTasks[i].sortOrder = midpointOrWiden(between: lower, and: upper)
-            }
-
-            lower = mutableTasks[i].sortOrder
+            mutableTasks[i].sortOrder = midpointOrWiden(between: previous, and: upper)
+            previous = mutableTasks[i].sortOrder
         }
 
         try? modelContext.save()
@@ -226,17 +225,25 @@ final class ListDetailViewModel {
             } else {
                 siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
             }
-            let sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+            var sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
             if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
-                let prev = idx > 0 ? sorted[idx - 1].sortOrder : nil
-                draggedTask.sortOrder = midpointOrWiden(between: prev, and: target.sortOrder)
+                sorted.insert(draggedTask, at: idx)
+                var previous: String? = nil
+                for t in sorted {
+                    t.sortOrder = midpointOrWiden(between: previous, and: nil)
+                    previous = t.sortOrder
+                }
             }
         } else {
             draggedTask.parentTask = target
-            let subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
+            var subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
                 .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-            let lastOrder = subbies.last?.sortOrder ?? target.sortOrder
-            draggedTask.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
+            subbies.append(draggedTask)
+            var previous: String? = nil
+            for t in subbies {
+                t.sortOrder = midpointOrWiden(between: previous, and: nil)
+                previous = t.sortOrder
+            }
         }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)
@@ -246,6 +253,14 @@ final class ListDetailViewModel {
         guard let draggedTaskId,
               let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
         task.parentTask = nil
+        var siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
+            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        siblings.append(task)
+        var previous: String? = nil
+        for t in siblings {
+            t.sortOrder = midpointOrWiden(between: previous, and: nil)
+            previous = t.sortOrder
+        }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)
     }
