@@ -22,7 +22,6 @@ final class ListsTabViewModel {
     var isRenamePresented = false
     var renameList: ReminderList?
     var renameText = ""
-    var deleteList: ReminderList?
     var isCreatingGroup = false
     var newGroupName = ""
     var groupSourceList: ReminderList?
@@ -122,24 +121,23 @@ final class ListsTabViewModel {
         try? modelContext.save()
     }
 
-    func deleteList(_ list: ReminderList, moveTasksToDefault: Bool) {
+    func deleteList(_ list: ReminderList, moveTasksTo targetList: ReminderList) {
         let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-
-        if moveTasksToDefault {
-            if let defaultList {
-                for task in listTasks {
-                    task.reminderList = defaultList
-                }
-            }
-        } else {
-            for task in listTasks {
-                if let taskId = task.taskId {
-                    NotificationService.shared.cancel(taskId: taskId)
-                }
-                modelContext.delete(task)
-            }
+        for task in listTasks {
+            task.reminderList = targetList
         }
+        modelContext.delete(list)
+        try? modelContext.save()
+    }
 
+    func deleteListAndTasks(_ list: ReminderList) {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
+        for task in listTasks {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            modelContext.delete(task)
+        }
         modelContext.delete(list)
         try? modelContext.save()
     }
@@ -165,17 +163,8 @@ final class ListsTabViewModel {
 
             if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
                 mutableLists[i].sortOrder = existing
-            } else if let newOrder = midpoint(between: lower, and: upper) {
-                mutableLists[i].sortOrder = newOrder
             } else {
-                if let upperStr = upper {
-                    let widened = widen(upperStr)
-                    mutableLists[i + 1].sortOrder = widened
-                    mutableLists[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
-                } else {
-                    let widened = widen(lower ?? "m")
-                    mutableLists[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
-                }
+                mutableLists[i].sortOrder = midpointOrWiden(between: lower, and: upper)
             }
 
             lower = mutableLists[i].sortOrder
@@ -205,17 +194,8 @@ final class ListsTabViewModel {
 
             if let existing = moved[i - insertAt].sortOrder, isBetween(existing, lower: lower, upper: upper) {
                 mutableGroups[i].sortOrder = existing
-            } else if let newOrder = midpoint(between: lower, and: upper) {
-                mutableGroups[i].sortOrder = newOrder
             } else {
-                if let upperStr = upper {
-                    let widened = widen(upperStr)
-                    mutableGroups[i + 1].sortOrder = widened
-                    mutableGroups[i].sortOrder = midpoint(between: lower, and: widened) ?? (lower ?? "m") + "zz"
-                } else {
-                    let widened = widen(lower ?? "m")
-                    mutableGroups[i].sortOrder = midpoint(between: widened, and: nil) ?? widened + "z"
-                }
+                mutableGroups[i].sortOrder = midpointOrWiden(between: lower, and: upper)
             }
 
             lower = mutableGroups[i].sortOrder
@@ -229,16 +209,6 @@ final class ListsTabViewModel {
     func assignListToGroup(_ list: ReminderList, group: ReminderListGroup?) {
         list.group = group
         try? modelContext.save()
-    }
-
-    func requestDeleteList(_ list: ReminderList) {
-        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-        if listTasks.isEmpty {
-            modelContext.delete(list)
-            try? modelContext.save()
-        } else {
-            deleteList = list
-        }
     }
 
     // MARK: - Group CRUD

@@ -15,6 +15,8 @@ struct ListsTabView: View {
     @State private var capturingGroupID: PersistentIdentifier?
     @State private var captureText = ""
     @FocusState private var isCaptureFocused: Bool
+    @State private var listToDeleteAll: ReminderList?
+    @State private var showDeleteAllAlert = false
 
     var body: some View {
         NavigationStack {
@@ -141,24 +143,19 @@ struct ListsTabView: View {
                     Text("Delete \"\(group.name)\" and all lists inside? This cannot be undone.")
                 }
             }
-            .alert("Delete List", isPresented: Binding(
-                get: { viewModel?.deleteList != nil },
-                set: { if !$0 { viewModel?.deleteList = nil } }
-            )) {
-                Button("Move tasks to Inbox") {
-                    if let list = viewModel?.deleteList {
-                        viewModel?.deleteList(list, moveTasksToDefault: true)
+            .alert("Delete All Tasks", isPresented: $showDeleteAllAlert) {
+                Button("Delete", role: .destructive) {
+                    if let list = listToDeleteAll {
+                        viewModel?.deleteListAndTasks(list)
                     }
+                    listToDeleteAll = nil
                 }
-                Button("Delete All Tasks", role: .destructive) {
-                    if let list = viewModel?.deleteList {
-                        viewModel?.deleteList(list, moveTasksToDefault: false)
-                    }
+                Button("Cancel", role: .cancel) {
+                    listToDeleteAll = nil
                 }
-                Button("Cancel", role: .cancel) { }
             } message: {
-                if let list = viewModel?.deleteList {
-                    Text("What should happen to the tasks in \"\(list.name)\"?")
+                if let list = listToDeleteAll {
+                    Text("Delete all tasks in \"\(list.name)\"? This cannot be undone.")
                 }
             }
             .onAppear {
@@ -442,6 +439,34 @@ struct ListsTabView: View {
         .contextMenu {
             contextMenuItems(for: list)
         }
+        .swipeActions(edge: .trailing) {
+            if list.name != ReminderDefaults.defaultListName {
+                let hasTasks = allTasks.contains(where: { $0.reminderList?.persistentModelID == list.persistentModelID })
+                let destinations = availableListsForMove(excluding: list)
+
+                if hasTasks && !destinations.isEmpty {
+                    Menu {
+                        Menu("Move to list") {
+                            moveToListMenuContent(for: list)
+                        }
+                        Divider()
+                        Button("Delete All Tasks", role: .destructive) {
+                            listToDeleteAll = list
+                            showDeleteAllAlert = true
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .tint(.red)
+                } else {
+                    Button(role: .destructive) {
+                        viewModel?.deleteListAndTasks(list)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Context Menu Items
@@ -481,13 +506,66 @@ struct ListsTabView: View {
                 }
             }
 
-            Button("Delete List", role: .destructive) {
-                viewModel?.requestDeleteList(list)
+            let hasTasks = allTasks.contains(where: { $0.reminderList?.persistentModelID == list.persistentModelID })
+            let destinations = availableListsForMove(excluding: list)
+
+            if hasTasks && !destinations.isEmpty {
+                Menu("Move to list") {
+                    moveToListMenuContent(for: list)
+                }
+                Button("Delete All Tasks", role: .destructive) {
+                    listToDeleteAll = list
+                    showDeleteAllAlert = true
+                }
+            } else {
+                Button("Delete List", role: .destructive) {
+                    viewModel?.deleteListAndTasks(list)
+                }
             }
         }
     }
 
     // MARK: - Helpers
+
+    private func availableListsForMove(excluding: ReminderList) -> [ReminderList] {
+        lists.filter { $0.persistentModelID != excluding.persistentModelID }
+    }
+
+    @ViewBuilder
+    private func moveToListMenuContent(for source: ReminderList) -> some View {
+        let destinations = availableListsForMove(excluding: source)
+        let inboxList = destinations.first { $0.name == ReminderDefaults.defaultListName }
+        let ungrouped = destinations.filter { $0.group == nil && $0.name != ReminderDefaults.defaultListName }
+
+        if let inbox = inboxList {
+            Button(inbox.name) {
+                viewModel?.deleteList(source, moveTasksTo: inbox)
+            }
+        }
+
+        ForEach(groups) { group in
+            let groupLists = destinations.filter { $0.group?.persistentModelID == group.persistentModelID }
+            if !groupLists.isEmpty {
+                Divider()
+                Text(group.name)
+                ForEach(groupLists) { target in
+                    Button(target.name) {
+                        viewModel?.deleteList(source, moveTasksTo: target)
+                    }
+                }
+            }
+        }
+
+        if !ungrouped.isEmpty {
+            Divider()
+            Text("Lists")
+            ForEach(ungrouped) { target in
+                Button(target.name) {
+                    viewModel?.deleteList(source, moveTasksTo: target)
+                }
+            }
+        }
+    }
 
     private func listRow(list: ReminderList) -> some View {
         let count = allTasks.filter {
