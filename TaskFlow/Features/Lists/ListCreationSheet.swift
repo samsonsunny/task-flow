@@ -17,7 +17,6 @@ struct ListCreationSheet: View {
             Form {
                 Section {
                     TextField("List Name", text: $name)
-                        .autocorrectionDisabled()
                         .focused($isNameFocused)
                 }
 

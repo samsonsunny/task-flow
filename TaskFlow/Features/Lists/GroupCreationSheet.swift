@@ -18,7 +18,6 @@ struct GroupCreationSheet: View {
             Form {
                 Section {
                     TextField("Group Name", text: $name)
-                        .autocorrectionDisabled()
                         .focused($isNameFocused)
                 }
 

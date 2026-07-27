@@ -13,7 +13,6 @@ struct MiniCreationSheet: View {
         NavigationStack {
             Form {
                 TextField(placeholder, text: $name)
-                    .autocorrectionDisabled()
                     .focused($isNameFocused)
             }
             .navigationTitle(title)
