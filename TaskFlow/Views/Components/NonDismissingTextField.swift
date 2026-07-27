@@ -12,6 +12,6 @@ struct NonDismissingTextField: View {
             .onSubmit {
                 onSubmit()
             }
-            .textInputAutocapitalization(.never)
+            .textInputAutocapitalization(.sentences)
     }
 }
