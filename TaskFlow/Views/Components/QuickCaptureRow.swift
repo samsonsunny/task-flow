@@ -12,7 +12,7 @@ struct QuickCaptureRow: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Circle()
                 .fill(AppTheme.colors.primaryAction)
                 .frame(width: 20, height: 20)
@@ -26,11 +26,8 @@ struct QuickCaptureRow: View {
             .accessibilityIdentifier("quick-capture-field")
         }
         .id("quick-capture")
-        .padding(.vertical, 9)
-        .padding(.horizontal, 16)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .onAppear {
             DispatchQueue.main.async {

@@ -184,7 +184,6 @@ struct ListsTabView: View {
                     listRow(list: defaultList)
                 }
                 .accessibilityIdentifier("default-list-link")
-                .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
@@ -223,8 +222,8 @@ struct ListsTabView: View {
                     showListCreationSheet = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.primaryAction)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.textSecondary)
                 }
                 .contentShape(Rectangle())
             }
@@ -304,8 +303,8 @@ struct ListsTabView: View {
                     showGroupCreationSheet = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.primaryAction)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.textSecondary)
                 }
                 .contentShape(Rectangle())
             }
@@ -315,43 +314,38 @@ struct ListsTabView: View {
     // MARK: - Inline Creation Rows
 
     private var newListRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Image(systemName: "plus")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
-                .frame(width: 20, height: 20)
 
             Text("New List")
-                .font(.system(size: 17, weight: .regular))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 9)
         .contentShape(Rectangle())
         .onTapGesture {
             showListCreationSheet = true
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .accessibilityIdentifier("new-list-row")
     }
 
     private var newGroupRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Image(systemName: "plus")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
-                .frame(width: 20, height: 20)
 
             Text("New Group")
-                .font(.system(size: 17, weight: .regular))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 9)
         .contentShape(Rectangle())
         .onTapGesture {
             groupCreationSourceList = nil
@@ -359,14 +353,13 @@ struct ListsTabView: View {
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .accessibilityIdentifier("new-group-row")
     }
 
     @ViewBuilder
     private func groupListCaptureRow(for group: ReminderListGroup) -> some View {
         if capturingGroupID == group.persistentModelID {
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Circle()
                     .fill(AppTheme.colors.primaryAction)
                     .frame(width: 20, height: 20)
@@ -392,25 +385,21 @@ struct ListsTabView: View {
                     }
                 }
             }
-            .padding(.vertical, 9)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
             .id("group-list-capture")
         } else {
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textSecondary)
-                    .frame(width: 20, height: 20)
 
                 Text("New List")
-                    .font(.system(size: 17, weight: .regular))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textSecondary)
 
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, 9)
             .contentShape(Rectangle())
             .onTapGesture {
                 captureText = ""
@@ -421,7 +410,6 @@ struct ListsTabView: View {
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         }
     }
 
@@ -433,7 +421,6 @@ struct ListsTabView: View {
         } label: {
             listRow(list: list)
         }
-        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .contextMenu {
@@ -573,11 +560,10 @@ struct ListsTabView: View {
         }.count
         let isInbox = list.name == ReminderDefaults.defaultListName
 
-        return HStack(spacing: 12) {
+        return HStack(spacing: 16) {
             Image(systemName: isInbox ? "tray" : "list.bullet")
-                .font(.system(size: 16))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(AppTheme.colors.textSecondary)
-                .frame(width: 24)
 
             Text(list.name)
                 .font(.system(size: 17))

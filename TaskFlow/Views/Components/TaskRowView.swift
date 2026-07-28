@@ -151,7 +151,7 @@ struct TaskRowView: View, Equatable {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 16) {
             if isSelecting {
                 SelectionCircle(isSelected: isSelected)
             } else {
@@ -165,7 +165,6 @@ struct TaskRowView: View, Equatable {
             }
         }
         .padding(.leading, CGFloat(nestingDepth) * 20)
-        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -293,10 +292,10 @@ struct TaskRowView: View, Equatable {
         } label: {
             ZStack {
                 Circle()
-                    .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
+                    .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.textTertiary, lineWidth: 1)
                     .background(
                         Circle()
-                            .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
+                            .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : .clear)
                     )
                     .frame(width: 20, height: 20)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
@@ -309,7 +308,8 @@ struct TaskRowView: View, Equatable {
                     .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
             }
             .scaleEffect(chipScale)
-            .frame(width: 44, height: 44)
+            .frame(width: 20, height: 20)
+            .background(Color.clear.frame(width: 44, height: 44))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

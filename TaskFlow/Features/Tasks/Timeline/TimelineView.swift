@@ -262,11 +262,9 @@ struct ReminderSegmentDetailView: View {
                 .font(.caption)
                 .foregroundStyle(AppTheme.colors.textTertiary)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
     }
@@ -430,19 +428,17 @@ struct ReminderSegmentDetailView: View {
     }
 
     private func addReminderButton(date: Date) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Image(systemName: "plus")
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
-                .frame(width: 20, height: 20)
 
             Text("New Reminder")
-                .font(.system(size: 17, weight: .regular))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.colors.textSecondary)
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 9)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -451,7 +447,6 @@ struct ReminderSegmentDetailView: View {
         }
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
         .accessibilityIdentifier("upcoming-add-reminder-\(date)")
     }
 
@@ -469,8 +464,7 @@ struct ReminderSegmentDetailView: View {
                 let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: appState.collapsedTasks)
                 Section {
                     ForEach(dayNodes) { node in
-                        taskListRow(node, showsDueDate: false)
-                            .listRowInsets(EdgeInsets(top: 3, leading: 32, bottom: 3, trailing: 16))
+                                taskListRow(node, showsDueDate: false)
                     }
 
                     if activeCaptureDate == dayGroup.date {
@@ -480,8 +474,7 @@ struct ReminderSegmentDetailView: View {
                             onDismiss: { activeCaptureDate = nil }
                         )
                     } else if !dayGroup.tasks.isEmpty {
-                        addReminderButton(date: dayGroup.date)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 16))
+                                addReminderButton(date: dayGroup.date)
                     }
                 } header: {
                     Text(dayGroup.title)
@@ -541,7 +534,6 @@ struct ReminderSegmentDetailView: View {
         .textCase(nil)
         .padding(.top, isMonth ? 16 : 8)
         .padding(.bottom, isMonth ? 4 : 6)
-        .padding(.horizontal, 16)
         .contentShape(Rectangle())
         .onTapGesture {
             if let date = date {
@@ -588,7 +580,6 @@ struct ReminderSegmentDetailView: View {
                 }
             }
         )
-        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
     }

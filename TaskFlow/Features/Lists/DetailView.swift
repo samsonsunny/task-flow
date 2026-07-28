@@ -218,11 +218,9 @@ struct ListDetailView: View {
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.colors.textSecondary)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
     }
@@ -277,7 +275,6 @@ struct ListDetailView: View {
                 }
             }
         )
-        .listRowInsets(EdgeInsets(top: 3, leading: 16, bottom: 3, trailing: 16))
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .onDrag {
