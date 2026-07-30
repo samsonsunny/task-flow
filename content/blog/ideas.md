@@ -1,8 +1,13 @@
 # Blog Ideas
 
+## Process notes
+
+- Need to figure out an image/illustration sourcing strategy for articles — stock photo APIs are all blocked from the agent, and random picsum images can't be verified for relevance. Open to discuss later.
+
 ## This week
 
 - [ ] _(draft what you shipped this week)_
+
 
 ## Backlog
 
