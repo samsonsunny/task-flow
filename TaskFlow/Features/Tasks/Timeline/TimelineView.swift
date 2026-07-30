@@ -280,7 +280,7 @@ struct ReminderSegmentDetailView: View {
             if activeCaptureDate != nil && !selecting {
                 QuickCaptureRow(
                     text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: activeCaptureDate) },
+                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: activeCaptureDate) },
                     onDismiss: { activeCaptureDate = nil }
                 )
             }
@@ -320,7 +320,7 @@ struct ReminderSegmentDetailView: View {
                             if activeCaptureDate == date {
                                 QuickCaptureRow(
                                     text: $quickCaptureText,
-                                    onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: date) },
+                                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
                                     onDismiss: { activeCaptureDate = nil }
                                 )
                             } else {
@@ -375,7 +375,7 @@ struct ReminderSegmentDetailView: View {
             if activeCaptureDate == date {
                 QuickCaptureRow(
                     text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: date) },
+                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
                     onDismiss: { activeCaptureDate = nil }
                 )
             }
@@ -404,7 +404,7 @@ struct ReminderSegmentDetailView: View {
             if activeCaptureDate == date {
                 QuickCaptureRow(
                     text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: date) },
+                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
                     onDismiss: { activeCaptureDate = nil }
                 )
             }
@@ -455,7 +455,7 @@ struct ReminderSegmentDetailView: View {
             if activeCaptureDate == date {
                 QuickCaptureRow(
                     text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: date) },
+                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
                     onDismiss: { activeCaptureDate = nil }
                 )
             }
@@ -470,7 +470,7 @@ struct ReminderSegmentDetailView: View {
                     if activeCaptureDate == dayGroup.date {
                         QuickCaptureRow(
                             text: $quickCaptureText,
-                            onSubmit: { viewModel?.commitQuickCapture(text: $0, captureDate: dayGroup.date) },
+                            onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: dayGroup.date) },
                             onDismiss: { activeCaptureDate = nil }
                         )
                     } else if !dayGroup.tasks.isEmpty {

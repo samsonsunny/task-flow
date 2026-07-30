@@ -91,7 +91,7 @@ struct ListDetailView: View {
                 if isQuickCapturing && !isSelecting {
                     QuickCaptureRow(
                         text: $quickCaptureText,
-                        onSubmit: { viewModel?.commitQuickCapture(text: $0, in: listID) },
+                        onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, in: listID) },
                         onDismiss: { isQuickCapturing = false }
                     )
                 }

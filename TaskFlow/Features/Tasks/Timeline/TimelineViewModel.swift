@@ -214,7 +214,7 @@ final class ReminderSegmentViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func commitQuickCapture(text: String, captureDate: Date?) {
+    func commitQuickCapture(text: String, notes: String = "", captureDate: Date?) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -231,6 +231,7 @@ final class ReminderSegmentViewModel {
             dueDate: dueDate
         )
         task.createdAt = Date()
+        task.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         task.reminderList = resolvedQuickCaptureList()
         modelContext.insert(task)
         try? modelContext.save()

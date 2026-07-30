@@ -92,12 +92,13 @@ final class ListDetailViewModel {
 
     // MARK: - Quick Capture (2.1 / 2.8)
 
-    func commitQuickCapture(text: String, in listID: ReminderList.ID?) {
+    func commitQuickCapture(text: String, notes: String = "", in listID: ReminderList.ID?) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         guard let list = allLists.first(where: { $0.persistentModelID == (listID ?? self.listID) }) else { return }
         let task = TaskItem(taskTitle: trimmed, dueDate: nil)
         task.createdAt = Date()
+        task.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         task.reminderList = list
         modelContext.insert(task)
         assignSortOrder(for: task, in: list)
