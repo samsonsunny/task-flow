@@ -70,3 +70,49 @@ When adding a new property to an existing `@Model`, you have two options:
 
 1. **Preferred (simple additions):** Add the property directly to the latest schema version and remove `migrationPlan:` from `ModelContainer`. SwiftData does implicit lightweight migration without checksum validation.
 2. **Full versioned schema:** Create a new schema version (e.g., `TaskFlowSchemaV10`), add the property there, update typealiases, and update `Schema(versionedSchema:)` in `TaskFlowApp.swift` and `TaskPreviewData.swift`. **Do NOT add a `migrationPlan:`** — it triggers checksum validation which can collide with existing stages for minimal schema changes.
+
+---
+
+## Content Marketing System
+
+The repo includes a content pipeline alongside the iOS app. See `openspec/changes/content-marketing-system/` for the full design and proposal.
+
+### Process
+
+- **Cadence:** One article per week, published Wednesday (same day as app release)
+- **Format:** Markdown with YAML frontmatter in `content/blog/`
+- **Own site:** Blog lives at `taskflow.app/blog` (subdirectory, not subdomain)
+- **Distribution:** Publish on own site first → wait 7 days → cross-post to Medium/Dev.to with canonical link
+
+### Content directory structure
+
+```
+content/blog/
+├── published/YYYY-MM-DD-slug/
+│   ├── index.md                  ← article with frontmatter
+│   └── images/                   ← article-specific images
+├── drafts/working-title/
+│   └── index.md
+├── ideas.md                      ← topic backlog
+└── distribution.md               ← per-article cross-post log
+```
+
+### Frontmatter requirements
+
+Every article must include:
+```yaml
+title, date, tags, description, status (draft|published), canonical
+```
+
+### Content sources
+
+Each weekly app release is a content opportunity. Ship a feature → write the article about it. Between feature releases, write standalone productivity insights aligned with the app's mental model.
+
+### Tone & voice
+
+Before drafting an article, read `content/blog/_agent-guides/tone-reference.md` for voice, format, product mention patterns, and SEO rules. This defines the TaskFlow blog voice — authoritative but personal, inspired by Todoist and TickTick blog styles.
+
+### Branch naming
+
+- `content/article-slug` for standalone articles
+- Include in feature branch if the article is about that feature
