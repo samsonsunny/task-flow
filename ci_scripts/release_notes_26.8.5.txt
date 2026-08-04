@@ -1,0 +1,5 @@
+26.8.5
+
+- Swipe to delete lists — swipe left on any list to delete it or bulk-move its tasks to another list with a single tap.
+- Unified row design — consistent padding, colors, and alignment across timeline and list views for a cleaner, more polished experience.
+- Smarter keyboard — auto-capitalization in quick capture and full keyboard predictions everywhere except URLs, making task entry faster and more natural.
