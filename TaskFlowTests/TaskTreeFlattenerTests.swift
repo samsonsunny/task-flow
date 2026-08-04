@@ -15,7 +15,7 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [])
     #expect(result.count == 1)
     #expect(result[0].depth == 0)
-    #expect(result[0].subtaskCount == 0)
+    #expect(result[0].subtaskSummary.isEmpty)
 }
 
 @Test func rootWithOneChild() {
@@ -95,7 +95,9 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [], includeCompleted: false)
     #expect(result.count == 1)
     #expect(result[0].task.safeTitle == "Root")
-    #expect(result[0].subtaskCount == 0)
+    #expect(result[0].subtaskSummary.total == 1, "Summary counts all subtasks regardless of completion")
+    #expect(result[0].subtaskSummary.completed == 1)
+    #expect(result[0].subtaskSummary.pending == 0)
 }
 
 @Test func includeCompletedTrueIncludesCompletedChildren() {
@@ -112,7 +114,7 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
 @Test func leafTaskHasZeroSubtaskCount() {
     let root = makeTask(id: 1, title: "Leaf")
     let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [])
-    #expect(result[0].subtaskCount == 0)
+    #expect(result[0].subtaskSummary.isEmpty)
 }
 
 @Test func parentWithTwoChildrenHasCountTwo() {
@@ -121,7 +123,43 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let c2 = makeTask(id: 3, title: "C2", parent: root)
     root.subtasks = [c1, c2]
     let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [])
-    #expect(result[0].subtaskCount == 2)
+    #expect(result[0].subtaskSummary.total == 2)
+    #expect(result[0].subtaskSummary.pending == 2)
+    #expect(result[0].subtaskSummary.completed == 0)
+}
+
+// MARK: - Flat Mode (no nesting)
+
+@Test func flatModeShowsOnlyRoots() {
+    let root = makeTask(id: 1, title: "Root")
+    let child = makeTask(id: 2, title: "Child", parent: root)
+    root.subtasks = [child]
+    let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [], nestSubtasks: false)
+    #expect(result.count == 1)
+    #expect(result[0].depth == 0)
+    #expect(result[0].subtaskSummary.total == 1)
+}
+
+@Test func flatModeEachRootCarriesOwnSummary() {
+    let root = makeTask(id: 1, title: "Root")
+    let child = makeTask(id: 2, title: "Child", parent: root)
+    root.subtasks = [child]
+    let flat = TaskTreeFlattener.flatten(roots: [root, child], collapsed: [], nestSubtasks: false)
+    #expect(flat.count == 2)
+    #expect(flat[0].task.safeTitle == "Root")
+    #expect(flat[0].subtaskSummary.total == 1)
+    #expect(flat[1].task.safeTitle == "Child")
+    #expect(flat[1].subtaskSummary.isEmpty)
+}
+
+@Test func flatModeIgnoresCollapse() {
+    let root = makeTask(id: 1, title: "Root")
+    let child = makeTask(id: 2, title: "Child", parent: root)
+    root.subtasks = [child]
+    let collapsedResult = TaskTreeFlattener.flatten(roots: [root], collapsed: [root.persistentModelID], nestSubtasks: false)
+    let expandedResult = TaskTreeFlattener.flatten(roots: [root], collapsed: [], nestSubtasks: false)
+    #expect(collapsedResult.count == 1)
+    #expect(expandedResult.count == 1)
 }
 
 // MARK: - Deep Nesting

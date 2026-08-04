@@ -43,30 +43,24 @@ struct ListDetailView: View {
     @State private var editingTask: TaskItem?
     @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
-    @State private var collapsedTasks: Set<PersistentIdentifier> = []
-    @State private var defaultCollapsed = true
     @State private var isSelecting = false
     @State private var selectedTasks: Set<PersistentIdentifier> = []
-    @State private var savedCollapseState: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private func enterSelectionMode() {
-        savedCollapseState = collapsedTasks
-        collapsedTasks = []
         selectedTasks = []
         isSelecting = true
         let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date(), collapsedTasks: collapsedTasks)
+        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
     }
 
     private func exitSelectionMode() {
         isSelecting = false
         selectedTasks = []
-        collapsedTasks = savedCollapseState
         let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date(), collapsedTasks: collapsedTasks)
+        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
     }
 
     var body: some View {
@@ -184,28 +178,17 @@ struct ListDetailView: View {
             Text("This cannot be undone.")
         }
         .onAppear {
-            if defaultCollapsed {
-                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-                let taskIDs = Set(listTasks.map(\.persistentModelID))
-                let rootTasks = listTasks.filter {
-                    guard let parent = $0.parentTask else { return true }
-                    return !taskIDs.contains(parent.persistentModelID)
-                }
-                let parentIDs = Set(rootTasks.filter { !$0.subtasks.isEmpty }.map(\.persistentModelID))
-                collapsedTasks = parentIDs
-                defaultCollapsed = false
-            }
             viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
             let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date(), collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
         }
         .onChange(of: allTasks) { _, newTasks in
             let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: newTasks, collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: newTasks)
         }
         .onChange(of: allLists) { _, newLists in
             let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks, collapsedTasks: collapsedTasks)
+            viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks)
         }
     }
 
@@ -254,17 +237,7 @@ struct ListDetailView: View {
             },
             showsDueDate: true,
             showsListName: false,
-            nestingDepth: node.depth,
-            subtaskCount: node.subtaskCount,
-            isCollapsed: collapsedTasks.contains(task.persistentModelID),
-            onToggleCollapse: {
-                if collapsedTasks.contains(task.persistentModelID) {
-                    collapsedTasks.remove(task.persistentModelID)
-                } else {
-                    collapsedTasks.insert(task.persistentModelID)
-                }
-                viewModel?.update(tasks: allTasks.filter { $0.reminderList?.persistentModelID == listID }, lists: allLists, allTasks: allTasks, collapsedTasks: collapsedTasks)
-            },
+            subtaskSummary: node.subtaskSummary,
             isSelecting: isSelecting,
             isSelected: selectedTasks.contains(task.persistentModelID),
             onSelectToggle: {

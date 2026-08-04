@@ -27,10 +27,7 @@ struct TaskRowView: View, Equatable {
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
     var showsListName: Bool = true
-    var nestingDepth: Int = 0
-    var subtaskCount: Int = 0
-    var isCollapsed: Bool = false
-    var onToggleCollapse: (() -> Void)? = nil
+    var subtaskSummary: SubtaskSummary = .empty
     var isSelecting: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
@@ -44,9 +41,7 @@ struct TaskRowView: View, Equatable {
     static func == (lhs: TaskRowView, rhs: TaskRowView) -> Bool {
         lhs.task.persistentModelID == rhs.task.persistentModelID
             && lhs.isCompletedVisualState == rhs.isCompletedVisualState
-            && lhs.subtaskCount == rhs.subtaskCount
-            && lhs.isCollapsed == rhs.isCollapsed
-            && lhs.nestingDepth == rhs.nestingDepth
+            && lhs.subtaskSummary == rhs.subtaskSummary
             && lhs.isSelecting == rhs.isSelecting
             && lhs.isSelected == rhs.isSelected
     }
@@ -159,12 +154,7 @@ struct TaskRowView: View, Equatable {
             }
 
             titleView
-
-            if subtaskCount > 0 {
-                chevronButton
-            }
         }
-        .padding(.leading, CGFloat(nestingDepth) * 20)
     }
 
     @ViewBuilder
@@ -263,26 +253,11 @@ struct TaskRowView: View, Equatable {
             components.append(task.listName)
         }
 
-        if subtaskCount > 0 {
-            components.append("\(subtaskCount)")
+        if !subtaskSummary.isEmpty {
+            components.append(subtaskSummary.displayText)
         }
 
         return components.isEmpty ? nil : components.joined(separator: "  ·  ")
-    }
-
-    private var chevronButton: some View {
-        Button {
-            onToggleCollapse?()
-        } label: {
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-                .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("subtask-chevron")
     }
 
     private var completionButton: some View {

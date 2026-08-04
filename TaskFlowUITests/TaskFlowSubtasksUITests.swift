@@ -9,71 +9,78 @@ final class TaskFlowSubtasksUITests: XCTestCase {
     override func tearDownWithError() throws { }
 
     @MainActor
-    func testParentWithChildrenShowsInlineInToday() throws {
+    func testTodayShowsParentWithOverviewAndHidesDatedChild() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Child with today date"].exists)
-        XCTAssertTrue(app.staticTexts["Child with tomorrow date"].exists)
-        XCTAssertTrue(app.staticTexts["Child no date"].exists)
-    }
-
-    @MainActor
-    func testCollapseTapHidesChildren() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
-        app.launch()
-
-        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Child with today date"].exists)
-
-        let chevron = app.buttons["subtask-chevron"].firstMatch
-        XCTAssertTrue(chevron.waitForExistence(timeout: 2))
-        chevron.tap()
-
-        XCTAssertTrue(app.staticTexts["Parent Project"].exists)
         XCTAssertFalse(app.staticTexts["Child with today date"].waitForExistence(timeout: 1))
-        XCTAssertFalse(app.staticTexts["Child with tomorrow date"].exists)
-        XCTAssertFalse(app.staticTexts["Child no date"].exists)
+
+        let summary = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "0/3")
+        ).firstMatch
+        XCTAssertTrue(summary.exists)
     }
 
     @MainActor
-    func testOrphanSubtaskAppearsStandalone() throws {
+    func testNonDatedChildNotShownInToday() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Orphan subtask"].waitForExistence(timeout: 2))
-
-        let chevrons = app.buttons.matching(identifier: "subtask-chevron")
-        XCTAssertEqual(chevrons.count, 1)
+        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Child no date"].waitForExistence(timeout: 1))
     }
 
     @MainActor
-    func testChildInTomorrowTabWhenParentDifferentDate() throws {
+    func testChildDueTomorrowNotShownInToday() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Child with tomorrow date"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testDatedOrphanSubtaskNotShownInTimeline() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Orphan subtask"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.staticTexts["Orphan parent"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testChildWithTomorrowDateNotShownInTomorrow() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
         app.launch()
 
         app.tabBars.buttons["Tomorrow"].tap()
-        XCTAssertTrue(app.staticTexts["Child with tomorrow date"].waitForExistence(timeout: 2))
-        XCTAssertFalse(app.staticTexts["Nothing due tomorrow"].waitForExistence(timeout: 1))
+        XCTAssertTrue(app.staticTexts["Nothing due tomorrow"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Child with tomorrow date"].exists)
     }
 
     @MainActor
-    func testChevronOnParentOnly() throws {
+    func testSubtasksVisibleOnlyInTaskDetail() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
         app.launch()
 
-        let chevrons = app.buttons.matching(identifier: "subtask-chevron")
-        XCTAssertEqual(chevrons.count, 1)
+        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
+        app.staticTexts["Parent Project"].firstMatch.tap()
+
+        XCTAssertTrue(app.staticTexts["Child no date"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Child with today date"].exists)
+        XCTAssertTrue(app.staticTexts["Child with tomorrow date"].exists)
     }
 
     @MainActor
-    func testListDetailHierarchyRegression() throws {
+    func testListDetailShowsOnlyRootsWithOverview() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
         app.launch()
@@ -83,12 +90,14 @@ final class TaskFlowSubtasksUITests: XCTestCase {
 
         app.buttons["default-list-link"].tap()
         XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Orphan parent"].exists)
 
-        let parentCell = app.cells.containing(.staticText, identifier: "Parent Project")
-        let parentChevron = parentCell.buttons.matching(identifier: "subtask-chevron").firstMatch
-        XCTAssertTrue(parentChevron.waitForExistence(timeout: 2))
+        let summary = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "0/3")
+        ).firstMatch
+        XCTAssertTrue(summary.exists)
 
-        parentChevron.tap()
-        XCTAssertFalse(app.staticTexts["Child with today date"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Child with today date"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.staticTexts["Child no date"].exists)
     }
 }

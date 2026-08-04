@@ -30,9 +30,7 @@ struct ReminderSegmentDetailView: View {
     @State private var quickCaptureText = ""
     @State private var refreshTimer: Timer?
     @State private var showOverdue = false
-    @State private var defaultCollapsed = true
     @State private var selectedTasks: Set<PersistentIdentifier> = []
-    @State private var savedCollapseState: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
 
     private var selecting: Bool {
@@ -40,28 +38,25 @@ struct ReminderSegmentDetailView: View {
     }
 
     func enterSelectionMode() {
-        savedCollapseState = appState.collapsedTasks
-        appState.collapsedTasks = []
         selectedTasks = []
         isSelecting?.wrappedValue = true
-        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
     }
 
     func exitSelectionMode() {
         isSelecting?.wrappedValue = false
         selectedTasks = []
-        appState.collapsedTasks = savedCollapseState
-        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+        viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
     }
 
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                if segment == .today && !(viewModel?.overdueTasks.isEmpty ?? true) {
+                if segment == .today && !(viewModel?.overdueDisplayTasks.isEmpty ?? true) {
                 Section {
                     if showOverdue {
-                        let overdueNodes = (viewModel?.overdueTasks ?? []).map { task in
-                            FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskCount: 0)
+                        let overdueNodes = (viewModel?.overdueDisplayTasks ?? []).map { task in
+                            FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskSummary: task.subtaskSummary)
                         }
                         ForEach(overdueNodes) { node in
                             taskListRow(node, showsDueDate: true)
@@ -78,7 +73,7 @@ struct ReminderSegmentDetailView: View {
                                 .foregroundStyle(AppTheme.colors.error)
                                 .font(.caption)
 
-                            Text("\(viewModel?.overdueTasks.count ?? 0) Overdue")
+                            Text("\(viewModel?.overdueDisplayTasks.count ?? 0) Overdue")
                                 .font(.subheadline)
                                 .foregroundStyle(AppTheme.colors.error)
 
@@ -178,15 +173,8 @@ struct ReminderSegmentDetailView: View {
             Text("This cannot be undone.")
         }
         .onAppear {
-            if defaultCollapsed {
-                if appState.collapsedTasks.isEmpty {
-                    let parentIDs = Set(tasks.compactMap { $0.parentTask?.persistentModelID })
-                    appState.collapsedTasks = parentIDs
-                }
-                defaultCollapsed = false
-            }
             viewModel = ReminderSegmentViewModel(modelContext: modelContext, segment: segment)
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
             scheduleMinuteAlignedTimer()
         }
         .onDisappear {
@@ -194,18 +182,18 @@ struct ReminderSegmentDetailView: View {
             refreshTimer = nil
         }
         .onChange(of: tasks) { _, newTasks in
-            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+            viewModel?.update(tasks: newTasks, lists: reminderLists, now: Date())
         }
         .onChange(of: reminderLists) { _, newLists in
-            viewModel?.update(tasks: tasks, lists: newLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: newLists, now: Date())
         }
         .onChange(of: editingTask) { _, task in
             if task == nil {
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
             }
         }
         .onChange(of: appState.mutationCount) { _, _ in
-            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
+            viewModel?.update(tasks: tasks, lists: reminderLists, now: Date())
         }
     }
 
@@ -214,7 +202,7 @@ struct ReminderSegmentDetailView: View {
         ForEach(vm.groupedSections) { section in
             Section {
                 ForEach(section.tasks) { task in
-                    let node = FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskCount: 0)
+                    let node = FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskSummary: task.subtaskSummary)
                     taskListRow(node, showsDueDate: vm.shouldShowDueDate(for: segment))
                 }
             } header: {
@@ -248,6 +236,10 @@ struct ReminderSegmentDetailView: View {
         .onMove { fromOffsets, toOffset in
             guard !selecting else { return }
             let rootTasks = vm.rootedNodes.map(\.root.task)
+            print("[REORDER] >>> onMove fired | segment=\(segment.rawValue) fromIndices=\(fromOffsets.sorted()) toOffset=\(toOffset)")
+            print("[REORDER] >>> visible rows (flatNodes): \(vm.flatNodes.map { "\($0.task.safeTitle)(d\($0.depth))" })")
+            print("[REORDER] >>> rootedNodes.count=\(vm.rootedNodes.count) groups=\(vm.rootedNodes.map { "\($0.root.task.safeTitle)+\($0.children.count)" })")
+            print("[REORDER] >>> rootTasks passed to moveTasks: \(rootTasks.map(\.safeTitle))")
             viewModel?.moveTasks(fromOffsets: fromOffsets, toOffset: toOffset, in: rootTasks)
         }
     }
@@ -311,7 +303,7 @@ struct ReminderSegmentDetailView: View {
                     if tasks.isEmpty {
                         emptyDayRow(id: id, title: title, date: date)
                     } else {
-                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: appState.collapsedTasks) ?? []
+                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: []) ?? []
                         Section {
                             ForEach(sectionNodes) { node in
                                 taskListRow(node, showsDueDate: false)
@@ -461,7 +453,7 @@ struct ReminderSegmentDetailView: View {
             }
 
             ForEach(dayGroups) { dayGroup in
-                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: appState.collapsedTasks)
+                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: [])
                 Section {
                     ForEach(dayNodes) { node in
                                 taskListRow(node, showsDueDate: false)
@@ -563,13 +555,7 @@ struct ReminderSegmentDetailView: View {
                 editingTask = task
             },
             showsDueDate: showsDueDate,
-            nestingDepth: node.depth,
-            subtaskCount: node.subtaskCount,
-            isCollapsed: appState.collapsedTasks.contains(task.persistentModelID),
-            onToggleCollapse: node.subtaskCount > 0 ? {
-                appState.toggleTaskCollapsed(task.persistentModelID)
-                viewModel?.update(tasks: tasks, lists: reminderLists, now: Date(), collapsedTasks: appState.collapsedTasks)
-            } : nil,
+            subtaskSummary: node.subtaskSummary,
             isSelecting: selecting,
             isSelected: selectedTasks.contains(task.persistentModelID),
             onSelectToggle: {

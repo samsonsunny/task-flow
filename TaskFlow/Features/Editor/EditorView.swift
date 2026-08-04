@@ -385,7 +385,8 @@ struct ReminderEditorView: View {
                     onToggleCompletion: { viewModel?.toggleSubtaskCompletion(subtask) },
                     onTap: { editingSubtask = subtask },
                     showsDueDate: false,
-                    showsListName: false
+                    showsListName: false,
+                    subtaskSummary: subtask.subtaskSummary
                 )
             }
             .onDelete { indexSet in

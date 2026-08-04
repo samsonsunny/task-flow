@@ -57,10 +57,16 @@ final class ReminderSegmentViewModel {
         var mutableTasks = source
         let sortedFrom = fromOffsets.sorted()
 
+        print("[REORDER]   moveTasks(key=\(key)) | fromOffsets=\(fromOffsets) toOffset=\(toOffset)")
+        print("[REORDER]   source (roots in display order): \(source.map(\.safeTitle))")
+        print("[REORDER]   existing daily-order array count: \(UserDefaults.standard.stringArray(forKey: key)?.count ?? 0)")
+
         let moved = Array(sortedFrom.reversed().map { mutableTasks.remove(at: $0) }.reversed())
         let insertAt = min(toOffset, mutableTasks.count)
 
         mutableTasks.insert(contentsOf: moved, at: insertAt)
+
+        print("[REORDER]   removed=\(moved.map(\.safeTitle)) insertAt=\(insertAt) (unadjusted) | new order=\(mutableTasks.map(\.safeTitle))")
 
         let newOrder = mutableTasks.map { $0.persistentModelID.stableKey }
         writeDailyOrder(newOrder, forKey: key)
@@ -82,6 +88,9 @@ final class ReminderSegmentViewModel {
         self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
         let displayable = (self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") })
         let customOrderIndex = readDailyOrder()
+        if !customOrderIndex.isEmpty {
+            print("[REORDER]   update(segment=\(segment.rawValue)) read back \(customOrderIndex.count) daily-order ids | filteredRoots=\(ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex).map(\.safeTitle))")
+        }
         self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex)
         self.listSections = buildListSections(from: lists)
         rebuildTree(collapsedTasks: collapsedTasks)
@@ -89,14 +98,10 @@ final class ReminderSegmentViewModel {
 
     private func rebuildTree(collapsedTasks: Set<PersistentIdentifier>) {
         let filterBase = filteredTasks + allTasks.filter { justCompleted.contains($0.taskId ?? "") }
-        let filteredIds = Set(filterBase.map(\.persistentModelID))
-        let matchedRoots = filterBase.filter { task in
-            guard let parent = task.parentTask else { return true }
-            return !filteredIds.contains(parent.persistentModelID)
-        }
+        let topLevelTasks = filterBase.filter { $0.parentTask == nil }
         let customOrderIndex = readDailyOrder()
-        let sortedRoots = ReminderSegmentLogic.sortedTasks(matchedRoots, for: segment, customOrderIndex: customOrderIndex)
-        flatNodes = TaskTreeFlattener.flatten(roots: sortedRoots, collapsed: collapsedTasks)
+        let sortedTasks = ReminderSegmentLogic.sortedTasks(topLevelTasks, for: segment, customOrderIndex: customOrderIndex)
+        flatNodes = TaskTreeFlattener.flatten(roots: sortedTasks, collapsed: collapsedTasks, nestSubtasks: false)
     }
 
     var rootedNodes: [(root: FlatTaskNode, children: [FlatTaskNode])] {
@@ -122,19 +127,19 @@ final class ReminderSegmentViewModel {
     var overdueRootedNodes: (roots: [TaskItem], nodes: [FlatTaskNode]) {
         let overdueRoots = overdueTasks.filter { $0.parentTask == nil }
         let sorted = ReminderSegmentLogic.sortedTasks(overdueRoots, for: .overdue, customOrderIndex: readDailyOrder(forKey: overdueOrderKey))
-        let nodes = sorted.map { FlatTaskNode(id: $0.persistentModelID, task: $0, depth: 0, subtaskCount: 0) }
+        let nodes = sorted.map { FlatTaskNode(id: $0.persistentModelID, task: $0, depth: 0, subtaskSummary: $0.subtaskSummary) }
         return (sorted, nodes)
     }
 
-    /// Build flat nodes from section-scoped tasks, respecting collapse state.
-    /// Each task whose parent is also in the section is nested; orphans become depth-0.
+    /// Overdue tasks that are shown as rows — subtasks are hidden, only top-level tasks display.
+    var overdueDisplayTasks: [TaskItem] {
+        overdueTasks.filter { $0.parentTask == nil }
+    }
+
+    /// Build flat nodes from section-scoped tasks without nesting.
+    /// Only top-level tasks render; subtasks are hidden from the timeline.
     func flatNodes(for sectionTasks: [TaskItem], collapsedTasks: Set<PersistentIdentifier>) -> [FlatTaskNode] {
-        let sectionIds = Set(sectionTasks.map(\.persistentModelID))
-        let roots = sectionTasks.filter { task in
-            guard let parent = task.parentTask else { return true }
-            return !sectionIds.contains(parent.persistentModelID)
-        }
-        return TaskTreeFlattener.flatten(roots: roots, collapsed: collapsedTasks)
+        TaskTreeFlattener.flatten(roots: sectionTasks.filter { $0.parentTask == nil }, collapsed: collapsedTasks, nestSubtasks: false)
     }
 
 

@@ -76,7 +76,7 @@ final class ListDetailViewModel {
             guard let parent = $0.parentTask else { return true }
             return !taskIDs.contains(parent.persistentModelID)
         }
-        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
+        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks, nestSubtasks: false)
         listSections = buildListSections(from: allLists, excluding: listID)
     }
 

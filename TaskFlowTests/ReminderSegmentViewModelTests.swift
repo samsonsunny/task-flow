@@ -36,44 +36,48 @@ struct ReminderSegmentViewModelTests {
         return vm
     }
 
-    // MARK: - Rule 1: Parent-driven display
+    // MARK: - Rule 1: Subtasks stay in detail; timeline shows only top-level tasks
 
-    @Test func parentDueToday_ChildDueToday_BothInline() {
+    @Test func parentShowsWithOverview_DatedChildHidden() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        #expect(vm.flatNodes.count == 2)
+        #expect(vm.flatNodes.count == 1)
         #expect(vm.flatNodes[0].task.safeTitle == "Parent")
         #expect(vm.flatNodes[0].depth == 0)
-        #expect(vm.flatNodes[1].task.safeTitle == "Child")
-        #expect(vm.flatNodes[1].depth == 1)
+        #expect(vm.flatNodes[0].subtaskSummary.total == 1)
+        #expect(vm.flatNodes[0].subtaskSummary.pending == 1)
     }
 
-    @Test func parentDueToday_ChildDueTomorrow_BothInlineInToday() {
+    @Test func childDueTomorrowNotShownInTodayOrTomorrow() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: tomorrow, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
-        #expect(todayVM.flatNodes.count == 2)
-        #expect(todayVM.flatNodes[1].task.safeTitle == "Child")
-        #expect(todayVM.flatNodes[1].depth == 1)
+        #expect(todayVM.flatNodes.count == 1)
+        #expect(todayVM.flatNodes[0].task.safeTitle == "Parent")
+
+        let tomorrowVM = makeVM(segment: .tomorrow)
+        #expect(tomorrowVM.flatNodes.isEmpty)
     }
 
-    @Test func parentDueToday_ChildNoDate_ChildVisibleInToday() {
+    @Test func childWithoutDateNotShownInTimeline() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: nil, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        #expect(vm.flatNodes.count == 2)
-        #expect(vm.flatNodes[1].task.safeTitle == "Child")
+        #expect(vm.flatNodes.count == 1)
+        #expect(vm.flatNodes[0].task.safeTitle == "Parent")
+        #expect(vm.flatNodes[0].subtaskSummary.total == 1)
+        #expect(vm.flatNodes[0].subtaskSummary.pending == 1)
     }
 
-    // MARK: - Rule 2: Orphan subtasks
+    // MARK: - Rule 2: Top-level tasks
 
     @Test func childDueToday_ParentNoDate_OrphanStandalone() {
         let child = makeTask(title: "Child", date: now)
@@ -84,50 +88,36 @@ struct ReminderSegmentViewModelTests {
         #expect(vm.flatNodes[0].depth == 0)
     }
 
-    @Test func childDueToday_ParentDueTomorrow_OrphanInToday_InlineInTomorrow() {
+    @Test func childDueToday_ParentDueTomorrow_OnlyParentShowsInItsSegment() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: tomorrow)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
-        #expect(todayVM.flatNodes.count == 1)
-        #expect(todayVM.flatNodes[0].task.safeTitle == "Child")
-        #expect(todayVM.flatNodes[0].depth == 0)
+        #expect(todayVM.flatNodes.isEmpty)
 
         let tomorrowVM = makeVM(segment: .tomorrow)
-        #expect(tomorrowVM.flatNodes.count == 2)
+        #expect(tomorrowVM.flatNodes.count == 1)
         #expect(tomorrowVM.flatNodes[0].task.safeTitle == "Parent")
-        #expect(tomorrowVM.flatNodes[1].task.safeTitle == "Child")
     }
 
     // MARK: - Dedup
 
-    @Test func dedup_ChildNotDuplicatedWhenUnderParent() {
+    @Test func dedup_ParentAppearsOnce_ChildNeverShown() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        #expect(vm.flatNodes.count == 2)
-    }
-
-    // MARK: - Collapse / Expand
-
-    @Test func collapseHidesChildren() {
-        let parent = makeTask(title: "Parent", date: now)
-        let child = makeTask(title: "Child", date: now, parent: parent)
-        parent.subtasks = [child]
-
-        let vm = makeVM(segment: .today)
-        let descriptor = FetchDescriptor<TaskItem>()
-        let allTasks = (try? context.fetch(descriptor)) ?? []
-        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
         #expect(vm.flatNodes.count == 1)
-        #expect(vm.flatNodes[0].task.safeTitle == "Parent")
+        #expect(vm.flatNodes.map(\.task.safeTitle).filter { $0 == "Parent" }.count == 1)
+        #expect(vm.flatNodes.map(\.task.safeTitle).contains("Child") == false)
     }
 
-    @Test func expandShowsChildren() {
+    // MARK: - Collapse no longer affects display
+
+    @Test func collapseHasNoEffectOnFlatDisplay() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
@@ -138,23 +128,20 @@ struct ReminderSegmentViewModelTests {
         vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
         #expect(vm.flatNodes.count == 1)
         vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [])
-        #expect(vm.flatNodes.count == 2)
+        #expect(vm.flatNodes.count == 1)
     }
 
-    @Test func collapseStateIsPerViewModelInstance() {
-        let parent = makeTask(title: "Parent", date: now)
-        let child = makeTask(title: "Child", date: now, parent: parent)
+    // MARK: - Overdue
+
+    @Test func overdueSubtaskNotShownInOverdueDisplay() {
+        let overdueDate = calendar.date(byAdding: .day, value: -1, to: now)!
+        let parent = makeTask(title: "Parent", date: overdueDate)
+        let child = makeTask(title: "Child", date: overdueDate, parent: parent)
         parent.subtasks = [child]
 
-        let descriptor = FetchDescriptor<TaskItem>()
-        let allTasks = (try? context.fetch(descriptor)) ?? []
-
-        let todayVM = makeVM(segment: .today)
-        todayVM.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
-        #expect(todayVM.flatNodes.count == 1)
-
-        let todayVM2 = makeVM(segment: .today)
-        #expect(todayVM2.flatNodes.count == 2)
+        let vm = makeVM(segment: .overdue)
+        #expect(vm.overdueDisplayTasks.count == 1)
+        #expect(vm.overdueDisplayTasks[0].safeTitle == "Parent")
     }
 
     // MARK: - Refresh / Time advancement
