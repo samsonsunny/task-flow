@@ -34,6 +34,7 @@ jobs:
             [ -f "$file" ] || continue
             echo "Drafting $file"
             node scripts/publish-devto.mjs "$file" --draft
+            sleep 3
           done
 
       - name: Publish to Dev.to and archive (on merge)
@@ -46,6 +47,7 @@ jobs:
             [ -f "$file" ] || continue
             echo "Publishing $file"
             node scripts/publish-devto.mjs "$file" --publish
+            sleep 3
           done
 
           for file in content/blog/drafts/*/index.md; do
@@ -77,6 +79,7 @@ jobs:
               [ -f "$file" ] || continue
               echo "Publishing $file"
               node scripts/publish-devto.mjs "$file" --publish
+              sleep 3
             done
           fi
 

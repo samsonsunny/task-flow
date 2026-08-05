@@ -108,35 +108,48 @@ function saveState(state) {
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2) + "\n");
 }
 
-async function callDevto(path, key, payload) {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: {
-      "api-key": key,
-      "content-type": "application/json",
-      accept: "application/vnd.forem.api-v1+json",
-    },
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(`Dev.to API error ${res.status}: ${JSON.stringify(json)}`);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function request(path, key, method, payload) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const res = await fetch(path, {
+      method,
+      headers: {
+        "api-key": key,
+        "content-type": "application/json",
+        accept: "application/vnd.forem.api-v1+json",
+      },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+    if ((res.status === 429 || res.status >= 500) && attempt < 5) {
+      const retryAfter = Number(res.headers.get("retry-after")) || 2 * attempt;
+      console.warn(
+        `Dev.to rate limited (HTTP ${res.status}); retrying in ${retryAfter}s (attempt ${attempt}/5)`
+      );
+      await sleep(retryAfter * 1000);
+      continue;
+    }
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error(`Dev.to API error ${res.status}: ${text.slice(0, 300)}`);
+    }
+    if (!res.ok) {
+      throw new Error(`Dev.to API error ${res.status}: ${JSON.stringify(json)}`);
+    }
+    return json;
   }
-  return json;
 }
 
 async function findArticleByTitle(key, title) {
   for (let page = 1; ; page++) {
-    const res = await fetch(`${API}/me/all?page=${page}&per_page=1000`, {
-      headers: {
-        "api-key": key,
-        accept: "application/vnd.forem.api-v1+json",
-      },
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(`Dev.to API error ${res.status}: ${JSON.stringify(json)}`);
-    }
+    const json = await request(
+      `${API}/me/all?page=${page}&per_page=1000`,
+      key,
+      "GET"
+    );
     const found = json.find((a) => a.title === title);
     if (found) return found;
     if (json.length < 1000) return null;
@@ -196,26 +209,14 @@ async function main() {
   const endpoint = existing ? `${API}/${key}` : API;
 
   if (existing) {
-    const res = await fetch(endpoint, {
-      method: "PUT",
-      headers: {
-        "api-key": apiKey,
-        "content-type": "application/json",
-        accept: "application/vnd.forem.api-v1+json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(`Dev.to API error ${res.status}: ${JSON.stringify(json)}`);
-    }
+    const json = await request(endpoint, apiKey, "PUT", payload);
     state[articlePath] = { id: json.id, url: json.url };
     saveState(state);
     console.log(`Updated: ${json.url}`);
     return;
   }
 
-  const created = await callDevto(endpoint, apiKey, payload);
+  const created = await request(endpoint, apiKey, "POST", payload);
   state[articlePath] = { id: created.id, url: created.url };
   saveState(state);
   console.log(
