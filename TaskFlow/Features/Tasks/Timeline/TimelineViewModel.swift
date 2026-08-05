@@ -98,7 +98,7 @@ final class ReminderSegmentViewModel {
 
     private func rebuildTree(collapsedTasks: Set<PersistentIdentifier>) {
         let filterBase = filteredTasks + allTasks.filter { justCompleted.contains($0.taskId ?? "") }
-        let topLevelTasks = filterBase.filter { $0.parentTask == nil }
+        let topLevelTasks = filterBase.filter { $0.parentTask == nil || $0.dueDate != nil }
         let customOrderIndex = readDailyOrder()
         let sortedTasks = ReminderSegmentLogic.sortedTasks(topLevelTasks, for: segment, customOrderIndex: customOrderIndex)
         flatNodes = TaskTreeFlattener.flatten(roots: sortedTasks, collapsed: collapsedTasks, nestSubtasks: false)
@@ -125,21 +125,21 @@ final class ReminderSegmentViewModel {
     }
 
     var overdueRootedNodes: (roots: [TaskItem], nodes: [FlatTaskNode]) {
-        let overdueRoots = overdueTasks.filter { $0.parentTask == nil }
+        let overdueRoots = overdueTasks.filter { $0.parentTask == nil || $0.dueDate != nil }
         let sorted = ReminderSegmentLogic.sortedTasks(overdueRoots, for: .overdue, customOrderIndex: readDailyOrder(forKey: overdueOrderKey))
         let nodes = sorted.map { FlatTaskNode(id: $0.persistentModelID, task: $0, depth: 0, subtaskSummary: $0.subtaskSummary) }
         return (sorted, nodes)
     }
 
-    /// Overdue tasks that are shown as rows — subtasks are hidden, only top-level tasks display.
+    /// Overdue tasks that are shown as rows — dated subtasks surface flat alongside top-level tasks.
     var overdueDisplayTasks: [TaskItem] {
-        overdueTasks.filter { $0.parentTask == nil }
+        overdueTasks.filter { $0.parentTask == nil || $0.dueDate != nil }
     }
 
     /// Build flat nodes from section-scoped tasks without nesting.
-    /// Only top-level tasks render; subtasks are hidden from the timeline.
+    /// Dated subtasks surface flat at depth 0 alongside top-level tasks.
     func flatNodes(for sectionTasks: [TaskItem], collapsedTasks: Set<PersistentIdentifier>) -> [FlatTaskNode] {
-        TaskTreeFlattener.flatten(roots: sectionTasks.filter { $0.parentTask == nil }, collapsed: collapsedTasks, nestSubtasks: false)
+        TaskTreeFlattener.flatten(roots: sectionTasks.filter { $0.parentTask == nil || $0.dueDate != nil }, collapsed: collapsedTasks, nestSubtasks: false)
     }
 
 
@@ -354,7 +354,27 @@ final class ReminderSegmentViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func rescheduleToLater(_ task: TaskItem) {
+    func rescheduleToThisWeekend(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = Self.nextSaturday(from: now)
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func rescheduleToNextMonth(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = Self.nextMonth(from: now)
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func rescheduleToNone(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
         }
@@ -362,22 +382,6 @@ final class ReminderSegmentViewModel {
         try? modelContext.save()
         update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
-    }
-
-    func canMoveToToday(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInToday(dueDate)
-    }
-
-    func canMoveToTomorrow(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInTomorrow(dueDate)
-    }
-
-    func canMoveToNextWeek(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        let nextMon = Self.nextMonday(from: now)
-        return !Calendar.current.isDate(dueDate, inSameDayAs: nextMon)
     }
 
     static func nextMonday(from date: Date) -> Date {
@@ -396,6 +400,26 @@ final class ReminderSegmentViewModel {
         default: daysUntilMonday = 7
         }
         return calendar.date(byAdding: .day, value: daysUntilMonday, to: todayStart)!
+    }
+
+    /// Saturday of the current or upcoming weekend. Returns today when the date
+    /// already falls on a weekend (Saturday or Sunday), otherwise the next Saturday.
+    static func nextSaturday(from date: Date, calendar: Calendar = .current) -> Date {
+        let todayStart = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: todayStart)
+        let daysUntilSaturday: Int
+        switch weekday {
+        case 1, 7: daysUntilSaturday = 0
+        default: daysUntilSaturday = 7 - weekday
+        }
+        return calendar.date(byAdding: .day, value: daysUntilSaturday, to: todayStart)!
+    }
+
+    /// The same day-of-month one month later. `Calendar.date(byAdding: .month)` clamps
+    /// to the target month's last day when the day-of-month overflows (e.g. Jan 31 -> Feb 28/29).
+    static func nextMonth(from date: Date, calendar: Calendar = .current) -> Date {
+        let dayStart = calendar.startOfDay(for: date)
+        return calendar.date(byAdding: .month, value: 1, to: dayStart) ?? dayStart
     }
 
     // MARK: - Bulk Operations
@@ -443,7 +467,59 @@ final class ReminderSegmentViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func bulkRescheduleToLater(_ taskIDs: Set<PersistentIdentifier>) {
+    func bulkRescheduleToThisWeekend(_ taskIDs: Set<PersistentIdentifier>) {
+        let saturday = Self.nextSaturday(from: now)
+        let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = saturday
+        }
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToNextMonth(_ taskIDs: Set<PersistentIdentifier>) {
+        let nextMonth = Self.nextMonth(from: now)
+        let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = nextMonth
+        }
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToDate(_ taskIDs: Set<PersistentIdentifier>, dueDate: Date?, hasTime: Bool) {
+        let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            if let date = dueDate {
+                if hasTime {
+                    task.dueDate = date
+                    task.hasTime = true
+                    NotificationService.shared.schedule(for: task)
+                } else {
+                    task.dueDate = Calendar.current.startOfDay(for: date)
+                    task.hasTime = false
+                }
+            } else {
+                task.dueDate = nil
+            }
+        }
+        try? modelContext.save()
+        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToNone(_ taskIDs: Set<PersistentIdentifier>) {
         let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
         for task in tasksToReschedule {
             if let taskId = task.taskId {

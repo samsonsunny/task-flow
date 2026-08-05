@@ -55,4 +55,4 @@ The app has a **single 4-tab `TabView`** as its only navigation surface. There i
 
 The `ReminderSegment.later` case has been **removed**. It was unused — no view referenced it. The enum contains only `.today`, `.tomorrow`, `.upcoming`, `.overdue`.
 
-The context menu action label `"Later"` (hardcoded in `TaskRowView.swift:46`) is preserved. It clears a task's due date, causing it to disappear from time tabs and appear only in the Later tab — which is consistent with the mental model.
+The context menu exposes due-date presets — Today, Tomorrow, This Weekend flat, a **"No Date"** item, plus a "More" submenu with Next Week, Next Month, and Custom… (in `TaskRowView.swift`). The menu is state-aware: the preset matching the task's current due date is omitted, and "No Date" clears a task's due date, causing it to disappear from time tabs and appear only in the Later tab — which is consistent with the mental model.

@@ -1,12 +1,17 @@
 import SwiftUI
 
+public enum ExpandedPicker {
+    case date
+    case time
+}
+
 @Observable
 final class TaskScheduleDatePickerViewModel {
     var dueDate: Date?
     var hasTime: Bool
     var expandedPicker: ExpandedPicker?
 
-    init(initialDueDate: Date?) {
+    init(initialDueDate: Date?, initialFocus: ExpandedPicker? = nil) {
         let hasTimeVal: Bool
         if let date = initialDueDate {
             let components = Calendar.current.dateComponents([.hour, .minute], from: date)
@@ -15,8 +20,8 @@ final class TaskScheduleDatePickerViewModel {
             hasTimeVal = false
         }
         self.dueDate = initialDueDate
-        self.hasTime = hasTimeVal
-        self.expandedPicker = initialDueDate != nil ? .date : nil
+        self.hasTime = initialFocus == .time ? true : hasTimeVal
+        self.expandedPicker = initialFocus ?? (initialDueDate != nil ? .date : nil)
     }
 
     func toggleDate(isEnabled: Bool) {
@@ -46,10 +51,5 @@ final class TaskScheduleDatePickerViewModel {
             hasTime = false
             expandedPicker = nil
         }
-    }
-
-    enum ExpandedPicker {
-        case date
-        case time
     }
 }

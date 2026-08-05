@@ -9,11 +9,15 @@ public struct TaskScheduleDatePickerSheet: View {
     public init(
         isPresented: Binding<Bool>,
         initialDueDate: Date?,
+        initialFocus: ExpandedPicker? = nil,
         onCommit: @escaping (Date?, Bool) -> Void
     ) {
         self._isPresented = isPresented
         self.onCommit = onCommit
-        self._viewModel = State(initialValue: TaskScheduleDatePickerViewModel(initialDueDate: initialDueDate))
+        self._viewModel = State(initialValue: TaskScheduleDatePickerViewModel(
+            initialDueDate: initialDueDate,
+            initialFocus: initialFocus
+        ))
     }
 
     public var body: some View {

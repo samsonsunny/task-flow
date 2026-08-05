@@ -15,6 +15,11 @@ private struct ScheduleConfig: Identifiable {
     let task: TaskItem
 }
 
+private struct BulkScheduleConfig: Identifiable {
+    let id = UUID()
+    let taskIDs: Set<PersistentIdentifier>
+}
+
 private struct TaskDropDelegate: DropDelegate {
     let targetTask: TaskItem
     let performDrop: (TaskItem, CGPoint) -> Void
@@ -39,6 +44,7 @@ struct ListDetailView: View {
 
     @State private var viewModel: ListDetailViewModel?
     @State private var scheduleConfig: ScheduleConfig?
+    @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
     @State private var isQuickCapturing = false
@@ -135,9 +141,11 @@ struct ListDetailView: View {
                     onDelete: { showDeleteConfirmation = true },
                     onRescheduleToday: { viewModel?.bulkRescheduleToToday(selectedTasks) },
                     onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
+                    onRescheduleThisWeekend: { viewModel?.bulkRescheduleToThisWeekend(selectedTasks) },
                     onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
-                    onRescheduleLater: { viewModel?.bulkRescheduleToLater(selectedTasks) },
-                    onRescheduleCustom: { /* custom date picker */ },
+                    onRescheduleNextMonth: { viewModel?.bulkRescheduleToNextMonth(selectedTasks) },
+                    onRescheduleCustom: { bulkScheduleConfig = BulkScheduleConfig(taskIDs: selectedTasks) },
+                    onRescheduleNone: { viewModel?.bulkRescheduleToNone(selectedTasks) },
                     onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
                     listSections: viewModel?.listSections ?? [],
                     onSetPriority: { viewModel?.bulkSetPriority(selectedTasks, priority: $0) },
@@ -158,8 +166,22 @@ struct ListDetailView: View {
                     set: { if !$0 { scheduleConfig = nil } }
                 ),
                 initialDueDate: config.task.dueDate,
+                initialFocus: config.task.dueDate == nil ? .date : .time,
                 onCommit: { dueDate, hasTime in
                     viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
+                }
+            )
+        }
+        .sheet(item: $bulkScheduleConfig) { config in
+            TaskScheduleDatePickerSheet(
+                isPresented: Binding(
+                    get: { bulkScheduleConfig != nil },
+                    set: { if !$0 { bulkScheduleConfig = nil } }
+                ),
+                initialDueDate: nil,
+                initialFocus: .date,
+                onCommit: { dueDate, hasTime in
+                    viewModel?.bulkRescheduleToDate(config.taskIDs, dueDate: dueDate, hasTime: hasTime)
                 }
             )
         }
@@ -220,13 +242,27 @@ struct ListDetailView: View {
                 }
                 viewModel?.toggleCompletion(for: task)
             },
-            onMoveToToday: viewModel?.canMoveToToday(task) == true ? { viewModel?.rescheduleTaskToToday(task) } : nil,
-            onMoveToTomorrow: viewModel?.canMoveToTomorrow(task) == true ? { viewModel?.rescheduleTaskToTomorrow(task) } : nil,
-            onMoveToNextWeek: viewModel?.canMoveToNextWeek(task) == true ? { viewModel?.rescheduleTaskToNextWeek(task) } : nil,
-            onMoveToLater: task.dueDate != nil ? { viewModel?.rescheduleTaskToLater(task) } : nil,
-            onSchedule: { presentScheduleSheet(for: task) },
+            onDueDateAction: { action in
+                switch action {
+                case .none:
+                    viewModel?.rescheduleTaskToNone(task)
+                case .today:
+                    viewModel?.rescheduleTaskToToday(task)
+                case .tomorrow:
+                    viewModel?.rescheduleTaskToTomorrow(task)
+                case .thisWeekend:
+                    viewModel?.rescheduleTaskToThisWeekend(task)
+                case .nextWeek:
+                    viewModel?.rescheduleTaskToNextWeek(task)
+                case .nextMonth:
+                    viewModel?.rescheduleTaskToNextMonth(task)
+                case .custom:
+                    presentScheduleSheet(for: task)
+                }
+            },
             onMoveToList: { viewModel?.moveTask(task, to: $0) },
             listSections: viewModel?.listSections ?? [],
+            excludedListID: task.reminderList?.persistentModelID,
             onDelete: { viewModel?.delete(task: task) },
             onMoveToTop: sibs.count > 1 ? { viewModel?.moveToTop(task: task) } : nil,
             onMoveToBottom: sibs.count > 1 ? { viewModel?.moveToBottom(task: task) } : nil,

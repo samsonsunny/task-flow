@@ -326,7 +326,7 @@ final class ListDetailViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func rescheduleTaskToLater(_ task: TaskItem) {
+    func rescheduleTaskToNone(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
         }
@@ -346,22 +346,24 @@ final class ListDetailViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    // MARK: - Helpers (2.7)
-
-    func canMoveToToday(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInToday(dueDate)
+    func rescheduleTaskToThisWeekend(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = ReminderSegmentViewModel.nextSaturday(from: now)
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
     }
 
-    func canMoveToTomorrow(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        return !Calendar.current.isDateInTomorrow(dueDate)
-    }
-
-    func canMoveToNextWeek(_ task: TaskItem) -> Bool {
-        guard let dueDate = task.dueDate else { return true }
-        let nextMon = ReminderSegmentViewModel.nextMonday(from: now)
-        return !Calendar.current.isDate(dueDate, inSameDayAs: nextMon)
+    func rescheduleTaskToNextMonth(_ task: TaskItem) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        task.dueDate = ReminderSegmentViewModel.nextMonth(from: now)
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
     }
 
     // MARK: - Bulk Operations
@@ -409,7 +411,59 @@ final class ListDetailViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func bulkRescheduleToLater(_ taskIDs: Set<PersistentIdentifier>) {
+    func bulkRescheduleToThisWeekend(_ taskIDs: Set<PersistentIdentifier>) {
+        let saturday = ReminderSegmentViewModel.nextSaturday(from: now)
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = saturday
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToNextMonth(_ taskIDs: Set<PersistentIdentifier>) {
+        let nextMonth = ReminderSegmentViewModel.nextMonth(from: now)
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            task.dueDate = nextMonth
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToDate(_ taskIDs: Set<PersistentIdentifier>, dueDate: Date?, hasTime: Bool) {
+        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        for task in tasksToReschedule {
+            if let taskId = task.taskId {
+                NotificationService.shared.cancel(taskId: taskId)
+            }
+            if let date = dueDate {
+                if hasTime {
+                    task.dueDate = date
+                    task.hasTime = true
+                    NotificationService.shared.schedule(for: task)
+                } else {
+                    task.dueDate = Calendar.current.startOfDay(for: date)
+                    task.hasTime = false
+                }
+            } else {
+                task.dueDate = nil
+            }
+        }
+        try? modelContext.save()
+        recompute(collapsedTasks: cachedCollapsedTasks)
+        BadgeService.update(modelContext: modelContext)
+    }
+
+    func bulkRescheduleToNone(_ taskIDs: Set<PersistentIdentifier>) {
         let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
         for task in tasksToReschedule {
             if let taskId = task.taskId {

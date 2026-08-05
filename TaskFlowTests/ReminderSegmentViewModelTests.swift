@@ -36,11 +36,11 @@ struct ReminderSegmentViewModelTests {
         return vm
     }
 
-    // MARK: - Rule 1: Subtasks stay in detail; timeline shows only top-level tasks
+    // MARK: - Rule 1: Undated subtasks stay in detail; dated subtasks surface flat at depth 0
 
-    @Test func parentShowsWithOverview_DatedChildHidden() {
+    @Test func parentShowsWithOverview_UndatedChildHidden() {
         let parent = makeTask(title: "Parent", date: now)
-        let child = makeTask(title: "Child", date: now, parent: parent)
+        let child = makeTask(title: "Child", date: nil, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
@@ -51,7 +51,7 @@ struct ReminderSegmentViewModelTests {
         #expect(vm.flatNodes[0].subtaskSummary.pending == 1)
     }
 
-    @Test func childDueTomorrowNotShownInTodayOrTomorrow() {
+    @Test func datedChildSurfacesFlatInItsOwnSegment() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: tomorrow, parent: parent)
@@ -62,7 +62,9 @@ struct ReminderSegmentViewModelTests {
         #expect(todayVM.flatNodes[0].task.safeTitle == "Parent")
 
         let tomorrowVM = makeVM(segment: .tomorrow)
-        #expect(tomorrowVM.flatNodes.isEmpty)
+        #expect(tomorrowVM.flatNodes.count == 1)
+        #expect(tomorrowVM.flatNodes[0].task.safeTitle == "Child")
+        #expect(tomorrowVM.flatNodes[0].depth == 0)
     }
 
     @Test func childWithoutDateNotShownInTimeline() {
@@ -77,7 +79,7 @@ struct ReminderSegmentViewModelTests {
         #expect(vm.flatNodes[0].subtaskSummary.pending == 1)
     }
 
-    // MARK: - Rule 2: Top-level tasks
+    // MARK: - Rule 2: Top-level tasks and dated subtasks
 
     @Test func childDueToday_ParentNoDate_OrphanStandalone() {
         let child = makeTask(title: "Child", date: now)
@@ -88,14 +90,15 @@ struct ReminderSegmentViewModelTests {
         #expect(vm.flatNodes[0].depth == 0)
     }
 
-    @Test func childDueToday_ParentDueTomorrow_OnlyParentShowsInItsSegment() {
+    @Test func childDueToday_ParentDueTomorrow_BothSurfaceInTheirOwnSegments() {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
         let parent = makeTask(title: "Parent", date: tomorrow)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let todayVM = makeVM(segment: .today)
-        #expect(todayVM.flatNodes.isEmpty)
+        #expect(todayVM.flatNodes.count == 1)
+        #expect(todayVM.flatNodes[0].task.safeTitle == "Child")
 
         let tomorrowVM = makeVM(segment: .tomorrow)
         #expect(tomorrowVM.flatNodes.count == 1)
@@ -104,15 +107,42 @@ struct ReminderSegmentViewModelTests {
 
     // MARK: - Dedup
 
-    @Test func dedup_ParentAppearsOnce_ChildNeverShown() {
+    @Test func dedup_BothSurfaceOnce_WhenBothAreDated() {
         let parent = makeTask(title: "Parent", date: now)
         let child = makeTask(title: "Child", date: now, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .today)
-        #expect(vm.flatNodes.count == 1)
+        #expect(vm.flatNodes.count == 2)
         #expect(vm.flatNodes.map(\.task.safeTitle).filter { $0 == "Parent" }.count == 1)
-        #expect(vm.flatNodes.map(\.task.safeTitle).contains("Child") == false)
+        #expect(vm.flatNodes.map(\.task.safeTitle).filter { $0 == "Child" }.count == 1)
+    }
+
+    // MARK: - Dated subtasks surface in upcoming and overdue
+
+    @Test func datedSubtaskSurfacesInUpcomingDaySections() {
+        let upcomingDate = calendar.date(byAdding: .day, value: 3, to: now)!
+        let parent = makeTask(title: "Parent", date: nil)
+        let child = makeTask(title: "Child", date: upcomingDate, parent: parent)
+        parent.subtasks = [child]
+
+        let vm = makeVM(segment: .upcoming)
+        let nodes = vm.flatNodes(for: [parent, child], collapsedTasks: [])
+        #expect(nodes.count == 1)
+        #expect(nodes[0].task.safeTitle == "Child")
+        #expect(nodes[0].depth == 0)
+    }
+
+    @Test func undatedSubtaskExcludedFromUpcomingDaySections() {
+        let upcomingDate = calendar.date(byAdding: .day, value: 3, to: now)!
+        let parent = makeTask(title: "Parent", date: upcomingDate)
+        let child = makeTask(title: "Child", date: nil, parent: parent)
+        parent.subtasks = [child]
+
+        let vm = makeVM(segment: .upcoming)
+        let nodes = vm.flatNodes(for: [parent, child], collapsedTasks: [])
+        #expect(nodes.count == 1)
+        #expect(nodes[0].task.safeTitle == "Parent")
     }
 
     // MARK: - Collapse no longer affects display
@@ -133,10 +163,22 @@ struct ReminderSegmentViewModelTests {
 
     // MARK: - Overdue
 
-    @Test func overdueSubtaskNotShownInOverdueDisplay() {
+    @Test func overdueDatedSubtaskSurfacesInOverdueDisplay() {
         let overdueDate = calendar.date(byAdding: .day, value: -1, to: now)!
         let parent = makeTask(title: "Parent", date: overdueDate)
         let child = makeTask(title: "Child", date: overdueDate, parent: parent)
+        parent.subtasks = [child]
+
+        let vm = makeVM(segment: .overdue)
+        #expect(vm.overdueDisplayTasks.count == 2)
+        #expect(vm.overdueDisplayTasks.map(\.safeTitle).contains("Parent"))
+        #expect(vm.overdueDisplayTasks.map(\.safeTitle).contains("Child"))
+    }
+
+    @Test func overdueUndatedSubtaskStaysHidden() {
+        let overdueDate = calendar.date(byAdding: .day, value: -1, to: now)!
+        let parent = makeTask(title: "Parent", date: overdueDate)
+        let child = makeTask(title: "Child", date: nil, parent: parent)
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .overdue)

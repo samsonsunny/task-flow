@@ -1,6 +1,11 @@
 import SwiftUI
 import SwiftData
 
+private struct SubtaskScheduleConfig: Identifiable {
+    let id = UUID()
+    let subtask: TaskItem
+}
+
 struct ReminderEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -18,6 +23,7 @@ struct ReminderEditorView: View {
     @State private var pressedRow: ExpandedPicker?
     @State private var newSubtaskTitle = ""
     @State private var editingSubtask: TaskItem?
+    @State private var subtaskScheduleConfig: SubtaskScheduleConfig?
     @State private var isListPickerPresented = false
     @FocusState private var isTitleFocused: Bool
 
@@ -84,6 +90,19 @@ struct ReminderEditorView: View {
             }
             .sheet(item: $editingSubtask) { subtask in
                 ReminderEditorView(task: subtask)
+            }
+            .sheet(item: $subtaskScheduleConfig) { config in
+                TaskScheduleDatePickerSheet(
+                    isPresented: Binding(
+                        get: { subtaskScheduleConfig != nil },
+                        set: { if !$0 { subtaskScheduleConfig = nil } }
+                    ),
+                    initialDueDate: config.subtask.dueDate,
+                    initialFocus: config.subtask.dueDate == nil ? .date : .time,
+                    onCommit: { dueDate, hasTime in
+                        viewModel?.scheduleSubtask(config.subtask, dueDate: dueDate, hasTime: hasTime)
+                    }
+                )
             }
             .sheet(isPresented: $isListPickerPresented) {
                 NavigationStack {
@@ -378,20 +397,33 @@ struct ReminderEditorView: View {
     @ViewBuilder
     private func subtaskSection(for parent: TaskItem) -> some View {
         Section("Subtasks") {
-            ForEach(parent.subtasks) { subtask in
+            let orderedSubtasks = viewModel?.subtasks(of: parent) ?? []
+            ForEach(orderedSubtasks) { subtask in
                 TaskRowView(
                     task: subtask,
                     isCompletedVisualState: subtask.isCompleted == true,
                     onToggleCompletion: { viewModel?.toggleSubtaskCompletion(subtask) },
+                    onDueDateAction: { action in
+                        if action == .custom {
+                            subtaskScheduleConfig = SubtaskScheduleConfig(subtask: subtask)
+                        } else {
+                            viewModel?.rescheduleSubtask(subtask, to: action)
+                        }
+                    },
+                    onMoveToList: { viewModel?.moveSubtask(subtask, to: $0) },
+                    listSections: listSections,
+                    onDelete: { viewModel?.deleteSubtask(subtask) },
+                    onMoveUp: viewModel?.canMoveSubtaskUp(subtask) == true ? { viewModel?.moveSubtaskUp(subtask) } : nil,
+                    onMoveDown: viewModel?.canMoveSubtaskDown(subtask) == true ? { viewModel?.moveSubtaskDown(subtask) } : nil,
                     onTap: { editingSubtask = subtask },
-                    showsDueDate: false,
+                    showsDueDate: true,
                     showsListName: false,
                     subtaskSummary: subtask.subtaskSummary
                 )
             }
             .onDelete { indexSet in
                 for index in indexSet {
-                    let subtask = parent.subtasks[index]
+                    let subtask = orderedSubtasks[index]
                     viewModel?.deleteSubtask(subtask)
                 }
             }
@@ -409,6 +441,10 @@ struct ReminderEditorView: View {
                 }
             }
         }
+    }
+
+    private var listSections: [ListSection] {
+        buildListSections(from: reminderLists)
     }
 
     private func addSubtask(to parent: TaskItem) {

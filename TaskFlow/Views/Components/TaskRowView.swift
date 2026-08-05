@@ -9,21 +9,30 @@
 import SwiftUI
 import SwiftData
 
+enum DueDateAction {
+    case none
+    case today
+    case tomorrow
+    case thisWeekend
+    case nextWeek
+    case nextMonth
+    case custom
+}
+
 struct TaskRowView: View, Equatable {
     let task: TaskItem
     var isCompletedVisualState: Bool = false
     var onToggleCompletion: () -> Void
-    var onMoveToToday: (() -> Void)? = nil
-    var onMoveToTomorrow: (() -> Void)? = nil
-    var onMoveToNextWeek: (() -> Void)? = nil
-    var onMoveToLater: (() -> Void)? = nil
-    var onSchedule: (() -> Void)? = nil
+    var onDueDateAction: ((DueDateAction) -> Void)? = nil
     var onMoveToList: ((ReminderList) -> Void)? = nil
     var listSections: [ListSection] = []
+    var excludedListID: PersistentIdentifier? = nil
     var onDelete: (() -> Void)? = nil
     var onSwipeNextDay: (() -> Void)? = nil
     var onMoveToTop: (() -> Void)? = nil
     var onMoveToBottom: (() -> Void)? = nil
+    var onMoveUp: (() -> Void)? = nil
+    var onMoveDown: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
     var showsListName: Bool = true
@@ -82,32 +91,44 @@ struct TaskRowView: View, Equatable {
             }
             .contextMenu {
                 if !isSelecting {
-                    if let moveToday = onMoveToToday {
-                        Button("Today") {
-                            moveToday()
+                    if let onDueDateAction {
+                        if !presetIsRedundant(.today) {
+                            Button("Today") {
+                                onDueDateAction(.today)
+                            }
+                        }
+                        if !presetIsRedundant(.tomorrow) {
+                            Button("Tomorrow") {
+                                onDueDateAction(.tomorrow)
+                            }
+                        }
+                        if !presetIsRedundant(.thisWeekend) {
+                            Button("This Weekend") {
+                                onDueDateAction(.thisWeekend)
+                            }
+                        }
+                        if task.dueDate != nil {
+                            Button("No Date") {
+                                onDueDateAction(.none)
+                            }
+                        }
+                        Menu("More") {
+                            if !presetIsRedundant(.nextWeek) {
+                                Button("Next Week") {
+                                    onDueDateAction(.nextWeek)
+                                }
+                            }
+                            if !presetIsRedundant(.nextMonth) {
+                                Button("Next Month") {
+                                    onDueDateAction(.nextMonth)
+                                }
+                            }
+                            Button("Custom…") {
+                                onDueDateAction(.custom)
+                            }
                         }
                     }
-                    if let moveTomorrow = onMoveToTomorrow {
-                        Button("Tomorrow") {
-                            moveTomorrow()
-                        }
-                    }
-                    if let moveNextWeek = onMoveToNextWeek {
-                        Button("Next Week") {
-                            moveNextWeek()
-                        }
-                    }
-                    if let moveLater = onMoveToLater {
-                        Button("Later") {
-                            moveLater()
-                        }
-                    }
-                    if let schedule = onSchedule {
-                        Button("Schedule") {
-                            schedule()
-                        }
-                    }
-                    if onMoveToTop != nil || onMoveToBottom != nil {
+                    if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
                         Divider()
                     }
                     if let moveTop = onMoveToTop {
@@ -120,13 +141,26 @@ struct TaskRowView: View, Equatable {
                             moveBottom()
                         }
                     }
+                    if let moveUp = onMoveUp {
+                        Button("Move Up") {
+                            moveUp()
+                        }
+                    }
+                    if let moveDown = onMoveDown {
+                        Button("Move Down") {
+                            moveDown()
+                        }
+                    }
                     if let moveToList = onMoveToList, !listSections.isEmpty {
                         Menu("Move to List") {
                             ForEach(listSections) { section in
-                                Section(section.title ?? "") {
-                                    ForEach(section.lists) { list in
-                                        Button(list.name) {
-                                            moveToList(list)
+                                let lists = section.lists.filter { $0.persistentModelID != excludedListID }
+                                if !lists.isEmpty {
+                                    Section(section.title ?? "") {
+                                        ForEach(lists) { list in
+                                            Button(list.name) {
+                                                moveToList(list)
+                                            }
                                         }
                                     }
                                 }
@@ -312,4 +346,27 @@ struct TaskRowView: View, Equatable {
         formatter.timeStyle = .short
         return formatter
     }()
+
+    private func presetIsRedundant(_ action: DueDateAction) -> Bool {
+        guard let dueDate = task.dueDate else { return false }
+        let calendar = Calendar.current
+        let now = Date()
+        let taskDay = calendar.startOfDay(for: dueDate)
+        let target: Date
+        switch action {
+        case .today:
+            target = calendar.startOfDay(for: now)
+        case .tomorrow:
+            target = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
+        case .thisWeekend:
+            target = ReminderSegmentViewModel.nextSaturday(from: now)
+        case .nextWeek:
+            target = ReminderSegmentViewModel.nextMonday(from: now)
+        case .nextMonth:
+            target = ReminderSegmentViewModel.nextMonth(from: now)
+        case .none, .custom:
+            return false
+        }
+        return taskDay == target
+    }
 }
