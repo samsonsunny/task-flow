@@ -105,10 +105,13 @@ DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --publish # publis
 
 `.github/workflows/devto-publish.yml` automates publishing from the repo:
 
-- **On merge to `main`:** every article under `content/blog/drafts/` is created/updated as a Dev.to *draft* (nothing goes live).
-- **Manual dispatch** (Actions → Dev.to Publish → Run workflow): publishes articles under `content/blog/published/` (or a specific `article` path input).
-- The script falls back to matching existing Dev.to articles by title, so moving an article from `drafts/` to `published/` updates it instead of duplicating.
-- Requires the `DEVTO_API_KEY` repo secret (Settings → Secrets and variables → Actions). `.devto.json` state is committed back automatically by the workflow.
+- **On PR open/update:** every article under `content/blog/drafts/` is created/updated as a Dev.to *draft* (private — safe preview). Iterate on the article, push, and the draft updates.
+- **On merge to `main`:** every article under `content/blog/drafts/` is **published live** to Dev.to automatically. Merging the PR *is* the publish action — no manual step. After publishing, the workflow archives the article to `content/blog/published/YYYY-MM-DD-slug/` and sets `status: published`.
+- Editing an existing article's markdown and merging pushes the update to the live post (good for corrections).
+- **Manual dispatch** (Actions → Dev.to Publish → Run workflow): re-publishes all drafts, or a specific `article` path input — useful for an immediate re-run without a commit.
+- The script falls back to matching existing Dev.to articles by title, so re-runs update instead of duplicating.
+- Requires the `DEVTO_API_KEY` repo secret (Settings → Secrets and variables → Actions). `.devto.json` state is committed back automatically on merge/manual runs (not on PR runs, to avoid self-triggering loops).
+- **Watch out:** anything merged under `content/blog/` goes live immediately — review the PR (and the Dev.to draft preview) before merging.
 
 ### Content directory structure
 

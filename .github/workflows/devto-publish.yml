@@ -1,27 +1,31 @@
 name: Dev.to Publish
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "content/blog/drafts/**"
   push:
     branches: [main]
     paths:
-      - "content/blog/drafts/**"
+      - "content/blog/**"
   workflow_dispatch:
     inputs:
       article:
-        description: "Article path, e.g. content/blog/published/2026-08-05-slug/index.md. Empty = all articles under content/blog/published/."
+        description: "Specific article path to (re)publish. Empty = all drafts."
         required: false
         default: ""
 
 jobs:
-  publish:
+  sync:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create/update Dev.to drafts (on merge)
-        if: github.event_name == 'push'
+      - name: Create/update Dev.to draft (on PR)
+        if: github.event_name == 'pull_request'
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
         run: |
@@ -32,7 +36,33 @@ jobs:
             node scripts/publish-devto.mjs "$file" --draft
           done
 
-      - name: Publish to Dev.to (manual)
+      - name: Publish to Dev.to and archive (on merge)
+        if: github.event_name == 'push'
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          set -e
+          for file in content/blog/drafts/*/index.md content/blog/published/*/index.md; do
+            [ -f "$file" ] || continue
+            echo "Publishing $file"
+            node scripts/publish-devto.mjs "$file" --publish
+          done
+
+          for file in content/blog/drafts/*/index.md; do
+            [ -f "$file" ] || continue
+            dir=$(dirname "$file")
+            slug=$(basename "$dir")
+            date=$(grep -m1 '^date:' "$file" | sed 's/^date:[[:space:]]*//; s/["'"'"']//g' | awk '{print $1}')
+            [ -z "$date" ] && date=$(date +%F)
+            dest="content/blog/published/${date}-${slug}"
+            echo "Archiving $dir -> $dest"
+            sed -i.bak 's/^status:[[:space:]]*draft/status: published/' "$file" && rm -f "$file.bak"
+            mkdir -p content/blog/published
+            rm -rf "$dest"
+            mv "$dir" "$dest"
+          done
+
+      - name: Publish specific article (manual)
         if: github.event_name == 'workflow_dispatch'
         env:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
@@ -43,15 +73,16 @@ jobs:
             echo "Publishing $ARTICLE"
             node scripts/publish-devto.mjs "$ARTICLE" --publish
           else
-            for file in content/blog/published/*/index.md; do
+            for file in content/blog/drafts/*/index.md; do
               [ -f "$file" ] || continue
               echo "Publishing $file"
               node scripts/publish-devto.mjs "$file" --publish
             done
           fi
 
-      - name: Commit Dev.to state back
+      - name: Commit content changes back (merge/manual only)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(content): sync Dev.to state"
-          file_pattern: content/blog/.devto.json
+          commit_message: "chore(content): sync Dev.to state and archive published articles"
+          file_pattern: content/blog/
