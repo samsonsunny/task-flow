@@ -49,6 +49,10 @@ Wednesday:               Publish + release 🔁
 
 ## Distribution process
 
+Until `taskflow.app/blog` exists, skip the canonical-first step and publish directly to Medium and Dev.to on the same day. When the own site launches, republish there and switch the canonical to it.
+
+Once the own site is live:
+
 1. Publish on `taskflow.app/blog/slug` (canonical)
 2. Wait 7 days for SEO indexing
 3. Cross-post to Medium (with canonical link back to own site)

@@ -83,6 +83,32 @@ The repo includes a content pipeline alongside the iOS app. See `openspec/change
 - **Format:** Markdown with YAML frontmatter in `content/blog/`
 - **Own site:** Blog lives at `taskflow.app/blog` (subdirectory, not subdomain)
 - **Distribution:** Publish on own site first → wait 7 days → cross-post to Medium/Dev.to with canonical link
+- **No site yet (current):** Until `taskflow.app/blog` exists, publish directly to Medium and Dev.to on the same day (no 7-day canonical wait). Log all links in `distribution.md`. When the own site launches, republish there and switch the canonical to it.
+
+### Dev.to publishing script
+
+`scripts/publish-devto.mjs` publishes an article to Dev.to from its `index.md` via the Forem API:
+
+```bash
+DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --draft   # create as draft
+DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --publish # publish or make live
+```
+
+- API key from `dev.to/settings/extensions`; never commit it.
+- State (article id/url per path) is stored in `content/blog/.devto.json` so re-runs update instead of duplicating.
+- Max 4 tags are sent (Dev.to limit).
+- `content/blog/.config.json` has `ownSiteLive: false`; set to `true` once `taskflow.app/blog` exists so the script starts sending `canonical_url`.
+- Add `--dry-run` to preview the payload without calling the API.
+- Medium still requires a manual/import step (no new API tokens issued).
+
+### Dev.to GitHub Actions workflow
+
+`.github/workflows/devto-publish.yml` automates publishing from the repo:
+
+- **On merge to `main`:** every article under `content/blog/drafts/` is created/updated as a Dev.to *draft* (nothing goes live).
+- **Manual dispatch** (Actions → Dev.to Publish → Run workflow): publishes articles under `content/blog/published/` (or a specific `article` path input).
+- The script falls back to matching existing Dev.to articles by title, so moving an article from `drafts/` to `published/` updates it instead of duplicating.
+- Requires the `DEVTO_API_KEY` repo secret (Settings → Secrets and variables → Actions). `.devto.json` state is committed back automatically by the workflow.
 
 ### Content directory structure
 

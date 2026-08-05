@@ -1,0 +1,57 @@
+name: Dev.to Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "content/blog/drafts/**"
+  workflow_dispatch:
+    inputs:
+      article:
+        description: "Article path, e.g. content/blog/published/2026-08-05-slug/index.md. Empty = all articles under content/blog/published/."
+        required: false
+        default: ""
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create/update Dev.to drafts (on merge)
+        if: github.event_name == 'push'
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+        run: |
+          set -e
+          for file in content/blog/drafts/*/index.md; do
+            [ -f "$file" ] || continue
+            echo "Drafting $file"
+            node scripts/publish-devto.mjs "$file" --draft
+          done
+
+      - name: Publish to Dev.to (manual)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          ARTICLE: ${{ github.event.inputs.article }}
+        run: |
+          set -e
+          if [ -n "$ARTICLE" ]; then
+            echo "Publishing $ARTICLE"
+            node scripts/publish-devto.mjs "$ARTICLE" --publish
+          else
+            for file in content/blog/published/*/index.md; do
+              [ -f "$file" ] || continue
+              echo "Publishing $file"
+              node scripts/publish-devto.mjs "$file" --publish
+            done
+          fi
+
+      - name: Commit Dev.to state back
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(content): sync Dev.to state"
+          file_pattern: content/blog/.devto.json
