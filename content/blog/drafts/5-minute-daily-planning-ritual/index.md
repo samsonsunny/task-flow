@@ -145,3 +145,9 @@ The first week is the hardest. Your brain will resist the structure. It will tel
 Try it tomorrow morning. Five minutes. Same steps. See how it changes the rest of your day.
 
 The ritual doesn't require any specific app — a paper notebook works fine. But if you want to try it with the one I built around this exact workflow, [Wednesday Calendar](https://apps.apple.com/us/app/wednesday/id1455779789) is a free download.
+
+| | | |
+|---|---|---|
+| [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/77/11/e6/7711e6d0-924e-bfd5-7ae4-852b32fd35ff/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/41/52/27/415227b8-89cd-afaa-cec8-b8d69957fe36/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/c6/09/e6/c609e637-9ec3-8951-d158-b81f4a69c705/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) |
+
+*Wednesday Calendar on the [App Store](https://apps.apple.com/us/app/wednesday/id1455779789) — tap a screenshot to open it.*
