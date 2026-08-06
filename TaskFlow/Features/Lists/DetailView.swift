@@ -47,11 +47,11 @@ struct ListDetailView: View {
     @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
-    @State private var isQuickCapturing = false
     @State private var quickCaptureText = ""
     @State private var isSelecting = false
     @State private var selectedTasks: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
+    @FocusState private var quickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -70,70 +70,54 @@ struct ListDetailView: View {
     }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            List {
-                if let vm = viewModel {
-                    if vm.flatNodes.isEmpty {
-                        emptyState
-                    } else {
-                        ForEach(vm.flatNodes) { node in
-                            taskListRow(node)
-                                .transition(.scale.combined(with: .opacity))
-                        }
-                        .onMove { fromOffsets, toOffset in
-                            let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
-                            let taskToOffset = flatToTaskIndex(toOffset)
-                            vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
-                        }
+        List {
+            if let vm = viewModel {
+                if vm.flatNodes.isEmpty {
+                    emptyState
+                } else {
+                    ForEach(vm.flatNodes) { node in
+                        taskListRow(node)
+                            .transition(.scale.combined(with: .opacity))
                     }
-                }
-
-                if isQuickCapturing && !isSelecting {
-                    QuickCaptureRow(
-                        text: $quickCaptureText,
-                        onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, in: listID) },
-                        onDismiss: { isQuickCapturing = false }
-                    )
-                }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.appBackground)
-            .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(
-                TapGesture().onEnded { isQuickCapturing = false }
-            )
-            .navigationTitle(viewModel?.list?.name ?? "")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar(.hidden, for: .tabBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isSelecting {
-                        Button("Done") {
-                            exitSelectionMode()
-                        }
-                    } else {
-                        Menu {
-                            Button("Select Items") {
-                                enterSelectionMode()
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                        }
+                    .onMove { fromOffsets, toOffset in
+                        let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+                        let taskToOffset = flatToTaskIndex(toOffset)
+                        vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
                     }
                 }
             }
-            .quickCaptureScroll(isActive: isQuickCapturing, proxy: proxy)
         }
-        .overlay(alignment: .bottomTrailing) {
-            ReminderFloatingAddButton {
-                isQuickCapturing = true
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(AppTheme.colors.appBackground)
+        .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            TapGesture().onEnded { quickCaptureFocused = false }
+        )
+        .navigationTitle(viewModel?.list?.name ?? "")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if isSelecting {
+                    Button("Done") {
+                        exitSelectionMode()
+                    }
+                } else {
+                    Menu {
+                        Button("Select Items") {
+                            enterSelectionMode()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                }
             }
-            .padding(.trailing, 20)
-            .padding(.bottom, 24)
-            .opacity(isQuickCapturing || isSelecting ? 0 : 1)
-            .allowsHitTesting(!isQuickCapturing && !isSelecting)
-            .animation(.easeInOut(duration: 0.15), value: isQuickCapturing)
+        }
+        .safeAreaInset(edge: .bottom) {
+            if !isSelecting {
+                quickCaptureBar
+            }
         }
         .overlay(alignment: .bottom) {
             if isSelecting {
@@ -219,7 +203,7 @@ struct ListDetailView: View {
             Text("No tasks")
                 .font(.headline)
                 .foregroundStyle(AppTheme.colors.textPrimary)
-            Text("Tap + to add a task to this list.")
+            Text("Add a task below to get started.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.colors.textSecondary)
         }
@@ -228,6 +212,52 @@ struct ListDetailView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
+    }
+
+    private var quickCaptureBar: some View {
+        HStack(spacing: 10) {
+            TextField("Add a task...", text: $quickCaptureText)
+                .focused($quickCaptureFocused)
+                .onSubmit { commitQuickCapture() }
+                .submitLabel(.send)
+                .textInputAutocapitalization(.sentences)
+                .accessibilityIdentifier("list-bar-field")
+
+            if !quickCaptureText.isEmpty {
+                Button {
+                    commitQuickCapture()
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(AppTheme.colors.primaryAction))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("list-bar-submit")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(AppTheme.colors.borderSubtle, lineWidth: 0.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 6)
+    }
+
+    private func commitQuickCapture() {
+        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        quickCaptureText = ""
+        viewModel?.commitQuickCapture(text: text, in: listID)
     }
 
     private func taskListRow(_ node: FlatTaskNode) -> some View {
@@ -265,8 +295,7 @@ struct ListDetailView: View {
             onMoveToTop: sibs.count > 1 ? { viewModel?.moveToTop(task: task) } : nil,
             onMoveToBottom: sibs.count > 1 ? { viewModel?.moveToBottom(task: task) } : nil,
             onTap: {
-                isQuickCapturing = false
-                quickCaptureText = ""
+                quickCaptureFocused = false
                 editingTask = task
             },
             showsDueDate: true,
