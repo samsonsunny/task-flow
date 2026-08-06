@@ -215,42 +215,60 @@ struct ListDetailView: View {
     }
 
     private var quickCaptureBar: some View {
-        HStack(spacing: 10) {
-            TextField("Add a task...", text: $quickCaptureText)
-                .focused($quickCaptureFocused)
-                .onSubmit { commitQuickCapture() }
-                .submitLabel(.send)
-                .textInputAutocapitalization(.sentences)
-                .accessibilityIdentifier("list-bar-field")
+        GlassEffectContainer {
+            HStack(spacing: 10) {
+                ZStack(alignment: .topLeading) {
+                    TextField("", text: $quickCaptureText, axis: .vertical)
+                        .focused($quickCaptureFocused)
+                        .lineLimit(1...5)
+                        .frame(minHeight: 28, alignment: .center)
+                        .onSubmit { commitQuickCapture() }
+                        .submitLabel(.send)
+                        .textInputAutocapitalization(.sentences)
+                        .accessibilityIdentifier("list-bar-field")
 
-            if !quickCaptureText.isEmpty {
-                Button {
-                    commitQuickCapture()
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(AppTheme.colors.primaryAction))
+                    if quickCaptureText.isEmpty {
+                        Text("Add a task...")
+                            .foregroundStyle(AppTheme.colors.textSecondary)
+                            .frame(minHeight: 28, alignment: .center)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("list-bar-submit")
+                .frame(maxWidth: .infinity)
+                .padding(.trailing, 48)
             }
+            .padding(.leading, 14)
+            .padding(.vertical, 10)
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(.ultraThinMaterial, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(AppTheme.colors.borderSubtle, lineWidth: 0.5)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 6)
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                commitQuickCapture()
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(AppTheme.colors.primaryAction))
+            }
+            .buttonStyle(.plain)
+            .opacity(quickCaptureText.isEmpty ? 0 : 1)
+            .allowsHitTesting(!quickCaptureText.isEmpty)
+            .animation(.easeInOut(duration: 0.15), value: quickCaptureText.isEmpty)
+            .accessibilityIdentifier("list-bar-submit")
+            .padding(.trailing, 14)
+            .padding(.bottom, 10)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, quickCaptureFocused ? 8 : 32)
+        .animation(.easeInOut(duration: 0.2), value: quickCaptureFocused)
+        .padding(.bottom, 10)
     }
 
     private func commitQuickCapture() {
