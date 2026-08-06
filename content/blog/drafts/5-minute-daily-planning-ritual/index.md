@@ -148,6 +148,6 @@ The ritual doesn't require any specific app — a paper notebook works fine. But
 
 | | | |
 |---|---|---|
-| [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/77/11/e6/7711e6d0-924e-bfd5-7ae4-852b32fd35ff/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/41/52/27/415227b8-89cd-afaa-cec8-b8d69957fe36/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/c6/09/e6/c609e637-9ec3-8951-d158-b81f4a69c705/pr_source.png/750x1334bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) |
+| [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/34/18/54/34185439-20a3-352f-e574-94a192fea07c/952.PNG/750x1624bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/c0/cb/4b/c0cb4bf2-45ea-f7d0-a618-d687b42130cb/Tomorrow.PNG/750x1624bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) | [![Wednesday Calendar screenshot](https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/af/57/80/af5780c6-58fa-7cc6-1bd7-42db0f32fe98/Upcoming_2.PNG/750x1624bb.png)](https://apps.apple.com/us/app/wednesday/id1455779789) |
 
 *Wednesday Calendar on the [App Store](https://apps.apple.com/us/app/wednesday/id1455779789) — tap a screenshot to open it.*

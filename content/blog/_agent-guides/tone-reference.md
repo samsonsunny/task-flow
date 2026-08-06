@@ -159,7 +159,7 @@ Run before finalizing any article. If any box fails, revise the article — do n
 - Use the Pexels API `src.landscape` (1200×627) for the cover, `src.large` (940×650) for in-body — never hand-craft query strings
 - Every image is followed by an italic attribution caption:
   `*Photo by [Name](https://www.pexels.com/@handle) on [Pexels](https://www.pexels.com)*`
-- **Optional app CTA card (bottom of article):** hotlink up to 3 App Store screenshots in a row via the iTunes Lookup API (`https://itunes.apple.com/lookup?id=1455779789` → `screenshotUrls`). Wrap each `[![alt](url)](APP_STORE_URL)` so the card is tappable, and append `/750x1334bb.png` to each CDN URL for full-res. No Pexels attribution needed for product screenshots — use an italic caption linking the App Store. Keep it visually distinct from the Pexels editorial images.
+- **Optional app CTA card (bottom of article):** hotlink up to 3 App Store screenshots in a row. **Do NOT use the iTunes Lookup API** (`itunes.apple.com/lookup`) — its `screenshotUrls` is frequently stale. Scrape the live storefront instead (`curl -s https://apps.apple.com/us/app/wednesday/id1455779789`) and extract the `PurpleSource*` `.PNG` image paths (skip AppIcon/Placeholder/`pr_source` URLs). Request each at `750x1624bb.png` for full-res, wrap each `[![alt](url)](APP_STORE_URL)` so the card is tappable. No Pexels attribution needed for product screenshots — use an italic caption linking the App Store. Keep it visually distinct from the Pexels editorial images.
 ```
 
 ## SEO Rules
