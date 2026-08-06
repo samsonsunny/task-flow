@@ -1,8 +1,10 @@
 # TaskFlow Tone & Voice Reference
 
+> **Naming rule:** "TaskFlow" is the *internal* project name only. The customer-facing app on the App Store is **Wednesday Calendar** (developer: Samson Sunny). Every product mention in articles must say **Wednesday Calendar**, never "TaskFlow" — the App Store "TaskFlow" search surfaces an unrelated app. Download CTA link: `https://apps.apple.com/us/app/wednesday/id1455779789`.
+
 ## The Brand Voice
 
-TaskFlow is a small, focused productivity app. The blog should sound like **a knowledgeable founder who uses their own product daily** — not a marketing department.
+Wednesday Calendar is a small, focused productivity app. The blog should sound like **a knowledgeable founder who uses their own product daily** — not a marketing department.
 
 - **Confident but not arrogant** — We have opinions about task management, but we don't trash competitors
 - **Clear and minimal** — No fluff, no jargon, no corporate speak. Mirror the app's design
@@ -63,7 +65,7 @@ Curated list with commentary.
 - **Example topics**: 5 productivity methods that pair well with TaskFlow, 3 ways to handle overdue tasks
 
 ```
-Title: "5 Productivity Methods That Actually Work With TaskFlow"
+Title: "5 Productivity Methods That Actually Work With Wednesday Calendar"
 Subtitle: "GTD, Eat the Frog, Time Blocking — here's how they map to the app."
 ```
 

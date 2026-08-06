@@ -38,7 +38,7 @@ Three quick actions handle all of it:
 2. **Postpone what slipped.** Anything I clearly wasn't going to do yesterday gets a swipe right — it moves to the next day. No guilt, no rescheduling ceremony.
 3. **Strip what no longer matters.** If a task was tied to a meeting that got cancelled or a deadline that moved, I remove its date entirely. It goes back to Later — still exists, still accessible, just not cluttering my today.
 
-> 💡 **Product tip:** In TaskFlow, swipe right on any task to postpone it to the next day — keep going and the full swipe applies instantly. Swipe left to delete. That's the entire gesture vocabulary, and there's nothing to memorize.
+> 💡 **Product tip:** In Wednesday Calendar, swipe right on any task to postpone it to the next day — keep going and the full swipe applies instantly. Swipe left to delete. That's the entire gesture vocabulary, and there's nothing to memorize.
 
 This step is about honesty, not optimization.
 
@@ -110,9 +110,9 @@ When you try to do all three at once — which is what happens when you open a r
 
 Five minutes, in order, with a hard stop. That's the ritual.
 
-## How it maps to TaskFlow's design
+## How it maps to Wednesday Calendar's design
 
-This ritual wasn't invented for TaskFlow. I developed it years before I built the app. But when I designed TaskFlow's two-axis model — time-based attention tabs on one axis, permanent list structure on the other — I realized the ritual was already using that same logic.
+This ritual wasn't invented for Wednesday Calendar. I developed it years before I built the app. But when I designed Wednesday Calendar's two-axis model — time-based attention tabs on one axis, permanent list structure on the other — I realized the ritual was already using that same logic.
 
 Step 1 cleans the attention axis. Tasks that need to happen today stay; everything else moves to Later or loses its date. Step 2 sets today's attention target — one task gets the spotlight. Step 3 feeds the capture pipeline. The Later tab is the release valve: anything that doesn't need attention today still has a permanent home. It's not deleted, not forgotten, just temporarily invisible.
 
@@ -134,7 +134,7 @@ Not every morning looks the same. Here's how the ritual flexes for different day
 Two things made this stick after years of failed planning attempts:
 
 1. **Fixed time.** I do it with my first coffee. The habit is anchored to something I already do, not a calendar alarm I'll snooze.
-2. **The app opens on Today.** TaskFlow launches on the Today tab every time, so my planning view is right there when I open it — zero navigation friction.
+2. **The app opens on Today.** Wednesday Calendar launches on the Today tab every time, so my planning view is right there when I open it — zero navigation friction.
 
 If you miss a day, don't double down. Skip the priority pick — just do steps 1 and 3 — and start fresh tomorrow. The ritual works because it's sustainable, not because it's perfect. A five-minute reset beats a twenty-minute guilt spiral every time.
 
@@ -143,3 +143,5 @@ The first week is the hardest. Your brain will resist the structure. It will tel
 ---
 
 Try it tomorrow morning. Five minutes. Same steps. See how it changes the rest of your day.
+
+The ritual doesn't require any specific app — a paper notebook works fine. But if you want to try it with the one I built around this exact workflow, [Wednesday Calendar](https://apps.apple.com/us/app/wednesday/id1455779789) is a free download.
