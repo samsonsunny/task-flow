@@ -3,7 +3,7 @@ title: "Your First Post Title"
 date: 2026-07-30
 tags: [productivity]
 description: "One line description for search and social."
-status: draft
+status: published
 canonical: https://taskflow.app/blog/your-first-post
 ---
 
