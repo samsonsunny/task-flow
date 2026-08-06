@@ -127,6 +127,36 @@ Optional:
 - Callout boxes (💡 Product Tip: ...)
 - Pull quotes from the piece itself (for social distribution)
 - Numbered steps for process pieces
+
+## Richness Minimums per Format
+
+Plain prose is not acceptable. Rich formatting is part of the definition of done. Every
+article must meet the minimum mix for its format:
+
+| Format | Minimum mix |
+|---|---|
+| Mental model | 1+ blockquote (citation) · 1 comparison table · 1 💡 callout · 1 pull quote |
+| How-to | Numbered steps as real ordered lists · bold on key terms · 1 callout (shortcut/gesture) · before/after table where possible |
+| List / roundup | Every item = H2 + short body · 1 table or 1 blockquote |
+| Comparison | Core comparison as a table · 1 honest blockquote · 1 callout (TaskFlow fit) |
+
+## Draft Checklist
+
+Run before finalizing any article. If any box fails, revise the article — do not ship it:
+
+- [ ] Headings are used (`## H2`), not just bolded paragraphs
+- [ ] ≥1 list or table exists in the body
+- [ ] Every citation is a blockquote
+- [ ] Every product mention uses the right pattern (method-first for mental models, feature-forward for how-tos)
+- [ ] Callout boxes are blockquote-based, not plain text
+- [ ] Pull quotes extracted for social distribution
+
+## Images
+
+- 1 cover + up to 2 in-body images per article (allowed, not required in-body)
+- Use the Pexels API `src.landscape` (1200×627) for the cover, `src.large` (940×650) for in-body — never hand-craft query strings
+- Every image is followed by an italic attribution caption:
+  `*Photo by [Name](https://www.pexels.com/@handle) on [Pexels](https://www.pexels.com)*`
 ```
 
 ## SEO Rules

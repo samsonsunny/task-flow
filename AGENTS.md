@@ -122,6 +122,8 @@ content/blog/
 │   └── images/                   ← article-specific images
 ├── drafts/working-title/
 │   └── index.md
+├── _agent-guides/
+│   └── tone-reference.md         ← voice, richness minimums, checklist
 ├── ideas.md                      ← topic backlog
 └── distribution.md               ← per-article cross-post log
 ```
@@ -139,7 +141,16 @@ Each weekly app release is a content opportunity. Ship a feature → write the a
 
 ### Tone & voice
 
-Before drafting an article, read `content/blog/_agent-guides/tone-reference.md` for voice, format, product mention patterns, and SEO rules. This defines the TaskFlow blog voice — authoritative but personal, inspired by Todoist and TickTick blog styles.
+Before drafting an article, read `content/blog/_agent-guides/tone-reference.md` for voice, format, product mention patterns, SEO rules, and the per-format richness minimums. This defines the TaskFlow blog voice — authoritative but personal, inspired by Todoist and TickTick blog styles.
+
+### Richness & images
+
+- **Richness is mandatory, not optional.** Before finalizing any article, run the richness self-check in `tone-reference.md` (headings, ≥1 list or table, citations as blockquotes, product mention pattern, callouts as blockquotes, pull quotes). LLM-written articles default to plain prose unless the minimums are enforced.
+- **Image policy (option B):** 1 cover + up to 2 in-body images per article. Use `src.landscape` (1200×627) for the cover and `src.large` (940×650) for in-body from the Pexels API response — never hand-craft query strings.
+- **Captions:** every image is followed by an italic attribution line: `*Photo by [Name](https://www.pexels.com/@handle) on [Pexels](https://www.pexels.com)*`.
+- **API key:** `PEXELS_API_KEY` lives in `.env` (gitignored). It is a **creation-time tool** — used only to search for images during drafting. Publish-time serves images from the public CDN with zero API usage. Never add it to GitHub.
+- **Quota:** ~5–8 search requests per article vs 20,000/month free. Pexels is the only image provider (Unsplash is a drop-in alternative, not held as a second key).
+- **Liveness:** the CI structural gate HEAD-checks every image URL in a draft and fails on 404. These checks hit the public CDN, not the API.
 
 ### Branch naming
 
