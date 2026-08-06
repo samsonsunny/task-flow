@@ -35,7 +35,7 @@ struct CompletedView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
+        .background(AppTheme.colors.secondaryBackground)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if isSelecting {

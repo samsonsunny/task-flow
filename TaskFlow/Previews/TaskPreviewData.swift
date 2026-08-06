@@ -197,6 +197,16 @@ enum TaskPreviewData {
     }
 
     @discardableResult
+    static func seedManyTasksFixture(into container: ModelContainer, count: Int = 30) -> [TaskItem] {
+        let defaultList = ensureDefaultListExists(in: container.mainContext)
+        let tasks = (1...count).map { index in
+            TaskItem(taskTitle: "Scroll Task \(index)", dueDate: nil, reminderList: defaultList)
+        }
+        tasks.forEach { container.mainContext.insert($0) }
+        return tasks
+    }
+
+    @discardableResult
     static func ensureDefaultListExists(in context: ModelContext) -> ReminderList {
         let descriptor = FetchDescriptor<ReminderList>()
         if let existing = try? context.fetch(descriptor).first(where: { $0.name == ReminderDefaults.defaultListName }) {

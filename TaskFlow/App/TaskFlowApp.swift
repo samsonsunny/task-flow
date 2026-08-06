@@ -64,6 +64,12 @@ struct TaskFlowApp: App {
             return container
         }
 
+        if arguments.contains("UITEST_FIXTURE_LIST_MANY") {
+            let container = TaskPreviewData.container()
+            TaskPreviewData.seedManyTasksFixture(into: container)
+            return container
+        }
+
         do {
             return try ModelContainer(
                 for: Schema(versionedSchema: TaskFlowSchemaV9.self)

@@ -33,7 +33,7 @@ struct ListPickerView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
+        .background(AppTheme.colors.secondaryBackground)
         .navigationTitle("Choose List")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search lists")

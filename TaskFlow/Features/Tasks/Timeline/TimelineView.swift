@@ -111,7 +111,7 @@ struct ReminderSegmentDetailView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
+        .background(AppTheme.colors.secondaryBackground)
         .scrollDismissesKeyboard(.interactively)
         .simultaneousGesture(
             TapGesture().onEnded { /* tap dismiss handled by QuickCaptureRow internally */ }

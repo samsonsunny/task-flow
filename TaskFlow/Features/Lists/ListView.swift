@@ -33,7 +33,7 @@ struct ListsTabView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.appBackground)
+            .background(AppTheme.colors.secondaryBackground)
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: capturingGroupID) { _, id in
                 if id != nil {

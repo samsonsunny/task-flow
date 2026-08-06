@@ -89,7 +89,7 @@ struct ListDetailView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.appBackground)
+        .background(AppTheme.colors.secondaryBackground)
         .scrollDismissesKeyboard(.interactively)
         .simultaneousGesture(
             TapGesture().onEnded { quickCaptureFocused = false }
@@ -243,9 +243,10 @@ struct ListDetailView: View {
             .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(.ultraThinMaterial, lineWidth: 1)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 5)
         }
         .overlay(alignment: .bottomTrailing) {
             Button {
@@ -265,10 +266,11 @@ struct ListDetailView: View {
             .padding(.trailing, 14)
             .padding(.bottom, 10)
         }
-        .frame(maxWidth: .infinity)
         .padding(.horizontal, quickCaptureFocused ? 8 : 32)
         .animation(.easeInOut(duration: 0.2), value: quickCaptureFocused)
         .padding(.bottom, 10)
+        .frame(maxWidth: .infinity)
+        .background(AppTheme.colors.secondaryBackground)
     }
 
     private func commitQuickCapture() {
