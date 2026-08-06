@@ -1,36 +1,38 @@
 ## ADDED Requirements
 
 ### Requirement: Unified due date context menu items
-The task context menu SHALL present due-date scheduling actions as flat top-level items — Today, Tomorrow, This Weekend — followed by "No Date" (only when the task has a due date), then the remaining presets (Next Week, Next Month, Custom…) inside a single "More" submenu. No flat Today / Tomorrow / Next Week / Later / Schedule items SHALL appear outside this layout.
+The task context menu SHALL present due-date scheduling actions inside a single "Deadline" submenu (Apple Reminders approach: every date action is two taps). The "Deadline" submenu SHALL list "None" first (no leading icon), then a divider, then the presets in order — Today, Tomorrow, This Weekend, Next Week — and Custom…. Each preset row SHALL show a leading calendar icon bearing the preset's target day-of-month. No flat Today / Tomorrow / Next Week / Next Month / Later / Schedule items SHALL appear outside this layout.
 
 #### Scenario: Root task shows due date actions
 - **WHEN** the user long-presses a task row in a time tab or list detail
-- **THEN** the context menu SHALL list Today, Tomorrow, This Weekend, and (when dated) No Date at the top level
-- **AND** the context menu SHALL contain a "More" submenu
-- **AND** the "More" submenu SHALL list Next Week, Next Month, and Custom…
+- **THEN** the context menu SHALL contain a "Deadline" submenu
+- **AND** the "Deadline" submenu SHALL list None, a divider, then Today, Tomorrow, This Weekend, Next Week, and Custom…
+- **AND** the "Deadline" submenu SHALL NOT list a Next Month preset
+- **AND** each preset row (Today, Tomorrow, This Weekend, Next Week) SHALL show a leading calendar icon with its target day-of-month
 
-#### Scenario: Due date actions adapt to the current due date
+#### Scenario: The active due date is marked with a checkmark
 - **WHEN** the user opens the context menu for a task
-- **THEN** the preset matching the task's current due date SHALL NOT be listed (e.g. "Today" is omitted for a task already due today, "Tomorrow" for a task due tomorrow)
-- **AND** "No Date" SHALL be listed only when the task has a due date
+- **THEN** exactly one item SHALL be marked with a leading checkmark: "None" when the task has no due date; the preset whose target day equals the task's due date (compared at date level, time ignored); Custom… when the task has a due date that matches no preset
+- **AND** every other item SHALL be listed without a checkmark (no item is hidden based on the current due date)
 
 #### Scenario: Overdue and undated tasks show all presets
 - **WHEN** the user opens the context menu for a task with no due date or an overdue due date
-- **THEN** every preset (Today, Tomorrow, This Weekend, and the "More" items) SHALL be listed
-- **AND** "No Date" SHALL be omitted for a task with no due date
+- **THEN** every preset (Today, Tomorrow, This Weekend, Next Week, and Custom…) SHALL be listed
+- **AND** "None" SHALL be marked with a checkmark when the task has no due date
+- **AND** Custom… SHALL be marked with a checkmark when the task has a due date that matches no preset (e.g. an overdue date)
 
-### Requirement: No Date clears the due date
-Tapping "No Date" in the context menu SHALL clear the task's due date (`dueDate = nil`) and cancel any scheduled notification for the task. The task SHALL then disappear from time tabs and remain visible only in its list.
+### Requirement: None clears the due date
+Tapping "None" in the "Deadline" submenu SHALL clear the task's due date (`dueDate = nil`) and cancel any scheduled notification for the task. The task SHALL then disappear from time tabs and remain visible only in its list.
 
-#### Scenario: No Date removes task from time tabs
+#### Scenario: None removes task from time tabs
 - **WHEN** a task in the Today tab has a due date
-- **AND** the user opens its context menu and taps "No Date"
+- **AND** the user opens its context menu and taps "None"
 - **THEN** the task's dueDate SHALL be nil
 - **AND** the task SHALL disappear from the Today tab
 - **AND** the task SHALL remain visible in its list
 
-#### Scenario: No Date cancels the notification
-- **WHEN** a task with a scheduled time notification is cleared via "No Date"
+#### Scenario: None cancels the notification
+- **WHEN** a task with a scheduled time notification is cleared via "None"
 - **THEN** the task's local notification SHALL be cancelled
 
 ### Requirement: Today and Tomorrow presets
@@ -67,19 +69,6 @@ Tapping "Next Week" SHALL set the due date to the upcoming Monday, matching the 
 - **THEN** the task's dueDate SHALL be the next upcoming Monday
 - **AND** the task SHALL appear in the Upcoming tab
 
-### Requirement: Next Month preset
-Tapping "Next Month" SHALL set the due date to the same day-of-month in the next month. When that day does not exist in the next month (e.g. Jan 31), the due date SHALL clamp to the last day of that month.
-
-#### Scenario: Same day next month
-- **WHEN** a task is due on the 15th
-- **AND** the user taps "Next Month"
-- **THEN** the task's dueDate SHALL be the 15th of the next month
-
-#### Scenario: Overflow clamps to month end
-- **WHEN** a task is due on January 31
-- **AND** the user taps "Next Month"
-- **THEN** the task's dueDate SHALL be February 28 (or 29 in a leap year)
-
 ### Requirement: Custom opens the schedule sheet auto-focused
 Tapping "Custom…" SHALL present the schedule sheet. When the task has no due date, the date picker SHALL be expanded on presentation. When the task already has a due date, the time picker SHALL be expanded on presentation.
 
@@ -93,11 +82,11 @@ Tapping "Custom…" SHALL present the schedule sheet. When the task has no due d
 - **THEN** the schedule sheet SHALL appear with the time picker already expanded
 
 ### Requirement: Due date actions apply in all contexts
-The due date actions (flat presets, "More" submenu, and No Date) SHALL be available from every context where a task row's context menu is shown (Today, Tomorrow, Upcoming, Overdue, and list detail).
+The due date actions (the "Deadline" submenu with None, presets, and Custom…) SHALL be available from every context where a task row's context menu is shown (Today, Tomorrow, Upcoming, Overdue, and list detail).
 
 #### Scenario: Actions present in list detail
 - **WHEN** the user long-presses a task row in a list detail view
-- **THEN** the flat due date presets and "More" submenu SHALL be present in the context menu
+- **THEN** the "Deadline" submenu SHALL be present in the context menu
 
 ### Requirement: Move to List excludes the current list
 For a root task, the "Move to List" menu SHALL omit the list the task currently belongs to. For a subtask, all lists SHALL be listed (choosing the parent's list promotes the subtask in place).

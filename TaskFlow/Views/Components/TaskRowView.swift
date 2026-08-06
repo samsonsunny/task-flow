@@ -15,7 +15,6 @@ enum DueDateAction {
     case tomorrow
     case thisWeekend
     case nextWeek
-    case nextMonth
     case custom
 }
 
@@ -92,40 +91,24 @@ struct TaskRowView: View, Equatable {
             .contextMenu {
                 if !isSelecting {
                     if let onDueDateAction {
-                        if !presetIsRedundant(.today) {
-                            Button("Today") {
-                                onDueDateAction(.today)
-                            }
-                        }
-                        if !presetIsRedundant(.tomorrow) {
-                            Button("Tomorrow") {
-                                onDueDateAction(.tomorrow)
-                            }
-                        }
-                        if !presetIsRedundant(.thisWeekend) {
-                            Button("This Weekend") {
-                                onDueDateAction(.thisWeekend)
-                            }
-                        }
-                        if task.dueDate != nil {
-                            Button("No Date") {
-                                onDueDateAction(.none)
-                            }
-                        }
-                        Menu("More") {
-                            if !presetIsRedundant(.nextWeek) {
-                                Button("Next Week") {
-                                    onDueDateAction(.nextWeek)
+                        Menu("Deadline") {
+                            if activeDueDateItem == .none {
+                                Button {
+                                    onDueDateAction(.none)
+                                } label: {
+                                    Label("None", systemImage: "checkmark")
+                                }
+                            } else {
+                                Button("None") {
+                                    onDueDateAction(.none)
                                 }
                             }
-                            if !presetIsRedundant(.nextMonth) {
-                                Button("Next Month") {
-                                    onDueDateAction(.nextMonth)
-                                }
-                            }
-                            Button("Custom…") {
-                                onDueDateAction(.custom)
-                            }
+                            Divider()
+                            presetButton("Today", action: .today)
+                            presetButton("Tomorrow", action: .tomorrow)
+                            presetButton("This Weekend", action: .thisWeekend)
+                            presetButton("Next Week", action: .nextWeek)
+                            presetButton("Custom…", action: .custom)
                         }
                     }
                     if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
@@ -347,26 +330,32 @@ struct TaskRowView: View, Equatable {
         return formatter
     }()
 
-    private func presetIsRedundant(_ action: DueDateAction) -> Bool {
-        guard let dueDate = task.dueDate else { return false }
+    private var activeDueDateItem: DueDateAction? {
+        guard let dueDate = task.dueDate else { return .none }
         let calendar = Calendar.current
         let now = Date()
         let taskDay = calendar.startOfDay(for: dueDate)
-        let target: Date
-        switch action {
-        case .today:
-            target = calendar.startOfDay(for: now)
-        case .tomorrow:
-            target = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!
-        case .thisWeekend:
-            target = ReminderSegmentViewModel.nextSaturday(from: now)
-        case .nextWeek:
-            target = ReminderSegmentViewModel.nextMonday(from: now)
-        case .nextMonth:
-            target = ReminderSegmentViewModel.nextMonth(from: now)
-        case .none, .custom:
-            return false
+        let candidates: [(DueDateAction, Date)] = [
+            (.today, calendar.startOfDay(for: now)),
+            (.tomorrow, calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!),
+            (.thisWeekend, ReminderSegmentViewModel.nextSaturday(from: now)),
+            (.nextWeek, ReminderSegmentViewModel.nextMonday(from: now)),
+        ]
+        if let match = candidates.first(where: { calendar.isDate(taskDay, inSameDayAs: $0.1) }) {
+            return match.0
         }
-        return taskDay == target
+        return .custom
+    }
+
+    private func presetButton(_ title: String, action: DueDateAction) -> some View {
+        Button {
+            onDueDateAction?(action)
+        } label: {
+            if activeDueDateItem == action {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
     }
 }

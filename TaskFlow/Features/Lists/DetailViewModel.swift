@@ -356,16 +356,6 @@ final class ListDetailViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func rescheduleTaskToNextMonth(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = ReminderSegmentViewModel.nextMonth(from: now)
-        try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
-        BadgeService.update(modelContext: modelContext)
-    }
-
     // MARK: - Bulk Operations
 
     func bulkRescheduleToToday(_ taskIDs: Set<PersistentIdentifier>) {
@@ -419,20 +409,6 @@ final class ListDetailViewModel {
                 NotificationService.shared.cancel(taskId: taskId)
             }
             task.dueDate = saturday
-        }
-        try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
-        BadgeService.update(modelContext: modelContext)
-    }
-
-    func bulkRescheduleToNextMonth(_ taskIDs: Set<PersistentIdentifier>) {
-        let nextMonth = ReminderSegmentViewModel.nextMonth(from: now)
-        let tasksToReschedule = tasks.filter { taskIDs.contains($0.persistentModelID) }
-        for task in tasksToReschedule {
-            if let taskId = task.taskId {
-                NotificationService.shared.cancel(taskId: taskId)
-            }
-            task.dueDate = nextMonth
         }
         try? modelContext.save()
         recompute(collapsedTasks: cachedCollapsedTasks)

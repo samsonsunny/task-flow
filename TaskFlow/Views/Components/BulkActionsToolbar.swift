@@ -7,7 +7,6 @@ struct BulkActionsToolbar: View {
     let onRescheduleTomorrow: () -> Void
     let onRescheduleThisWeekend: () -> Void
     let onRescheduleNextWeek: () -> Void
-    let onRescheduleNextMonth: () -> Void
     let onRescheduleCustom: () -> Void
     let onRescheduleNone: () -> Void
     let onMoveToList: (ReminderList) -> Void
@@ -26,7 +25,6 @@ struct BulkActionsToolbar: View {
                     Button("Tomorrow", action: onRescheduleTomorrow)
                     Button("This Weekend", action: onRescheduleThisWeekend)
                     Button("Next Week", action: onRescheduleNextWeek)
-                    Button("Next Month", action: onRescheduleNextMonth)
                     Divider()
                     Button("Pick a Date…", action: onRescheduleCustom)
                     Button("None", action: onRescheduleNone)

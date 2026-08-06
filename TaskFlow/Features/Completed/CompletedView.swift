@@ -64,7 +64,6 @@ struct CompletedView: View {
                     onRescheduleTomorrow: { },
                     onRescheduleThisWeekend: { },
                     onRescheduleNextWeek: { },
-                    onRescheduleNextMonth: { },
                     onRescheduleCustom: { },
                     onRescheduleNone: { },
                     onMoveToList: { _ in },

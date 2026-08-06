@@ -364,16 +364,6 @@ final class ReminderSegmentViewModel {
         BadgeService.update(modelContext: modelContext)
     }
 
-    func rescheduleToNextMonth(_ task: TaskItem) {
-        if let taskId = task.taskId {
-            NotificationService.shared.cancel(taskId: taskId)
-        }
-        task.dueDate = Self.nextMonth(from: now)
-        try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now)
-        BadgeService.update(modelContext: modelContext)
-    }
-
     func rescheduleToNone(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
@@ -415,15 +405,7 @@ final class ReminderSegmentViewModel {
         return calendar.date(byAdding: .day, value: daysUntilSaturday, to: todayStart)!
     }
 
-    /// The same day-of-month one month later. `Calendar.date(byAdding: .month)` clamps
-    /// to the target month's last day when the day-of-month overflows (e.g. Jan 31 -> Feb 28/29).
-    static func nextMonth(from date: Date, calendar: Calendar = .current) -> Date {
-        let dayStart = calendar.startOfDay(for: date)
-        return calendar.date(byAdding: .month, value: 1, to: dayStart) ?? dayStart
-    }
-
     // MARK: - Bulk Operations
-
     func bulkRescheduleToToday(_ taskIDs: Set<PersistentIdentifier>) {
         let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
         for task in tasksToReschedule {
@@ -475,20 +457,6 @@ final class ReminderSegmentViewModel {
                 NotificationService.shared.cancel(taskId: taskId)
             }
             task.dueDate = saturday
-        }
-        try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
-        BadgeService.update(modelContext: modelContext)
-    }
-
-    func bulkRescheduleToNextMonth(_ taskIDs: Set<PersistentIdentifier>) {
-        let nextMonth = Self.nextMonth(from: now)
-        let tasksToReschedule = allTasks.filter { taskIDs.contains($0.persistentModelID) }
-        for task in tasksToReschedule {
-            if let taskId = task.taskId {
-                NotificationService.shared.cancel(taskId: taskId)
-            }
-            task.dueDate = nextMonth
         }
         try? modelContext.save()
         update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)

@@ -4,11 +4,11 @@ The task context menu confuses users. The "Later" action (which clears the due d
 
 ## What Changes
 
-- Replace the flat `Today / Tomorrow / Next Week / Later / Schedule` items in `TaskRowView` with flat presets `Today / Tomorrow / This Weekend`, **"No Date"** (when dated), and a **"More"** submenu (`Next Week / Next Month / Custom…`).
-- The menu is **state-aware**: the preset matching the task's current due date is hidden (e.g. no "Today" for a task due today), "No Date" shows only when a date exists, and "Move to List" excludes the task's own list for root tasks.
-- "No Date" replaces the "Later" label (same behavior: clears the due date). Rename applied in `BulkActionsToolbar` and the mental-model spec note.
+- Replace the flat `Today / Tomorrow / Next Week / Later / Schedule` items in `TaskRowView` with a single **"Deadline"** submenu (Apple Reminders approach — every date action is two taps): **"None"** (always listed, no leading icon), divider, Today / Tomorrow / This Weekend / Next Week / Custom…. No Next Month preset — anything further is picked via Custom….
+- The menu is **state-aware** via an active-item checkmark: "None" is ticked when the task has no date, the preset whose target day matches the due date (time ignored), and Custom… for any other date; nothing is hidden. Each preset row shows a leading calendar icon with its target day-of-month. "Move to List" excludes the task's own list for root tasks.
+- "None" replaces the "Later" label (same behavior: clears the due date). Rename applied in `BulkActionsToolbar` and the mental-model spec note.
 - "Custom…" opens the schedule sheet with the relevant picker **auto-focused** (`initialFocus: .date` when no date, else `.time`), instead of opening collapsed.
-- New presets: **This Weekend** (next Saturday) and **Next Month** (same day next month, clamped). Single + bulk variants added to `TimelineViewModel` and `DetailViewModel`.
+- New presets: **This Weekend** (next Saturday). Single + bulk variants added to `TimelineViewModel` and `DetailViewModel`.
 - Bulk toolbar Date menu mirrors the preset set, and the currently dead "Pick a Date…" (`onRescheduleCustom`) becomes a real bulk date-picker sheet.
 - Subtask rows in the editor gain the full context menu: **Move to List ▸** (un-nests → root; picking the parent's list promotes), the same due date actions, **Move Up / Move Down** (sibling reorder), **Delete**.
 - Subtask rows in the editor display their assigned date/time (`showsDueDate: true`).
@@ -18,13 +18,13 @@ The task context menu confuses users. The "Later" action (which clears the due d
 ## Capabilities
 
 ### New Capabilities
-- `task-due-date-menu`: Unified due-date actions on task rows — flat Today / Tomorrow / This Weekend, "No Date" replacing "Later", "More" submenu (Next Week / Next Month / Custom…) — plus state-aware preset hiding, current-list exclusion, and schedule-sheet auto-focus for Custom.
+- `task-due-date-menu`: Unified due-date actions on task rows — a single "Deadline" submenu (None, divider, Today / Tomorrow / This Weekend / Next Week / Custom…) — plus active-item checkmark state, calendar-day preset icons, current-list exclusion, and schedule-sheet auto-focus for Custom.
 - `subtask-context-menu`: Full context menu on subtask rows in the editor — Move to List (promote/un-nest), the same due date actions, Move Up/Down, Delete — plus date/time display on subtask rows.
 
 ### Modified Capabilities
 - `task-subtasks`: Segment views restore flat rendering of *dated* subtasks (spec compliance); editor subtask rows show assigned date/time.
 - `task-actions`: Add Move Up / Move Down sibling-reorder actions for subtasks in the editor.
-- `app-mental-model`: Update the "Dead code" note that preserves the "Later" label to describe the new flat presets / "More" submenu and "No Date".
+- `app-mental-model`: Update the "Dead code" note that preserves the "Later" label to describe the single "Deadline" submenu with "None" and the active-item checkmark.
 
 ## Impact
 

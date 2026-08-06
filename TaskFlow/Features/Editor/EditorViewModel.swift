@@ -160,11 +160,6 @@ final class ReminderEditorViewModel {
                 NotificationService.shared.cancel(taskId: taskId)
             }
             subtask.dueDate = ReminderSegmentViewModel.nextMonday(from: Date())
-        case .nextMonth:
-            if let taskId = subtask.taskId {
-                NotificationService.shared.cancel(taskId: taskId)
-            }
-            subtask.dueDate = ReminderSegmentViewModel.nextMonth(from: Date())
         case .custom:
             break
         }

@@ -143,7 +143,6 @@ struct ListDetailView: View {
                     onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
                     onRescheduleThisWeekend: { viewModel?.bulkRescheduleToThisWeekend(selectedTasks) },
                     onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
-                    onRescheduleNextMonth: { viewModel?.bulkRescheduleToNextMonth(selectedTasks) },
                     onRescheduleCustom: { bulkScheduleConfig = BulkScheduleConfig(taskIDs: selectedTasks) },
                     onRescheduleNone: { viewModel?.bulkRescheduleToNone(selectedTasks) },
                     onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
@@ -254,8 +253,6 @@ struct ListDetailView: View {
                     viewModel?.rescheduleTaskToThisWeekend(task)
                 case .nextWeek:
                     viewModel?.rescheduleTaskToNextWeek(task)
-                case .nextMonth:
-                    viewModel?.rescheduleTaskToNextMonth(task)
                 case .custom:
                     presentScheduleSheet(for: task)
                 }

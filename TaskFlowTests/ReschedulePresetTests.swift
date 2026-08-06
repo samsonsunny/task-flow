@@ -51,17 +51,6 @@ struct ReschedulePresetTests {
         #expect(task.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
     }
 
-    @Test func timeline_rescheduleToNextMonth_setsSameDayNextMonth() {
-        let task = makeTask(title: "T", date: nil)
-        let vm = ReminderSegmentViewModel(modelContext: context, segment: .today)
-        vm.update(tasks: allTasks(), lists: [], now: now)
-
-        vm.rescheduleToNextMonth(task)
-
-        let expected = ReminderSegmentViewModel.nextMonth(from: now)
-        #expect(task.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-    }
-
     @Test func timeline_rescheduleToNone_cancelsNotification() {
         let task = makeTask(title: "T", date: now)
         let vm = ReminderSegmentViewModel(modelContext: context, segment: .today)
@@ -95,19 +84,6 @@ struct ReschedulePresetTests {
         vm.bulkRescheduleToThisWeekend([t1.persistentModelID, t2.persistentModelID])
 
         let expected = ReminderSegmentViewModel.nextSaturday(from: now)
-        #expect(t1.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-        #expect(t2.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-    }
-
-    @Test func timeline_bulkRescheduleToNextMonth_setsAll() {
-        let t1 = makeTask(title: "A", date: nil)
-        let t2 = makeTask(title: "B", date: nil)
-        let vm = ReminderSegmentViewModel(modelContext: context, segment: .today)
-        vm.update(tasks: allTasks(), lists: [], now: now)
-
-        vm.bulkRescheduleToNextMonth([t1.persistentModelID, t2.persistentModelID])
-
-        let expected = ReminderSegmentViewModel.nextMonth(from: now)
         #expect(t1.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
         #expect(t2.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
     }
@@ -154,20 +130,6 @@ struct ReschedulePresetTests {
         #expect(task.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
     }
 
-    @Test func detail_rescheduleTaskToNextMonth_setsSameDayNextMonth() {
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let task = makeTask(title: "T", date: nil)
-        task.reminderList = list
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        vm.update(tasks: allTasks(), lists: [list], allTasks: allTasks(), now: now)
-
-        vm.rescheduleTaskToNextMonth(task)
-
-        let expected = ReminderSegmentViewModel.nextMonth(from: now)
-        #expect(task.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-    }
-
     // MARK: - ListDetailViewModel bulk presets
 
     @Test func detail_bulkRescheduleToNone_clearsAll() {
@@ -199,23 +161,6 @@ struct ReschedulePresetTests {
         vm.bulkRescheduleToThisWeekend([t1.persistentModelID, t2.persistentModelID])
 
         let expected = ReminderSegmentViewModel.nextSaturday(from: now)
-        #expect(t1.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-        #expect(t2.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
-    }
-
-    @Test func detail_bulkRescheduleToNextMonth_setsAll() {
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let t1 = makeTask(title: "A", date: nil)
-        let t2 = makeTask(title: "B", date: nil)
-        t1.reminderList = list
-        t2.reminderList = list
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        vm.update(tasks: allTasks(), lists: [list], allTasks: allTasks(), now: now)
-
-        vm.bulkRescheduleToNextMonth([t1.persistentModelID, t2.persistentModelID])
-
-        let expected = ReminderSegmentViewModel.nextMonth(from: now)
         #expect(t1.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
         #expect(t2.dueDate.map { Calendar.current.isDate($0, inSameDayAs: expected) } == true)
     }

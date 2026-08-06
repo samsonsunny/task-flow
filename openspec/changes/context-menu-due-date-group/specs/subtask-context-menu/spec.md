@@ -1,13 +1,13 @@
 ## ADDED Requirements
 
 ### Requirement: Subtask rows expose a context menu
-Subtask rows in the task editor SHALL expose a context menu on long-press containing: Move to List ▸, the due date actions (Today, Tomorrow, This Weekend, No Date, "More" submenu), Move Up, Move Down, and Delete.
+Subtask rows in the task editor SHALL expose a context menu on long-press containing: Move to List ▸, a "Deadline" submenu with the due date actions, Move Up, Move Down, and Delete.
 
 #### Scenario: Subtask context menu contents
 - **WHEN** the user long-presses a subtask row in the editor
 - **THEN** a context menu SHALL appear
 - **AND** it SHALL contain "Move to List ▸"
-- **AND** it SHALL list the same due date actions as task rows (flat Today, Tomorrow, This Weekend, No Date; "More" with Next Week, Next Month, Custom…)
+- **AND** it SHALL contain the same due date actions as task rows in a "Deadline" submenu (None, a divider, then Today, Tomorrow, This Weekend, Next Week, Custom…)
 - **AND** it SHALL contain "Move Up" and "Move Down" when the subtask has siblings
 - **AND** it SHALL contain "Delete"
 
@@ -26,10 +26,10 @@ Tapping "Move to List" on a subtask SHALL remove it from its parent (set `parent
 - **AND** it SHALL no longer appear as a subtask of the parent
 
 ### Requirement: Subtask due date actions behave like task rows
-The due date actions on subtask rows SHALL behave like task rows: flat Today / Tomorrow / This Weekend, No Date, "More" with Next Week, Next Month, Custom…; with the same state-aware hiding (redundant preset omitted, No Date only when dated).
+The due date actions on subtask rows SHALL behave like task rows: a "Deadline" submenu with None, a divider, then Today, Tomorrow, This Weekend, Next Week, Custom…; with the same active-item checkmark (None ticked when undated, the matching preset ticked when it matches the due date, Custom… ticked otherwise) and the same calendar-day icons on the preset rows.
 
 #### Scenario: Clearing a subtask due date
-- **WHEN** the user taps "No Date" for a subtask that has a due date
+- **WHEN** the user taps "None" for a subtask that has a due date
 - **THEN** the subtask's dueDate SHALL be nil
 - **AND** the subtask's scheduled notification SHALL be cancelled
 

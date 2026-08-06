@@ -141,7 +141,6 @@ struct ReminderSegmentDetailView: View {
                     onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
                     onRescheduleThisWeekend: { viewModel?.bulkRescheduleToThisWeekend(selectedTasks) },
                     onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
-                    onRescheduleNextMonth: { viewModel?.bulkRescheduleToNextMonth(selectedTasks) },
                     onRescheduleCustom: { bulkScheduleConfig = BulkScheduleConfig(taskIDs: selectedTasks) },
                     onRescheduleNone: { viewModel?.bulkRescheduleToNone(selectedTasks) },
                     onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
@@ -574,8 +573,6 @@ struct ReminderSegmentDetailView: View {
                     viewModel?.rescheduleToThisWeekend(task)
                 case .nextWeek:
                     viewModel?.rescheduleToNextWeek(task)
-                case .nextMonth:
-                    viewModel?.rescheduleToNextMonth(task)
                 case .custom:
                     presentScheduleSheet(for: task)
                 }
