@@ -105,6 +105,7 @@ struct ListDetailView: View {
             )
             .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if isSelecting {
