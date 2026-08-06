@@ -10,11 +10,6 @@ final class ListsTabViewModel {
     private(set) var groups: [ReminderListGroup] = []
     private(set) var allTasks: [TaskItem] = []
 
-    // MARK: - Group Expand/Collapse
-
-    var expandedGroupIDs: Set<PersistentIdentifier> = []
-    private let expandedDefaultsPrefix = "group-expanded-"
-
     // MARK: - Dialog State
 
     var isCreatingList = false
@@ -36,51 +31,12 @@ final class ListsTabViewModel {
         self.modelContext = modelContext
     }
 
-    // MARK: - Group Expand/Collapse
-
-    func isGroupExpanded(_ group: ReminderListGroup) -> Bool {
-        expandedGroupIDs.contains(group.persistentModelID)
-    }
-
-    func toggleGroupExpanded(_ group: ReminderListGroup) {
-            let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
-        if expandedGroupIDs.contains(group.persistentModelID) {
-            expandedGroupIDs.remove(group.persistentModelID)
-            UserDefaults.standard.set(false, forKey: key)
-        } else {
-            expandedGroupIDs.insert(group.persistentModelID)
-            UserDefaults.standard.set(true, forKey: key)
-        }
-    }
-
-    func setGroupExpanded(_ group: ReminderListGroup, expanded: Bool) {
-        let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
-        if expanded {
-            expandedGroupIDs.insert(group.persistentModelID)
-        } else {
-            expandedGroupIDs.remove(group.persistentModelID)
-        }
-        UserDefaults.standard.set(expanded, forKey: key)
-    }
-
-    private func restoreExpandedState() {
-        var ids = Set<PersistentIdentifier>()
-        for group in groups {
-        let key = expandedDefaultsPrefix + group.persistentModelID.stableKey
-            if UserDefaults.standard.bool(forKey: key) {
-                ids.insert(group.persistentModelID)
-            }
-        }
-        expandedGroupIDs = ids
-    }
-
     // MARK: - Update Entry Point
 
     func update(lists: [ReminderList], groups: [ReminderListGroup], allTasks: [TaskItem]) {
         self.lists = lists
         self.groups = groups
         self.allTasks = allTasks
-        restoreExpandedState()
     }
 
     // MARK: - Derived Properties

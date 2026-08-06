@@ -236,15 +236,7 @@ struct ListsTabView: View {
         Section {
             ForEach(Array(groups.enumerated()), id: \.element.persistentModelID) { index, group in
                 let items = viewModel?.listsInGroup(group) ?? []
-                DisclosureGroup(isExpanded: Binding(
-                    get: { viewModel?.isGroupExpanded(group) ?? false },
-                    set: { expanded in
-                        viewModel?.setGroupExpanded(group, expanded: expanded)
-                        if !expanded && capturingGroupID == group.persistentModelID {
-                            capturingGroupID = nil
-                        }
-                    }
-                )) {
+                DisclosureGroup {
                     ForEach(items) { list in
                         listNavigationLink(for: list)
                     }
