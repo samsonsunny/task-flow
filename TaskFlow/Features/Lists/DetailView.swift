@@ -87,9 +87,11 @@ struct ListDetailView: View {
     private func detailList(proxy: ScrollViewProxy) -> some View {
         baseList(proxy: proxy)
             .onChange(of: viewModel?.lastAddedTaskID) { _, id in
-                guard id != nil else { return }
+                guard let id else { return }
                 DispatchQueue.main.async {
-                    scrollToBottom(proxy: proxy)
+                    withAnimation(.easeOut(duration: 0.45)) {
+                        proxy.scrollTo(id, anchor: .bottom)
+                    }
                 }
             }
             .onReceive(refreshTimer) { _ in
@@ -200,6 +202,7 @@ struct ListDetailView: View {
                 } else {
                     ForEach(vm.flatNodes) { node in
                         taskListRow(node)
+                            .id(node.id)
                             .transition(.scale.combined(with: .opacity))
                     }
                     .onMove { fromOffsets, toOffset in
