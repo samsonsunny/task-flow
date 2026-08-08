@@ -33,11 +33,19 @@ if [ "$CURRENT" != "$RELEASE" ]; then
 fi
 
 git pull --rebase origin main
-if git rev-parse "v$RELEASE" >/dev/null 2>&1; then
-  echo "Tag v$RELEASE already exists (retry) — skipping tag"
-  git push origin main
+
+# Push main first as its own step — never block it on the tag.
+git push origin main
+
+# Check the REMOTE, not the local clone (Xcode Cloud clones often have no tags).
+if git ls-remote --tags origin "refs/tags/v$RELEASE" 2>/dev/null | grep -q "refs/tags/v$RELEASE"; then
+  echo "Tag v$RELEASE already exists on origin (retry) — skipping tag"
 else
-  git tag "v$RELEASE"
-  git push origin main --tags
-  echo "Tagged v$RELEASE"
+  git tag "v$RELEASE" 2>/dev/null || true
+  # Push only this tag ref; a pre-existing conflicting tag must not fail the build.
+  if git push origin "refs/tags/v$RELEASE:refs/tags/v$RELEASE" 2>/dev/null; then
+    echo "Tagged v$RELEASE"
+  else
+    echo "Warn: tag v$RELEASE already exists on origin — skipping tag"
+  fi
 fi
