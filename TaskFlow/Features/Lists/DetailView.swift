@@ -51,6 +51,7 @@ struct ListDetailView: View {
     @State private var isSelecting = false
     @State private var selectedTasks: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
+    @State private var showScrollToBottom = false
     @FocusState private var quickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -70,6 +71,114 @@ struct ListDetailView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            detailList(proxy: proxy)
+        }
+    }
+
+    private func detailList(proxy: ScrollViewProxy) -> some View {
+        baseList(proxy: proxy)
+            .onReceive(refreshTimer) { _ in
+                viewModel?.refreshNow()
+            }
+            .sheet(item: $scheduleConfig) { config in
+                TaskScheduleDatePickerSheet(
+                    isPresented: Binding(
+                        get: { scheduleConfig != nil },
+                        set: { if !$0 { scheduleConfig = nil } }
+                    ),
+                    initialDueDate: config.task.dueDate,
+                    initialFocus: config.task.dueDate == nil ? .date : .time,
+                    onCommit: { dueDate, hasTime in
+                        viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
+                    }
+                )
+            }
+            .sheet(item: $bulkScheduleConfig) { config in
+                TaskScheduleDatePickerSheet(
+                    isPresented: Binding(
+                        get: { bulkScheduleConfig != nil },
+                        set: { if !$0 { bulkScheduleConfig = nil } }
+                    ),
+                    initialDueDate: nil,
+                    initialFocus: .date,
+                    onCommit: { dueDate, hasTime in
+                        viewModel?.bulkRescheduleToDate(config.taskIDs, dueDate: dueDate, hasTime: hasTime)
+                    }
+                )
+            }
+            .sheet(item: $newReminderConfig) { config in
+                ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID, initialTitle: config.initialTitle)
+            }
+            .sheet(item: $editingTask) { task in
+                ReminderEditorView(task: task)
+            }
+            .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    bulkDelete()
+                }
+            } message: {
+                Text("This cannot be undone.")
+            }
+            .onAppear {
+                viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
+                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+                viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
+            }
+            .onChange(of: allTasks) { _, newTasks in
+                let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }
+                viewModel?.update(tasks: listTasks, lists: allLists, allTasks: newTasks)
+            }
+            .onChange(of: allLists) { _, newLists in
+                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+                viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks)
+            }
+    }
+
+    private func baseList(proxy: ScrollViewProxy) -> some View {
+        scrolledList(proxy: proxy)
+            .navigationTitle(viewModel?.list?.name ?? "")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .tabBar)
+            .toolbar {
+                topBarToolbar
+            }
+            .safeAreaInset(edge: .bottom) {
+                if !isSelecting {
+                    bottomBar(proxy: proxy)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if isSelecting {
+                    bulkActionsOverlay
+                }
+            }
+    }
+
+    private func scrolledList(proxy: ScrollViewProxy) -> some View {
+        listContent
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.colors.secondaryBackground)
+            .scrollDismissesKeyboard(.interactively)
+            .onScrollGeometryChange(
+                for: ScrollGeometry.self,
+                of: { $0 },
+                action: { _, geometry in
+                    updateScrollState(geometry)
+                }
+            )
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    if quickCaptureFocused {
+                        quickCaptureFocused = false
+                    }
+                }
+            )
+    }
+
+    private var listContent: some View {
         List {
             if let vm = viewModel {
                 if vm.flatNodes.isEmpty {
@@ -84,117 +193,98 @@ struct ListDetailView: View {
                         let taskToOffset = flatToTaskIndex(toOffset)
                         vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
                     }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .id("list-detail-scroll-bottom")
                 }
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.secondaryBackground)
-        .scrollDismissesKeyboard(.interactively)
-        .simultaneousGesture(
-            TapGesture().onEnded { quickCaptureFocused = false }
-        )
-        .navigationTitle(viewModel?.list?.name ?? "")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar(.hidden, for: .tabBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if isSelecting {
-                    Button("Done") {
-                        exitSelectionMode()
-                    }
-                } else {
-                    Menu {
-                        Button("Select Items") {
-                            enterSelectionMode()
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                    }
-                }
+    }
+
+    private func updateScrollState(_ geometry: ScrollGeometry) {
+        let threshold: CGFloat = 48
+        let overflows = geometry.contentSize.height > geometry.containerSize.height + 1
+        let isNearBottom = geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - threshold
+        showScrollToBottom = overflows && !isNearBottom
+    }
+
+    private func bottomBar(proxy: ScrollViewProxy) -> some View {
+        VStack(spacing: 0) {
+            if showScrollToBottom {
+                scrollToBottomButton(proxy: proxy)
             }
+            quickCaptureBar
         }
-        .safeAreaInset(edge: .bottom) {
-            if !isSelecting {
-                quickCaptureBar
-            }
-        }
-        .overlay(alignment: .bottom) {
+    }
+
+    @ToolbarContentBuilder
+    private var topBarToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
             if isSelecting {
-                BulkActionsToolbar(
-                    selectedCount: selectedTasks.count,
-                    onDelete: { showDeleteConfirmation = true },
-                    onRescheduleToday: { viewModel?.bulkRescheduleToToday(selectedTasks) },
-                    onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
-                    onRescheduleThisWeekend: { viewModel?.bulkRescheduleToThisWeekend(selectedTasks) },
-                    onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
-                    onRescheduleCustom: { bulkScheduleConfig = BulkScheduleConfig(taskIDs: selectedTasks) },
-                    onRescheduleNone: { viewModel?.bulkRescheduleToNone(selectedTasks) },
-                    onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
-                    listSections: viewModel?.listSections ?? [],
-                    onSetPriority: { viewModel?.bulkSetPriority(selectedTasks, priority: $0) },
-                    onComplete: { bulkToggleCompletion() },
-                    onDone: { exitSelectionMode() }
-                )
-                .transition(.move(edge: .bottom))
-                .animation(.easeInOut(duration: 0.25), value: isSelecting)
+                Button("Done") {
+                    exitSelectionMode()
+                }
+            } else {
+                Menu {
+                    Button("Select Items") {
+                        enterSelectionMode()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
             }
         }
-        .onReceive(refreshTimer) { _ in
-            viewModel?.refreshNow()
-        }
-        .sheet(item: $scheduleConfig) { config in
-            TaskScheduleDatePickerSheet(
-                isPresented: Binding(
-                    get: { scheduleConfig != nil },
-                    set: { if !$0 { scheduleConfig = nil } }
-                ),
-                initialDueDate: config.task.dueDate,
-                initialFocus: config.task.dueDate == nil ? .date : .time,
-                onCommit: { dueDate, hasTime in
-                    viewModel?.scheduleTask(config.task, dueDate: dueDate, hasTime: hasTime)
-                }
-            )
-        }
-        .sheet(item: $bulkScheduleConfig) { config in
-            TaskScheduleDatePickerSheet(
-                isPresented: Binding(
-                    get: { bulkScheduleConfig != nil },
-                    set: { if !$0 { bulkScheduleConfig = nil } }
-                ),
-                initialDueDate: nil,
-                initialFocus: .date,
-                onCommit: { dueDate, hasTime in
-                    viewModel?.bulkRescheduleToDate(config.taskIDs, dueDate: dueDate, hasTime: hasTime)
-                }
-            )
-        }
-        .sheet(item: $newReminderConfig) { config in
-            ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID, initialTitle: config.initialTitle)
-        }
-        .sheet(item: $editingTask) { task in
-            ReminderEditorView(task: task)
-        }
-        .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                bulkDelete()
+    }
+
+    private var bulkActionsOverlay: some View {
+        BulkActionsToolbar(
+            selectedCount: selectedTasks.count,
+            onDelete: { showDeleteConfirmation = true },
+            onRescheduleToday: { viewModel?.bulkRescheduleToToday(selectedTasks) },
+            onRescheduleTomorrow: { viewModel?.bulkRescheduleToTomorrow(selectedTasks) },
+            onRescheduleThisWeekend: { viewModel?.bulkRescheduleToThisWeekend(selectedTasks) },
+            onRescheduleNextWeek: { viewModel?.bulkRescheduleToNextWeek(selectedTasks) },
+            onRescheduleCustom: { bulkScheduleConfig = BulkScheduleConfig(taskIDs: selectedTasks) },
+            onRescheduleNone: { viewModel?.bulkRescheduleToNone(selectedTasks) },
+            onMoveToList: { viewModel?.bulkMoveToList(selectedTasks, list: $0) },
+            listSections: viewModel?.listSections ?? [],
+            onSetPriority: { viewModel?.bulkSetPriority(selectedTasks, priority: $0) },
+            onComplete: { bulkToggleCompletion() },
+            onDone: { exitSelectionMode() }
+        )
+        .transition(.move(edge: .bottom))
+        .animation(.easeInOut(duration: 0.25), value: isSelecting)
+    }
+
+    private func scrollToBottomButton(proxy: ScrollViewProxy) -> some View {
+        Button {
+            scrollToBottom(proxy: proxy)
+        } label: {
+            GlassEffectContainer {
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.primaryAction)
+                    .frame(width: 34, height: 34)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 3)
             }
-        } message: {
-            Text("This cannot be undone.")
         }
-        .onAppear {
-            viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
-            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
-        }
-        .onChange(of: allTasks) { _, newTasks in
-            let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: allLists, allTasks: newTasks)
-        }
-        .onChange(of: allLists) { _, newLists in
-            let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-            viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks)
+        .buttonStyle(.plain)
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
+        .padding(.bottom, 10)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .animation(.easeInOut(duration: 0.15), value: showScrollToBottom)
+        .accessibilityIdentifier("list-detail-scroll-bottom-button")
+        .accessibilityLabel("Scroll to bottom")
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
         }
     }
 
