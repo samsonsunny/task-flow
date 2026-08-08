@@ -17,6 +17,7 @@ final class ListDetailViewModel {
     var draggedTaskId: String?
     private(set) var scheduledTask: TaskItem?
     private(set) var listSections: [ListSection] = []
+    private(set) var lastAddedTaskID: PersistentIdentifier?
 
     private(set) var allTasks: [TaskItem] = []
     private(set) var allLists: [ReminderList] = []
@@ -103,6 +104,7 @@ final class ListDetailViewModel {
         modelContext.insert(task)
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
+        lastAddedTaskID = task.persistentModelID
         recompute(collapsedTasks: cachedCollapsedTasks)
         BadgeService.update(modelContext: modelContext)
     }

@@ -518,6 +518,22 @@ struct ListDetailViewModelTests {
         #expect(quickTasks[0].sortOrder != nil)
     }
 
+    @Test func quickCaptureSetsLastAddedTaskID() throws {
+        let container = TaskPreviewData.container()
+        let context = container.mainContext
+        let list = ReminderList(name: "Test")
+        context.insert(list)
+        try? context.save()
+
+        let vm = createViewModel(list: list, allTasks: [], context: context)
+        vm.update(tasks: [], lists: [list], allTasks: [])
+        vm.commitQuickCapture(text: "Quick", in: list.persistentModelID)
+
+        let createdTasks = try! context.fetch(FetchDescriptor<TaskItem>()).filter { $0.taskTitle == "Quick" }
+        #expect(createdTasks.count == 1)
+        #expect(vm.lastAddedTaskID == createdTasks[0].persistentModelID)
+    }
+
     // MARK: - Property-based invariants
 
     @Test func chainOfReordersAtSamePositionPreservesInvariants() throws {

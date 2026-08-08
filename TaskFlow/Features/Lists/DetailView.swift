@@ -56,6 +56,14 @@ struct ListDetailView: View {
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
+    private var isBarIdle: Bool {
+        !quickCaptureFocused && quickCaptureText.isEmpty
+    }
+
+    private var hasValidCaptureContent: Bool {
+        !quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func enterSelectionMode() {
         selectedTasks = []
         isSelecting = true
@@ -78,6 +86,14 @@ struct ListDetailView: View {
 
     private func detailList(proxy: ScrollViewProxy) -> some View {
         baseList(proxy: proxy)
+            .onChange(of: viewModel?.lastAddedTaskID) { _, id in
+                guard let id else { return }
+                DispatchQueue.main.async {
+                    withAnimation(.easeOut(duration: 0.45)) {
+                        proxy.scrollTo(id, anchor: .bottom)
+                    }
+                }
+            }
             .onReceive(refreshTimer) { _ in
                 viewModel?.refreshNow()
             }
@@ -186,6 +202,7 @@ struct ListDetailView: View {
                 } else {
                     ForEach(vm.flatNodes) { node in
                         taskListRow(node)
+                            .id(node.id)
                             .transition(.scale.combined(with: .opacity))
                     }
                     .onMove { fromOffsets, toOffset in
@@ -283,7 +300,7 @@ struct ListDetailView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(.easeOut(duration: 0.45)) {
             proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
         }
     }
@@ -307,13 +324,21 @@ struct ListDetailView: View {
     private var quickCaptureBar: some View {
         GlassEffectContainer {
             HStack(spacing: 10) {
+                if isBarIdle {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.primaryAction)
+                        .transition(.scale.combined(with: .opacity))
+                        .allowsHitTesting(false)
+                        .accessibilityIdentifier("list-bar-plus")
+                }
+
                 ZStack(alignment: .topLeading) {
                     TextField("", text: $quickCaptureText, axis: .vertical)
                         .focused($quickCaptureFocused)
                         .lineLimit(1...5)
                         .frame(minHeight: 28, alignment: .center)
-                        .onSubmit { commitQuickCapture() }
-                        .submitLabel(.send)
+                        .submitLabel(.return)
                         .textInputAutocapitalization(.sentences)
                         .accessibilityIdentifier("list-bar-field")
 
@@ -330,6 +355,9 @@ struct ListDetailView: View {
             }
             .padding(.leading, 14)
             .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .onTapGesture { quickCaptureFocused = true }
+            .animation(.easeInOut(duration: 0.15), value: isBarIdle)
             .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -349,9 +377,10 @@ struct ListDetailView: View {
                     .background(Circle().fill(AppTheme.colors.primaryAction))
             }
             .buttonStyle(.plain)
-            .opacity(quickCaptureText.isEmpty ? 0 : 1)
-            .allowsHitTesting(!quickCaptureText.isEmpty)
-            .animation(.easeInOut(duration: 0.15), value: quickCaptureText.isEmpty)
+            .opacity(hasValidCaptureContent ? 1 : 0)
+            .allowsHitTesting(hasValidCaptureContent)
+            .disabled(!hasValidCaptureContent)
+            .animation(.easeInOut(duration: 0.15), value: hasValidCaptureContent)
             .accessibilityIdentifier("list-bar-submit")
             .padding(.trailing, 14)
             .padding(.bottom, 10)
