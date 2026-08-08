@@ -55,6 +55,7 @@ struct ListDetailView: View {
     @FocusState private var quickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    private let newTaskScrollDuration: Double = 1.4
 
     private var isBarIdle: Bool {
         !quickCaptureFocused && quickCaptureText.isEmpty
@@ -87,10 +88,12 @@ struct ListDetailView: View {
     private func detailList(proxy: ScrollViewProxy) -> some View {
         baseList(proxy: proxy)
             .onChange(of: viewModel?.lastAddedTaskID) { _, id in
-                guard let id else { return }
-                DispatchQueue.main.async {
-                    withAnimation(.easeOut(duration: 0.45)) {
-                        proxy.scrollTo(id, anchor: .bottom)
+                guard id != nil else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    var transaction = Transaction(animation: .easeInOut(duration: newTaskScrollDuration))
+                    transaction.disablesAnimations = false
+                    withTransaction(transaction) {
+                        proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
                     }
                 }
             }
@@ -300,7 +303,9 @@ struct ListDetailView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.45)) {
+        var transaction = Transaction(animation: .easeInOut(duration: newTaskScrollDuration))
+        transaction.disablesAnimations = false
+        withTransaction(transaction) {
             proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
         }
     }
