@@ -52,7 +52,6 @@ struct ListDetailView: View {
     @State private var selectedTasks: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
     @State private var showScrollToBottom = false
-    @State private var detailScrollView: UIScrollView?
     @FocusState private var quickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -203,7 +202,6 @@ struct ListDetailView: View {
                 }
             }
         }
-        .background(ScrollViewIntrospector { detailScrollView = $0 })
     }
 
     private func updateScrollState(_ geometry: ScrollGeometry) {
@@ -285,19 +283,9 @@ struct ListDetailView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        guard let scrollView = detailScrollView else {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
-            }
-            return
+        withAnimation(.easeInOut(duration: 0.3)) {
+            proxy.scrollTo("list-detail-scroll-bottom", anchor: .bottom)
         }
-        if scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating {
-            scrollView.panGestureRecognizer.isEnabled = false
-            scrollView.panGestureRecognizer.isEnabled = true
-            scrollView.setContentOffset(scrollView.contentOffset, animated: false)
-        }
-        let targetY = max(0, scrollView.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom)
-        scrollView.setContentOffset(CGPoint(x: 0, y: targetY), animated: true)
     }
 
     private var emptyState: some View {
