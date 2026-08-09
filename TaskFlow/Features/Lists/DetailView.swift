@@ -163,14 +163,11 @@ struct ListDetailView: View {
             .toolbar {
                 topBarToolbar
             }
-            .safeAreaInset(edge: .bottom) {
-                if !isSelecting {
-                    bottomBar(proxy: proxy)
-                }
-            }
             .overlay(alignment: .bottom) {
                 if isSelecting {
                     bulkActionsOverlay
+                } else {
+                    bottomBar(proxy: proxy)
                 }
             }
     }
@@ -215,7 +212,7 @@ struct ListDetailView: View {
                     }
 
                     Color.clear
-                        .frame(height: 1)
+                        .frame(height: 110)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .id("list-detail-scroll-bottom")
@@ -327,50 +324,54 @@ struct ListDetailView: View {
     }
 
     private var quickCaptureBar: some View {
-        GlassEffectContainer {
-            HStack(spacing: 10) {
-                if isBarIdle {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.primaryAction)
-                        .transition(.scale.combined(with: .opacity))
-                        .allowsHitTesting(false)
-                        .accessibilityIdentifier("list-bar-plus")
-                }
+        HStack(spacing: 10) {
+            if isBarIdle {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.primaryAction)
+                    .transition(.scale.combined(with: .opacity))
+                    .allowsHitTesting(false)
+                    .accessibilityIdentifier("list-bar-plus")
+            }
 
-                ZStack(alignment: .topLeading) {
-                    TextField("", text: $quickCaptureText, axis: .vertical)
-                        .focused($quickCaptureFocused)
+            ZStack(alignment: .topLeading) {
+                TextField("", text: $quickCaptureText, axis: .vertical)
+.focused($quickCaptureFocused)
                         .lineLimit(1...5)
                         .frame(minHeight: 28, alignment: .center)
                         .submitLabel(.return)
                         .textInputAutocapitalization(.sentences)
                         .accessibilityIdentifier("list-bar-field")
+                        .onSubmit { commitQuickCapture() }
+                        .onChange(of: quickCaptureText) { _, newValue in
+                            guard newValue.contains("\n") else { return }
+                            quickCaptureText = newValue.replacingOccurrences(of: "\n", with: "")
+                            commitQuickCapture()
+                        }
 
-                    if quickCaptureText.isEmpty {
-                        Text("Add a task...")
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                            .frame(minHeight: 28, alignment: .center)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
+                if quickCaptureText.isEmpty {
+                    Text("Add a task...")
+                        .foregroundStyle(AppTheme.colors.textSecondary)
+                        .frame(minHeight: 28, alignment: .center)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.trailing, 48)
             }
-            .padding(.leading, 14)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-            .onTapGesture { quickCaptureFocused = true }
-            .animation(.easeInOut(duration: 0.15), value: isBarIdle)
-            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 5)
+            .frame(maxWidth: .infinity)
+            .padding(.trailing, 48)
         }
+        .padding(.leading, 14)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .onTapGesture { quickCaptureFocused = true }
+        .animation(.easeInOut(duration: 0.15), value: isBarIdle)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .overlay(
+            Capsule()
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        )
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 5)
         .overlay(alignment: .bottomTrailing) {
             Button {
                 commitQuickCapture()
@@ -392,14 +393,16 @@ struct ListDetailView: View {
         }
         .padding(.horizontal, quickCaptureFocused ? 8 : 32)
         .animation(.easeInOut(duration: 0.2), value: quickCaptureFocused)
-        .padding(.bottom, 10)
+        .padding(.bottom, 12)
         .frame(maxWidth: .infinity)
-        .background(AppTheme.colors.secondaryBackground)
     }
 
     private func commitQuickCapture() {
         let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else {
+            quickCaptureFocused = false
+            return
+        }
         quickCaptureText = ""
         viewModel?.commitQuickCapture(text: text, in: listID)
     }
