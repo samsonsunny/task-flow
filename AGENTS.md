@@ -85,6 +85,14 @@ The repo includes a content pipeline alongside the iOS app. See `openspec/change
 - **Distribution:** Publish on own site first → wait 7 days → cross-post to Medium/Dev.to with canonical link
 - **No site yet (current):** Until `taskflow.app/blog` exists, publish directly to Medium and Dev.to on the same day (no 7-day canonical wait). Log all links in `distribution.md`. When the own site launches, republish there and switch the canonical to it.
 
+### App naming & App Store URL
+
+**"TaskFlow" is the internal/project name only — never customer-facing.** The App Store app is called **Wednesday Calendar** (developer: Samson Sunny). All external copy (blog articles, changelogs, metadata, marketing) must call it **Wednesday Calendar**, never "TaskFlow" — searching the App Store for "TaskFlow" surfaces an unrelated app.
+
+- App Store URL (use for any download CTA): `https://apps.apple.com/us/app/wednesday/id1455779789`
+- Code, folder names (`TaskFlow/`), and internal docs keep the "TaskFlow" name. Only customer-facing copy is renamed.
+- Tab names ("Today", "Tomorrow", "Upcoming", "Later") are customer-facing and match the App Store listing — keep them as-is in articles.
+
 ### Dev.to publishing script
 
 `scripts/publish-devto.mjs` publishes an article to Dev.to from its `index.md` via the Forem API:
