@@ -3,7 +3,7 @@ title: "The 5-Minute Daily Planning Ritual"
 date: 2026-08-12
 tags: [productivity, planning, habits, workflow]
 description: "A five-minute daily planning ritual that cuts through decision fatigue and keeps your task manager focused on what actually matters."
-status: draft
+status: published
 canonical: https://taskflow.app/blog/5-minute-daily-planning-ritual
 ---
 
