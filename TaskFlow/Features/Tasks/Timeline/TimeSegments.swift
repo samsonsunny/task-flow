@@ -19,6 +19,15 @@ enum ReminderSegment: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    var navigationTitle: String {
+        switch self {
+        case .today: return "Ready"
+        case .tomorrow: return "Prepare"
+        case .upcoming: return "Plan"
+        case .overdue: return "Overdue"
+        }
+    }
+
     var iconName: String {
         switch self {
         case .today: return "calendar.circle.fill"

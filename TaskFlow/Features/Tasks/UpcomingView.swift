@@ -7,7 +7,7 @@ struct UpcomingView: View {
     var body: some View {
         NavigationStack {
             ReminderSegmentDetailView(segment: .upcoming, isSelecting: $isSelecting)
-                .navigationTitle(ReminderSegment.upcoming.title)
+                .navigationTitle(ReminderSegment.upcoming.navigationTitle)
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

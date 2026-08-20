@@ -59,7 +59,7 @@ struct ListsTabView: View {
                 }
             }
         }
-        .navigationTitle("Later")
+        .navigationTitle("Organize")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

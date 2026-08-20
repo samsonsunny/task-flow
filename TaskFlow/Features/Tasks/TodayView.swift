@@ -7,7 +7,7 @@ struct TodayTabView: View {
     var body: some View {
         NavigationStack {
             ReminderSegmentDetailView(segment: .today, isSelecting: $isSelecting)
-                .navigationTitle(ReminderSegment.today.title)
+                .navigationTitle(ReminderSegment.today.navigationTitle)
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

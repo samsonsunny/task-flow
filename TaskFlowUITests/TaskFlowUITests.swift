@@ -26,7 +26,7 @@ final class TaskFlowUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Upcoming"].exists)
 
         app.tabBars.buttons["Tomorrow"].tap()
-        XCTAssertTrue(app.staticTexts["Tomorrow"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Prepare"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Reply to design review"].exists)
     }
 
@@ -36,7 +36,7 @@ final class TaskFlowUITests: XCTestCase {
         app.launchArguments = ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_SECTIONS", "UITEST_FIXED_NOW_2026_05_13"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Fri, May 15"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Tue, May 19"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Prepare roadmap"].waitForExistence(timeout: 2))
@@ -58,7 +58,7 @@ final class TaskFlowUITests: XCTestCase {
         app.launch()
 
         // All future tasks appear — D+2 → +∞ per mental model spec
-        XCTAssertTrue(app.staticTexts["Upcoming"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 2))
         // Scroll down to reveal lazy-loaded List content outside visible area
         for _ in 0..<5 {
             if app.staticTexts["Quarterly planning"].exists { break }
