@@ -365,12 +365,12 @@ struct ListDetailView: View {
         .contentShape(Rectangle())
         .onTapGesture { quickCaptureFocused = true }
         .animation(.easeInOut(duration: 0.15), value: isBarIdle)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.primary.opacity(0.12), lineWidth: 1)
         )
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 5)
         .overlay(alignment: .bottomTrailing) {
             Button {
