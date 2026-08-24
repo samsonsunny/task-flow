@@ -1,7 +1,7 @@
 ---
 title: "Your Subtasks Don't Need Subtasks"
 date: 2026-08-26
-tags: [productivity, task-management, subtasks, gtd]
+tags: [productivity, subtasks, gtd, focus]
 description: "Infinite nesting turns task managers into hiding places. The case for keeping subtasks one level deep — and the rules that make it work."
 status: draft
 canonical: https://taskflow.app/blog/one-level-deep
