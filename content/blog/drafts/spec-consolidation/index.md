@@ -1,7 +1,7 @@
 ---
 title: "From 33 Specs to 20: Fixing Documentation Sprawl Before It Rots"
 date: 2026-08-24
-tags: [documentation, process, indie-dev, productivity]
+tags: [documentation, process, indiedev, productivity]
 description: "One spec file per feature sounded disciplined. Two years later it was 33 files of overlapping requirements. Here's the consolidation process, including the zero-loss verification that made deleting easy."
 status: draft
 canonical: https://taskflow.app/blog/from-33-specs-to-20
