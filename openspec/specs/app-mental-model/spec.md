@@ -28,10 +28,10 @@ their due date                        permanently, organized
 - Removing the due date ("Move to Later" context action) returns it to Later-only visibility
 
 **Subtasks in time tabs:**
-- When a task passes a time tab's filter by its own `dueDate`, ALL its descendants render inline beneath it — regardless of the subtask's own due date (inherited date context). Subtasks without a `dueDate` become visible through their ancestor's filter match.
-- When a subtask independently passes a time tab's filter but its parent does not, it appears standalone at depth 0 (no parent context pulled in).
-- Each parent is expandable/collapsible. Collapse state is per-view (independent between time tabs and list detail).
-- Within a single view, a subtask rendered under its parent is not duplicated as a standalone row (dedup).
+- Every task — top-level or subtask — qualifies for a time tab solely by its own `dueDate`. Only subtasks that carry their own due date surface in time tabs, rendered as standalone flat rows alongside top-level tasks (no indentation, no expand/collapse).
+- Subtasks without a due date are invisible in time tabs; they are visible only in their permanent home (list detail) and the editor.
+- Parent rows indicate remaining subtask work via a completed/total fraction (e.g., "1/3") instead of inline trees.
+- Nesting is capped at one level: a subtask can never have children. Legacy deeper hierarchies are flattened by detaching everything below depth 1 into independent top-level tasks (see `task-subtasks`).
 
 ### Navigation
 
@@ -39,9 +39,9 @@ The app has a **single 4-tab `TabView`** as its only navigation surface. There i
 
 | Tab | Purpose | Content |
 |---|---|---|---|
-| Today | Attention now | Tasks due today + their subtasks inline (expandable/collapsible) |
-| Tomorrow | Attention next | Tasks due tomorrow + their subtasks inline (expandable/collapsible) |
-| Upcoming | Coming in future | Tasks due D+2 onward + their subtasks inline (expandable/collapsible) |
+| Today | Attention now | Tasks due today (dated subtasks included, flat) |
+| Tomorrow | Attention next | Tasks due tomorrow (dated subtasks included, flat) |
+| Upcoming | Coming in future | Tasks due D+2 onward (dated subtasks included, flat) |
 | Later | Permanent home | Groups (areas) and lists — the organizational structure |
 
 ### Later tab

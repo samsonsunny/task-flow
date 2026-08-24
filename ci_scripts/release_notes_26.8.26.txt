@@ -1,0 +1,5 @@
+26.8.26
+
+- Ready, Prepare, Plan, Organize — the big headers now frame each screen as an action instead of a date. Be ready for what's due today, prepare for tomorrow, plan what's ahead, and keep everything organized.
+- A calmer start — opening the app now reads like a plan for your day instead of a stack of deadlines, so you always know what to do next.
+- Cleaner capture bar — the liquid-glass capture bar keeps a smooth, even shape even when it grows with your notes, for a more polished feel.

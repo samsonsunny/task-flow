@@ -1,0 +1,4 @@
+26.8.19
+
+- Smarter quick capture in lists — a plus icon now hints the capture bar when it's idle, the send button only appears once you've typed real text, and your new task glides smoothly into view right after you add it.
+- Capsule capture bar — the list capture bar now uses the app's signature liquid-glass capsule look for a cleaner, more polished feel.
