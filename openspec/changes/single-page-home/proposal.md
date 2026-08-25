@@ -27,20 +27,50 @@ Replace the `TabView` root navigation with a **single-page master-detail** patte
 - **No FAB anywhere** — the FAB is removed from the entire app
 - **Persistent capture bar** at the bottom of every screen (home + all detail pages) — like ChatGPT's chat input bar. Always visible, always one tap away. This is the universal task creation pattern.
 - **Widget-like summary cards** for each module, some with expanded sizing
-- **Settings** → toolbar button (gear icon), opens `MoreView` as sheet
+- **Settings** → toolbar button (gear icon), pushes Settings as a detail page (not a sheet)
 - **Extensible** — new modules can be added as new cards without changing navigation
 
 ### Card inventory (task-related modules)
 
-| Card | Content | Size | Notes |
-|------|---------|------|-------|
-| **Overdue** | Count of overdue tasks + 1-2 titles | Compact | Only shown when tasks are overdue; urgency signal |
-| **Today** | Task count + 1-2 task titles | Compact | Core attention card |
-| **Tomorrow** | Task count + 1-2 task titles | Compact | Forward-looking |
-| **Upcoming** | Task count + next 1-2 tasks | Compact | Week+ horizon |
-| **Organize** (renamed from Later) | List names + counts, group overview | **Expanded** | Bigger card — this is the home base for task organization |
-| **All Tasks** | Total active task count across all horizons | Compact | Bird's-eye view, tap to see everything |
-| **Completed** | Count of tasks completed recently | Compact | Currently buried 3 taps deep — making it discoverable |
+| Card | Content | Size | Component Type | Notes |
+|------|---------|------|----------------|-------|
+| **Overdue** | Count of overdue tasks + 1-2 titles | Compact (half-width) | Count card | Only shown when tasks are overdue; urgency signal |
+| **Today** | Task count + 1-2 task titles | Compact (half-width) | List card | Core attention card, checkmarks for quick completion |
+| **Tomorrow** | Task count + 1-2 task titles | Compact (half-width) | List card | Forward-looking, checkmarks |
+| **Upcoming** | Task count + next 1-2 tasks | Compact (half-width) | Count + preview | Week+ horizon |
+| **Organize** (renamed from Later) | List names + counts, group overview | **Expanded (full-width)** | List card | Primary organizational hub — deserves visual prominence |
+| **All Tasks** | Total active task count across all horizons | Compact (half-width) | Count card | Bird's-eye view of all work |
+| **Completed** | Count of tasks completed recently | Compact (half-width) | Stat card | Discoverable on home, not buried in Settings |
+
+### Component types
+
+```
+COUNT CARD              LIST CARD              STAT CARD
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+│  12 tasks    │       │  ☐ Task 1    │       │  ████████░░  │
+│  due today   │       │  ☐ Task 2    │       │  8/12 done   │
+└──────────────┘       └──────────────┘       └──────────────┘
+ number + label         items + checkmarks     progress + stats
+```
+
+### Layout: 2-column grid
+
+The home page uses a 2-column grid for a dense, dashboard feel. The Organize card spans full width as the expanded anchor.
+
+```
+┌────────────────────┬────────────────┐
+│  Overdue     (1)   │  Today     (3) │
+│  ☐ Call dentist    │  ☐ Finish rpt  │
+├────────────────────┼────────────────┤
+│  Tomorrow     (2)  │  Upcoming  (5) │
+│  ☐ Presentation    │  Next: Fri     │
+├────────────────────┴────────────────┤
+│  Organize (expanded)                │
+│  Inbox (5) · Work (3) · Pers (4)   │
+├─────────────────────────────────────┤
+│  All Tasks (12)  │  Completed (8)  │
+└─────────────────────────────────────┘
+```
 
 ### Future modules (not in this change)
 
@@ -57,6 +87,8 @@ Replace the `TabView` root navigation with a **single-page master-detail** patte
 - **No complex interactions** on cards — no reschedule, no edit, no reorder
 - **Empty sections** → collapse or show subtle "All clear" state
 - **Module-specific CTAs** — each module defines its own quick actions (future)
+- **Arrangeable** — users can reorder cards on the home page to prioritize what matters to them
+- **Hideable** — users can hide cards they don't use (e.g., hide Overdue if they never have overdue tasks)
 
 ### Detail pages
 
@@ -81,7 +113,7 @@ Home (single NavigationStack)
   ├── tap Organize card   → push OrganizeDetail (ListsTabView content)
   ├── tap All Tasks card  → push AllTasksDetail
   ├── tap Completed card  → push CompletedDetail (CompletedView)
-  └── tap Settings        → sheet MoreView
+  └── tap Settings        → push SettingsDetail (MoreView)
 ```
 
 ## Design Decisions
@@ -98,9 +130,13 @@ Home (single NavigationStack)
 | All Tasks card | Total active count | Bird's-eye view of all work, not just today |
 | Completed card | Discoverable on home, not buried in Settings | Currently 3 taps deep — too hidden for a useful feature |
 | Navigation | Single shared `NavigationStack` | All detail pages push onto one stack |
-| Settings | Toolbar gear icon → sheet | Consistent with existing `MoreView` |
+| Settings | Toolbar gear icon → push detail page | Consistent with single NavigationStack pattern, not a sheet
 | Deep linking | Out of scope for this change | Notifications open app to home page, no task-level routing |
 | Architecture | Modular dashboard | Supports future modules (Journal, Calendar, Notes, etc.) without nav restructuring |
+| Card customization | Users can reorder and hide cards | Personalized dashboard — each user prioritizes what matters to them |
+| Layout | 2-column grid | Dense, rich dashboard feel — more premium than single column |
+| Component types | Count card, List card, Stat card | Each card type matches its content — numbers get count cards, tasks get list cards |
+| Organize card | Full-width (spans both columns) | Expanded as the visual anchor — primary organizational hub |
 
 ## Specs to Replace
 

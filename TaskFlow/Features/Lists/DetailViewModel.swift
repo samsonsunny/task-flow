@@ -257,6 +257,7 @@ final class ListDetailViewModel {
 
         let threshold: CGFloat = 22
         if location.y < threshold {
+            removeDraggedFromParentSubtasks(draggedTask)
             draggedTask.parentTask = target.parentTask
             let siblings: [TaskItem]
             if let parent = target.parentTask {
@@ -274,6 +275,7 @@ final class ListDetailViewModel {
                 }
             }
         } else {
+            removeDraggedFromParentSubtasks(draggedTask)
             draggedTask.parentTask = target
             var subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
                 .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
@@ -313,6 +315,11 @@ final class ListDetailViewModel {
             current = parent
         }
         return false
+    }
+
+    private func removeDraggedFromParentSubtasks(_ task: TaskItem) {
+        guard let oldParent = task.parentTask else { return }
+        oldParent.subtasks = oldParent.subtasks.filter { $0.persistentModelID != task.persistentModelID }
     }
 
     // MARK: - Scheduling (2.6)

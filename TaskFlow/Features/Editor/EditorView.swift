@@ -40,7 +40,7 @@ struct ReminderEditorView: View {
                 contentSection
                 listSection
                 scheduleSection
-                if let parent = task {
+                if let parent = task, parent.parentTask == nil {
                     subtaskSection(for: parent)
                 }
             }

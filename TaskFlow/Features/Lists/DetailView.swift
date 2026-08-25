@@ -202,7 +202,7 @@ struct ListDetailView: View {
                 } else {
                     ForEach(vm.flatNodes) { node in
                         taskListRow(node)
-                            .id(node.id)
+                            .id("\(node.id)-\(viewModel?.collapsedTasks.contains(node.task.taskId ?? "") ?? false)")
                             .transition(.scale.combined(with: .opacity))
                     }
                     .onMove { fromOffsets, toOffset in

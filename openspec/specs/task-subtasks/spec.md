@@ -88,14 +88,32 @@ When a task has subtasks, the task row SHALL display a subtask count indicator (
 - **THEN** the metadata line SHALL show "3 ▸" or equivalent indicator
 - **AND** the indicator SHALL update when subtasks are added or removed
 
+### Requirement: One-level depth cap
+A task that is already a subtask (has a non-nil `parentTask`) SHALL NOT be allowed to have subtasks of its own. The editor SHALL not show the "Add Subtask" section for subtasks.
+
+#### Scenario: Subtask cannot add subtasks
+- **WHEN** user opens the editor for a task that has a `parentTask`
+- **THEN** the "Add Subtask" section SHALL NOT be shown
+
+#### Scenario: Root task shows subtask section
+- **WHEN** user opens the editor for a task with no `parentTask`
+- **THEN** the "Add Subtask" section SHALL be shown as normal
+
 ### Requirement: Drag-and-drop supports reparenting
-Drag-and-drop within `ListDetailView` SHALL support reparenting a task. Dropping a task onto another task's row SHALL make the dropped task a subtask of the target task.
+Drag-and-drop within `ListDetailView` SHALL support reparenting a task. Dropping a task onto another task's row SHALL make the dropped task a subtask of the target task. When reparenting, the dragged task SHALL be removed from its old parent's `subtasks` array.
 
 #### Scenario: Drag task to become subtask
 - **WHEN** user drags a task over another task's row
 - **AND** drops on the lower half of the target row
 - **THEN** the dragged task SHALL become a subtask of the target task
 - **AND** the dragged task SHALL appear as the last child
+
+#### Scenario: Drag subtask to reparent under different parent
+- **WHEN** user drags a subtask onto a different root task's row
+- **AND** drops on the lower half of the target root task
+- **THEN** the subtask SHALL be removed from its old parent's `subtasks` array
+- **AND** the subtask SHALL become a subtask of the target root task
+- **AND** the subtask SHALL appear as the last child of the new parent
 
 #### Scenario: Drag subtask to flatten it
 - **WHEN** user drags a subtask
@@ -122,10 +140,14 @@ Reminder segment views (Today, Tomorrow, Upcoming, Later, Overdue) SHALL show su
 - **AND** the list view remains the only place to see it
 
 ### Requirement: Subtask creation via editor
-The `ReminderEditorView` SHALL support adding subtasks to the task being edited. A "Add Subtask" control SHALL be available in the editor.
+The `ReminderEditorView` SHALL support adding subtasks to the task being edited. A "Add Subtask" control SHALL be available in the editor for root tasks only. Subtasks (tasks with a `parentTask`) SHALL NOT show the "Add Subtask" section.
 
 #### Scenario: Add subtask from editor
-- **WHEN** user opens the editor for a task
+- **WHEN** user opens the editor for a root task (no `parentTask`)
 - **AND** taps "Add Subtask"
 - **THEN** a new inline subtask row appears in the editor
 - **AND** the subtask can be titled and saved inline
+
+#### Scenario: Subtask editor hides subtask creation
+- **WHEN** user opens the editor for a subtask (has `parentTask`)
+- **THEN** the "Add Subtask" section SHALL NOT be visible
