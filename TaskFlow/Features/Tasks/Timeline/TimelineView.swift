@@ -62,7 +62,7 @@ struct ReminderSegmentDetailView: View {
                 Section {
                     if showOverdue {
                         let overdueNodes = (viewModel?.overdueDisplayTasks ?? []).map { task in
-                            FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskSummary: task.subtaskSummary)
+                            FlatTaskNode(id: task.taskId ?? "", task: task, depth: 0, subtaskSummary: task.subtaskSummary)
                         }
                         ForEach(overdueNodes) { node in
                             taskListRow(node, showsDueDate: true)
@@ -223,7 +223,7 @@ struct ReminderSegmentDetailView: View {
         ForEach(vm.groupedSections) { section in
             Section {
                 ForEach(section.tasks) { task in
-                    let node = FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskSummary: task.subtaskSummary)
+                    let node = FlatTaskNode(id: task.taskId ?? "", task: task, depth: 0, subtaskSummary: task.subtaskSummary)
                     taskListRow(node, showsDueDate: vm.shouldShowDueDate(for: segment))
                 }
             } header: {
@@ -324,7 +324,7 @@ struct ReminderSegmentDetailView: View {
                     if tasks.isEmpty {
                         emptyDayRow(id: id, title: title, date: date)
                     } else {
-                        let sectionNodes = viewModel?.flatNodes(for: tasks, collapsedTasks: []) ?? []
+                        let sectionNodes = viewModel?.flatNodes(for: tasks) ?? []
                         Section {
                             ForEach(sectionNodes) { node in
                                 taskListRow(node, showsDueDate: false)
@@ -474,7 +474,7 @@ struct ReminderSegmentDetailView: View {
             }
 
             ForEach(dayGroups) { dayGroup in
-                let dayNodes = vm.flatNodes(for: dayGroup.tasks, collapsedTasks: [])
+                let dayNodes = vm.flatNodes(for: dayGroup.tasks)
                 Section {
                     ForEach(dayNodes) { node in
                                 taskListRow(node, showsDueDate: false)

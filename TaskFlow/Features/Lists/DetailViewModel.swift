@@ -22,25 +22,61 @@ final class ListDetailViewModel {
     private(set) var allTasks: [TaskItem] = []
     private(set) var allLists: [ReminderList] = []
     private var displayTasks: [TaskItem] = []
-    private var cachedCollapsedTasks: Set<PersistentIdentifier> = []
+
+    // MARK: - Collapse State (ViewModel-owned, persisted per list)
+
+    var collapsedTasks: Set<String> = []
+
+    private static func collapseKey(for listID: ReminderList.ID) -> String {
+        "listDetail.collapsed.\(listID.stableKey)"
+    }
+
+    private func loadCollapsedTasks() -> Set<String> {
+        let key = Self.collapseKey(for: listID)
+        return Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+    }
+
+    private func persistCollapsedTasks() {
+        let key = Self.collapseKey(for: listID)
+        UserDefaults.standard.set(Array(collapsedTasks), forKey: key)
+    }
+
+    func toggleTaskCollapsed(_ taskId: String) {
+        if collapsedTasks.contains(taskId) {
+            collapsedTasks.remove(taskId)
+        } else {
+            collapsedTasks.insert(taskId)
+        }
+        persistCollapsedTasks()
+        recompute()
+    }
+
+    // MARK: - Init
 
     init(modelContext: ModelContext, listID: ReminderList.ID) {
         self.modelContext = modelContext
         self.listID = listID
+        self.collapsedTasks = Self.loadCollapsedTasksStatic(listID: listID)
     }
+
+    private static func loadCollapsedTasksStatic(listID: ReminderList.ID) -> Set<String> {
+        let key = collapseKey(for: listID)
+        return Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+    }
+
+    // MARK: - Refresh / Update
 
     func refreshNow() {
         now = Date()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
-    func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date(), collapsedTasks: Set<PersistentIdentifier> = []) {
+    func update(tasks: [TaskItem], lists: [ReminderList], allTasks: [TaskItem], now: Date = Date()) {
         self.displayTasks = tasks
         self.allTasks = allTasks
         self.allLists = lists
         self.now = now
-        self.cachedCollapsedTasks = collapsedTasks
-        recompute(collapsedTasks: collapsedTasks)
+        recompute()
     }
 
     func toggleCompletion(for task: TaskItem) {
@@ -52,7 +88,7 @@ final class ListDetailViewModel {
                     guard let self, let task, task.isCompleted == true else { return }
                     _ = withAnimation {
                         self.justCompleted.remove(id)
-                        self.recompute(collapsedTasks: self.cachedCollapsedTasks)
+                        self.recompute()
                         BadgeService.update(modelContext: self.modelContext)
                     }
                 }
@@ -65,11 +101,11 @@ final class ListDetailViewModel {
         if next, let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
         }
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
-    private func recompute(collapsedTasks: Set<PersistentIdentifier>) {
+    private func recompute() {
         list = allLists.first { $0.persistentModelID == listID }
         tasks = computeTasks().sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
         let taskIDs = Set(tasks.map(\.persistentModelID))
@@ -77,7 +113,7 @@ final class ListDetailViewModel {
             guard let parent = $0.parentTask else { return true }
             return !taskIDs.contains(parent.persistentModelID)
         }
-        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks, nestSubtasks: false)
+        flatNodes = TaskTreeFlattener.flatten(roots: rootTasks, collapsed: collapsedTasks)
         listSections = buildListSections(from: allLists, excluding: listID)
     }
 
@@ -105,7 +141,7 @@ final class ListDetailViewModel {
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
         lastAddedTaskID = task.persistentModelID
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -122,7 +158,7 @@ final class ListDetailViewModel {
         task.deleteDescendants()
         modelContext.delete(task)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -133,7 +169,7 @@ final class ListDetailViewModel {
         task.parentTask = nil
         assignSortOrder(for: task, in: list)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     func assignSortOrder(for task: TaskItem, in list: ReminderList) {
@@ -169,7 +205,7 @@ final class ListDetailViewModel {
         }
 
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     // MARK: - Move to Top / Bottom
@@ -194,7 +230,7 @@ final class ListDetailViewModel {
             previous = t.sortOrder
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     func moveToBottom(task: TaskItem) {
@@ -207,7 +243,7 @@ final class ListDetailViewModel {
             previous = t.sortOrder
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     // MARK: - Drag-Drop Nesting (2.5)
@@ -249,7 +285,7 @@ final class ListDetailViewModel {
             }
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     func moveTaskToRoot() {
@@ -265,7 +301,7 @@ final class ListDetailViewModel {
             previous = t.sortOrder
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
@@ -302,7 +338,7 @@ final class ListDetailViewModel {
             task.dueDate = nil
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -312,7 +348,7 @@ final class ListDetailViewModel {
         }
         task.dueDate = Calendar.current.startOfDay(for: now)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -324,7 +360,7 @@ final class ListDetailViewModel {
         let todayStart = calendar.startOfDay(for: now)
         task.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -334,7 +370,7 @@ final class ListDetailViewModel {
         }
         task.dueDate = nil
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -344,7 +380,7 @@ final class ListDetailViewModel {
         }
         task.dueDate = ReminderSegmentViewModel.nextMonday(from: now)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -354,7 +390,7 @@ final class ListDetailViewModel {
         }
         task.dueDate = ReminderSegmentViewModel.nextSaturday(from: now)
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -369,7 +405,7 @@ final class ListDetailViewModel {
             task.dueDate = Calendar.current.startOfDay(for: now)
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -385,7 +421,7 @@ final class ListDetailViewModel {
             task.dueDate = tomorrow
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -399,7 +435,7 @@ final class ListDetailViewModel {
             task.dueDate = nextMon
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -413,7 +449,7 @@ final class ListDetailViewModel {
             task.dueDate = saturday
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -437,7 +473,7 @@ final class ListDetailViewModel {
             }
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -450,7 +486,7 @@ final class ListDetailViewModel {
             task.dueDate = nil
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -462,7 +498,7 @@ final class ListDetailViewModel {
             assignSortOrder(for: task, in: list)
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 
     func bulkToggleCompletion(_ taskIDs: Set<PersistentIdentifier>) {
@@ -476,7 +512,7 @@ final class ListDetailViewModel {
             }
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -490,7 +526,7 @@ final class ListDetailViewModel {
             modelContext.delete(task)
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -500,6 +536,6 @@ final class ListDetailViewModel {
             task.priorityRawValue = priority.rawValue
         }
         try? modelContext.save()
-        recompute(collapsedTasks: cachedCollapsedTasks)
+        recompute()
     }
 }

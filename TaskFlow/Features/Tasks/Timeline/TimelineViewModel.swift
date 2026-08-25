@@ -13,7 +13,6 @@ final class ReminderSegmentViewModel {
 
     private(set) var filteredTasks: [TaskItem] = []
     private(set) var flatNodes: [FlatTaskNode] = []
-    private var cachedCollapsedTasks: Set<PersistentIdentifier> = []
     private(set) var groupedSections: [TaskUIModel.DatedSection] = []
     private(set) var upcomingGroups: [TaskUIModel.UpcomingGroup] = []
     private(set) var sortedFlatTasks: [TaskItem] = []
@@ -70,18 +69,17 @@ final class ReminderSegmentViewModel {
 
         let newOrder = mutableTasks.map { $0.persistentModelID.stableKey }
         writeDailyOrder(newOrder, forKey: key)
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
     }
 
     func refreshNow(now: Date = Date()) {
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
     }
 
-    func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date(), collapsedTasks: Set<PersistentIdentifier> = []) {
+    func update(tasks: [TaskItem], lists: [ReminderList], now: Date = Date()) {
         self.now = now
         self.lists = lists
         self.allTasks = tasks
-        self.cachedCollapsedTasks = collapsedTasks
         self.overdueTasks = ReminderSegmentLogic.filteredTasks(tasks, for: .overdue, now: now)
         self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
         self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
@@ -93,15 +91,15 @@ final class ReminderSegmentViewModel {
         }
         self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex)
         self.listSections = buildListSections(from: lists)
-        rebuildTree(collapsedTasks: collapsedTasks)
+        rebuildTree()
     }
 
-    private func rebuildTree(collapsedTasks: Set<PersistentIdentifier>) {
+    private func rebuildTree() {
         let filterBase = filteredTasks + allTasks.filter { justCompleted.contains($0.taskId ?? "") }
         let topLevelTasks = filterBase.filter { $0.parentTask == nil || $0.dueDate != nil }
         let customOrderIndex = readDailyOrder()
         let sortedTasks = ReminderSegmentLogic.sortedTasks(topLevelTasks, for: segment, customOrderIndex: customOrderIndex)
-        flatNodes = TaskTreeFlattener.flatten(roots: sortedTasks, collapsed: collapsedTasks, nestSubtasks: false)
+        flatNodes = TaskTreeFlattener.flatten(roots: sortedTasks, collapsed: [], nestSubtasks: false)
     }
 
     var rootedNodes: [(root: FlatTaskNode, children: [FlatTaskNode])] {
@@ -127,7 +125,7 @@ final class ReminderSegmentViewModel {
     var overdueRootedNodes: (roots: [TaskItem], nodes: [FlatTaskNode]) {
         let overdueRoots = overdueTasks.filter { $0.parentTask == nil || $0.dueDate != nil }
         let sorted = ReminderSegmentLogic.sortedTasks(overdueRoots, for: .overdue, customOrderIndex: readDailyOrder(forKey: overdueOrderKey))
-        let nodes = sorted.map { FlatTaskNode(id: $0.persistentModelID, task: $0, depth: 0, subtaskSummary: $0.subtaskSummary) }
+        let nodes = sorted.map { FlatTaskNode(id: $0.taskId ?? "", task: $0, depth: 0, subtaskSummary: $0.subtaskSummary) }
         return (sorted, nodes)
     }
 
@@ -138,8 +136,8 @@ final class ReminderSegmentViewModel {
 
     /// Build flat nodes from section-scoped tasks without nesting.
     /// Dated subtasks surface flat at depth 0 alongside top-level tasks.
-    func flatNodes(for sectionTasks: [TaskItem], collapsedTasks: Set<PersistentIdentifier>) -> [FlatTaskNode] {
-        TaskTreeFlattener.flatten(roots: sectionTasks.filter { $0.parentTask == nil || $0.dueDate != nil }, collapsed: collapsedTasks, nestSubtasks: false)
+    func flatNodes(for sectionTasks: [TaskItem]) -> [FlatTaskNode] {
+        TaskTreeFlattener.flatten(roots: sectionTasks.filter { $0.parentTask == nil || $0.dueDate != nil }, collapsed: [], nestSubtasks: false)
     }
 
 
@@ -415,7 +413,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = Calendar.current.startOfDay(for: now)
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -431,7 +429,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = tomorrow
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -445,7 +443,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = nextMon
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -459,7 +457,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = saturday
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -483,7 +481,7 @@ final class ReminderSegmentViewModel {
             }
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -496,7 +494,7 @@ final class ReminderSegmentViewModel {
             task.dueDate = nil
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -508,7 +506,7 @@ final class ReminderSegmentViewModel {
             assignSortOrder(for: task, in: list)
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
     }
 
     func bulkToggleCompletion(_ taskIDs: Set<PersistentIdentifier>) {
@@ -522,7 +520,7 @@ final class ReminderSegmentViewModel {
             }
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -538,7 +536,7 @@ final class ReminderSegmentViewModel {
         for id in taskIDs {
             allTasks.removeAll { $0.persistentModelID == id }
         }
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
         BadgeService.update(modelContext: modelContext)
     }
 
@@ -548,6 +546,6 @@ final class ReminderSegmentViewModel {
             task.priorityRawValue = priority.rawValue
         }
         try? modelContext.save()
-        update(tasks: allTasks, lists: lists, now: now, collapsedTasks: cachedCollapsedTasks)
+        update(tasks: allTasks, lists: lists, now: now)
     }
 }

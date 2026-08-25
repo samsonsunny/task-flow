@@ -42,15 +42,21 @@ struct ListDetailViewModelRegressionTests {
         let allTasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
         vm.update(tasks: allTasks, lists: [], allTasks: allTasks)
 
-        #expect(vm.flatNodes.count == 1)
+        #expect(vm.flatNodes.count == 4)
         #expect(vm.flatNodes[0].task.safeTitle == "Root")
         #expect(vm.flatNodes[0].depth == 0)
         #expect(vm.flatNodes[0].subtaskSummary.total == 2)
         #expect(vm.flatNodes[0].subtaskSummary.pending == 2)
         #expect(vm.flatNodes[0].subtaskSummary.completed == 0)
+        #expect(vm.flatNodes[1].task.safeTitle == "Child 1")
+        #expect(vm.flatNodes[1].depth == 1)
+        #expect(vm.flatNodes[2].task.safeTitle == "Child 2")
+        #expect(vm.flatNodes[2].depth == 1)
+        #expect(vm.flatNodes[3].task.safeTitle == "Grandchild")
+        #expect(vm.flatNodes[3].depth == 2)
     }
 
-    @Test func collapseHasNoEffectOnListDetailFlatNodes() {
+    @Test func collapseHidesSubtasks() {
         let list = ReminderList(name: "Test")
         context.insert(list)
 
@@ -68,10 +74,10 @@ struct ListDetailViewModelRegressionTests {
         let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
         let allTasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
 
-        vm.update(tasks: allTasks, lists: [], allTasks: allTasks, collapsedTasks: [])
-        #expect(vm.flatNodes.count == 1)
+        vm.update(tasks: allTasks, lists: [], allTasks: allTasks)
+        #expect(vm.flatNodes.count == 2)
 
-        vm.update(tasks: allTasks, lists: [], allTasks: allTasks, collapsedTasks: [root.persistentModelID])
+        vm.toggleTaskCollapsed(root.taskId ?? "")
         #expect(vm.flatNodes.count == 1)
     }
 }

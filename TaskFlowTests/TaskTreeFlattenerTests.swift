@@ -68,7 +68,7 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let root = makeTask(id: 1, title: "Root")
     let child = makeTask(id: 2, title: "Child", parent: root)
     root.subtasks = [child]
-    let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [root.persistentModelID])
+    let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [root.taskId ?? ""])
     #expect(result.count == 1)
     #expect(result[0].task.safeTitle == "Root")
 }
@@ -79,7 +79,7 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let grandchild = makeTask(id: 3, title: "Grandchild", parent: child)
     root.subtasks = [child]
     child.subtasks = [grandchild]
-    let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [child.persistentModelID])
+    let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [child.taskId ?? ""])
     #expect(result.count == 2)
     #expect(result[0].task.safeTitle == "Root")
     #expect(result[1].task.safeTitle == "Child")
@@ -156,7 +156,7 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
     let root = makeTask(id: 1, title: "Root")
     let child = makeTask(id: 2, title: "Child", parent: root)
     root.subtasks = [child]
-    let collapsedResult = TaskTreeFlattener.flatten(roots: [root], collapsed: [root.persistentModelID], nestSubtasks: false)
+    let collapsedResult = TaskTreeFlattener.flatten(roots: [root], collapsed: [root.taskId ?? ""], nestSubtasks: false)
     let expandedResult = TaskTreeFlattener.flatten(roots: [root], collapsed: [], nestSubtasks: false)
     #expect(collapsedResult.count == 1)
     #expect(expandedResult.count == 1)

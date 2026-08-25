@@ -39,6 +39,8 @@ struct TaskRowView: View, Equatable {
     var isSelecting: Bool = false
     var isSelected: Bool = false
     var onSelectToggle: (() -> Void)? = nil
+    var isExpanded: Bool = false
+    var onToggleExpand: (() -> Void)? = nil
 
     private static let cachedDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -171,6 +173,22 @@ struct TaskRowView: View, Equatable {
             }
 
             titleView
+
+            Spacer(minLength: 0)
+
+            if subtaskSummary.total > 0, let onToggleExpand {
+                Button {
+                    onToggleExpand()
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(AppTheme.colors.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
+            }
         }
     }
 

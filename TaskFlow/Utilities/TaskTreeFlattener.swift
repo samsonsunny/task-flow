@@ -24,7 +24,7 @@ extension TaskItem {
 }
 
 struct FlatTaskNode: Identifiable {
-    let id: PersistentIdentifier
+    let id: String
     let task: TaskItem
     let depth: Int
     let subtaskSummary: SubtaskSummary
@@ -33,7 +33,7 @@ struct FlatTaskNode: Identifiable {
 enum TaskTreeFlattener {
     static func flatten(
         roots: [TaskItem],
-        collapsed: Set<PersistentIdentifier>,
+        collapsed: Set<String>,
         includeCompleted: Bool = false,
         nestSubtasks: Bool = true
     ) -> [FlatTaskNode] {
@@ -42,7 +42,7 @@ enum TaskTreeFlattener {
             if nestSubtasks {
                 flattenNode(task, depth: 0, collapsed: collapsed, includeCompleted: includeCompleted, result: &result)
             } else {
-                result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: 0, subtaskSummary: task.subtaskSummary))
+                result.append(FlatTaskNode(id: task.taskId ?? "", task: task, depth: 0, subtaskSummary: task.subtaskSummary))
             }
         }
         return result
@@ -51,16 +51,17 @@ enum TaskTreeFlattener {
     private static func flattenNode(
         _ task: TaskItem,
         depth: Int,
-        collapsed: Set<PersistentIdentifier>,
+        collapsed: Set<String>,
         includeCompleted: Bool,
         result: inout [FlatTaskNode]
     ) {
-        let isCollapsed = collapsed.contains(task.persistentModelID)
+        let taskId = task.taskId ?? ""
+        let isCollapsed = collapsed.contains(taskId)
         let activeSubtasks = includeCompleted
             ? Array(task.subtasks)
             : task.subtasks.filter { !($0.isCompleted == true) }
         let sortedSubtasks = activeSubtasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        result.append(FlatTaskNode(id: task.persistentModelID, task: task, depth: depth, subtaskSummary: task.subtaskSummary))
+        result.append(FlatTaskNode(id: taskId, task: task, depth: depth, subtaskSummary: task.subtaskSummary))
         if !isCollapsed {
             for subtask in sortedSubtasks {
                 flattenNode(subtask, depth: depth + 1, collapsed: collapsed, includeCompleted: includeCompleted, result: &result)

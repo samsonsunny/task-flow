@@ -456,10 +456,17 @@ struct ListDetailView: View {
                 } else {
                     selectedTasks.insert(task.persistentModelID)
                 }
+            },
+            isExpanded: !(viewModel?.collapsedTasks.contains(task.taskId ?? "") ?? false),
+            onToggleExpand: isSelecting ? nil : {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel?.toggleTaskCollapsed(task.taskId ?? "")
+                }
             }
         )
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
+        .padding(.leading, CGFloat(node.depth) * 20)
         .onDrag {
             guard !isSelecting else { return NSItemProvider() }
             viewModel?.draggedTaskId = task.taskId

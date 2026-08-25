@@ -127,7 +127,7 @@ struct ReminderSegmentViewModelTests {
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .upcoming)
-        let nodes = vm.flatNodes(for: [parent, child], collapsedTasks: [])
+        let nodes = vm.flatNodes(for: [parent, child])
         #expect(nodes.count == 1)
         #expect(nodes[0].task.safeTitle == "Child")
         #expect(nodes[0].depth == 0)
@@ -140,7 +140,7 @@ struct ReminderSegmentViewModelTests {
         parent.subtasks = [child]
 
         let vm = makeVM(segment: .upcoming)
-        let nodes = vm.flatNodes(for: [parent, child], collapsedTasks: [])
+        let nodes = vm.flatNodes(for: [parent, child])
         #expect(nodes.count == 1)
         #expect(nodes[0].task.safeTitle == "Parent")
     }
@@ -155,9 +155,9 @@ struct ReminderSegmentViewModelTests {
         let vm = makeVM(segment: .today)
         let descriptor = FetchDescriptor<TaskItem>()
         let allTasks = (try? context.fetch(descriptor)) ?? []
-        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [parent.persistentModelID])
+        vm.update(tasks: allTasks, lists: [], now: now)
         #expect(vm.flatNodes.count == 1)
-        vm.update(tasks: allTasks, lists: [], now: now, collapsedTasks: [])
+        vm.update(tasks: allTasks, lists: [], now: now)
         #expect(vm.flatNodes.count == 1)
     }
 
