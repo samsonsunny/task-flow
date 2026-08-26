@@ -191,9 +191,28 @@ struct ListDetailView: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                     .onMove { fromOffsets, toOffset in
-                        let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
-                        let taskToOffset = flatToTaskIndex(toOffset)
-                        vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+                        let movedNodes = fromOffsets.map { vm.flatNodes[$0] }
+                        let allSameParent: Bool = {
+                            let parents = Set(movedNodes.compactMap { $0.task.parentTask?.persistentModelID })
+                            return parents.count == 1
+                        }()
+
+                        if allSameParent, let parent = movedNodes.first?.task.parentTask {
+                            let siblingFlatIndices = vm.flatNodes.enumerated().compactMap { idx, node in
+                                node.task.parentTask?.persistentModelID == parent.persistentModelID ? idx : nil
+                            }
+                            let localFrom = IndexSet(fromOffsets.compactMap { flatIdx in
+                                siblingFlatIndices.firstIndex(of: flatIdx)
+                            })
+                            let localTo = siblingFlatIndices.enumerated().first { _, flatIdx in flatIdx >= toOffset }.map { $0.offset } ?? siblingFlatIndices.count
+                            vm.moveSubtasks(fromOffsets: localFrom, toOffset: localTo, of: parent)
+                        } else {
+                            let hasChild = fromOffsets.contains { vm.flatNodes[$0].depth > 0 }
+                            guard !hasChild else { return }
+                            let taskFromOffsets = IndexSet(fromOffsets.map { flatToTaskIndex($0) })
+                            let taskToOffset = flatToTaskIndex(toOffset)
+                            vm.moveTasks(fromOffsets: taskFromOffsets, toOffset: taskToOffset)
+                        }
                     }
 
                     Color.clear

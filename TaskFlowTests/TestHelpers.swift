@@ -20,7 +20,7 @@ func makeDate(year: Int, month: Int, day: Int, calendar: Calendar) -> Date {
 // MARK: - Sort order assertions
 
 func assertValidTaskSortOrders(_ tasks: [TaskItem]) {
-    let sorted = tasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+    let sorted = tasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
     let orders = sorted.map { $0.sortOrder }
     let nonNil = orders.compactMap { $0 }
     #expect(nonNil.count == orders.count, "All sortOrders should be non-nil")
@@ -37,7 +37,7 @@ func assertValidListSortOrders(_ lists: [ReminderList]) {
 
 // MARK: - Task helpers
 
-func makeTasks(sortOrders: [String?]) -> [TaskItem] {
+func makeTasks(sortOrders: [Int?]) -> [TaskItem] {
     sortOrders.enumerated().map { (i, order) in
         let task = TaskItem(taskTitle: "Task \(i)", dueDate: nil)
         task.sortOrder = order
@@ -46,7 +46,7 @@ func makeTasks(sortOrders: [String?]) -> [TaskItem] {
 }
 
 func sortedBySortOrder(_ tasks: [TaskItem]) -> [TaskItem] {
-    tasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+    tasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
 }
 
 func makeLists(sortOrders: [String?]) -> [ReminderList] {

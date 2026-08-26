@@ -20,7 +20,7 @@ struct EditorSubtaskTests {
         return parent
     }
 
-    private func makeSubtask(title: String, order: String, parent: TaskItem) -> TaskItem {
+    private func makeSubtask(title: String, order: Int, parent: TaskItem) -> TaskItem {
         let subtask = TaskItem(taskTitle: title, dueDate: nil)
         subtask.parentTask = parent
         subtask.sortOrder = order
@@ -42,9 +42,9 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        let x = makeSubtask(title: "X", order: "a", parent: parent)
-        let y = makeSubtask(title: "Y", order: "m", parent: parent)
-        _ = makeSubtask(title: "Z", order: "z", parent: parent)
+        let x = makeSubtask(title: "X", order: 0, parent: parent)
+        let y = makeSubtask(title: "Y", order: 1, parent: parent)
+        _ = makeSubtask(title: "Z", order: 2, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtaskUp(y)
@@ -57,9 +57,9 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        let x = makeSubtask(title: "X", order: "a", parent: parent)
-        _ = makeSubtask(title: "Y", order: "m", parent: parent)
-        _ = makeSubtask(title: "Z", order: "z", parent: parent)
+        let x = makeSubtask(title: "X", order: 0, parent: parent)
+        _ = makeSubtask(title: "Y", order: 1, parent: parent)
+        _ = makeSubtask(title: "Z", order: 2, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtaskDown(x)
@@ -71,8 +71,8 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        let x = makeSubtask(title: "X", order: "a", parent: parent)
-        _ = makeSubtask(title: "Y", order: "m", parent: parent)
+        let x = makeSubtask(title: "X", order: 0, parent: parent)
+        _ = makeSubtask(title: "Y", order: 1, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtaskUp(x)
@@ -84,8 +84,8 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        _ = makeSubtask(title: "X", order: "a", parent: parent)
-        let y = makeSubtask(title: "Y", order: "m", parent: parent)
+        _ = makeSubtask(title: "X", order: 0, parent: parent)
+        let y = makeSubtask(title: "Y", order: 1, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtaskDown(y)
@@ -97,7 +97,7 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        let solo = makeSubtask(title: "Solo", order: "m", parent: parent)
+        let solo = makeSubtask(title: "Solo", order: 0, parent: parent)
         let vm = makeVM(task: parent)
 
         #expect(vm.canMoveSubtaskUp(solo) == false)
@@ -108,9 +108,9 @@ struct EditorSubtaskTests {
         let list = ReminderList(name: "Test")
         context.insert(list)
         let parent = makeParent(title: "Parent", list: list)
-        let x = makeSubtask(title: "X", order: "a", parent: parent)
-        _ = makeSubtask(title: "Y", order: "m", parent: parent)
-        let z = makeSubtask(title: "Z", order: "z", parent: parent)
+        let x = makeSubtask(title: "X", order: 0, parent: parent)
+        _ = makeSubtask(title: "Y", order: 1, parent: parent)
+        let z = makeSubtask(title: "Z", order: 2, parent: parent)
         let vm = makeVM(task: parent)
 
         #expect(vm.canMoveSubtaskUp(x) == false)
@@ -127,7 +127,7 @@ struct EditorSubtaskTests {
         context.insert(listA)
         context.insert(listB)
         let parent = makeParent(title: "Parent", list: listA)
-        let subtask = makeSubtask(title: "Sub", order: "m", parent: parent)
+        let subtask = makeSubtask(title: "Sub", order: 0, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtask(subtask, to: listB)
@@ -142,7 +142,7 @@ struct EditorSubtaskTests {
         let listA = ReminderList(name: "A")
         context.insert(listA)
         let parent = makeParent(title: "Parent", list: listA)
-        let subtask = makeSubtask(title: "Sub", order: "m", parent: parent)
+        let subtask = makeSubtask(title: "Sub", order: 0, parent: parent)
         let vm = makeVM(task: parent)
 
         vm.moveSubtask(subtask, to: listA)
@@ -158,17 +158,17 @@ struct EditorSubtaskTests {
         context.insert(listA)
         context.insert(listB)
         let parent = makeParent(title: "Parent", list: listA)
-        let subtask = makeSubtask(title: "Sub", order: "m", parent: parent)
+        let subtask = makeSubtask(title: "Sub", order: 0, parent: parent)
 
         let existing = TaskItem(taskTitle: "Existing", dueDate: nil)
         existing.reminderList = listB
-        existing.sortOrder = "m"
+        existing.sortOrder = 5
         context.insert(existing)
 
         let vm = makeVM(task: parent)
         vm.moveSubtask(subtask, to: listB)
 
         let order = try #require(subtask.sortOrder)
-        #expect(order > "m")
+        #expect(order > 5)
     }
 }

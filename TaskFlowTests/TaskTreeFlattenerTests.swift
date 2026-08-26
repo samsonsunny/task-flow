@@ -31,9 +31,9 @@ private func makeTask(id: Int, title: String, parent: TaskItem? = nil) -> TaskIt
 @Test func rootWithTwoChildrenRespectsSortOrder() {
     let root = makeTask(id: 1, title: "Root")
     let childA = makeTask(id: 2, title: "A", parent: root)
-    childA.sortOrder = "aaa"
+    childA.sortOrder = 0
     let childB = makeTask(id: 3, title: "B", parent: root)
-    childB.sortOrder = "bbb"
+    childB.sortOrder = 1
     root.subtasks = [childB, childA]
     let result = TaskTreeFlattener.flatten(roots: [root], collapsed: [])
     #expect(result.count == 3)

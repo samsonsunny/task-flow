@@ -735,7 +735,7 @@ enum TaskFlowSchemaV9: VersionedSchema {
         @Relationship(inverse: \ReminderList.reminders) var reminderList: ReminderList?
         @Relationship var tags: [ReminderTag]
 
-        var sortOrder: String?
+        var sortOrder: Int?
         var hasTime: Bool?
         var deferCount: Int?
 
@@ -754,7 +754,7 @@ enum TaskFlowSchemaV9: VersionedSchema {
             imageAttachmentReference: String? = nil,
             reminderList: ReminderList? = nil,
             tags: [ReminderTag] = [],
-            sortOrder: String? = nil,
+            sortOrder: Int? = nil,
             hasTime: Bool? = nil,
             deferCount: Int? = nil,
             parentTask: TaskItem? = nil

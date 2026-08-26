@@ -60,7 +60,7 @@ enum TaskTreeFlattener {
         let activeSubtasks = includeCompleted
             ? Array(task.subtasks)
             : task.subtasks.filter { !($0.isCompleted == true) }
-        let sortedSubtasks = activeSubtasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        let sortedSubtasks = activeSubtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
         result.append(FlatTaskNode(id: taskId, task: task, depth: depth, subtaskSummary: task.subtaskSummary))
         if !isCollapsed {
             for subtask in sortedSubtasks {

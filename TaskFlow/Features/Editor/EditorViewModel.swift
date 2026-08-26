@@ -109,10 +109,8 @@ final class ReminderEditorViewModel {
         subtask.createdAt = Date()
         subtask.reminderList = parent.reminderList
         subtask.parentTask = parent
-        let sorted = parent.subtasks
-            .filter { $0.persistentModelID != subtask.persistentModelID }
-            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        subtask.sortOrder = midpointOrWiden(between: sorted.last?.sortOrder, and: nil)
+        let siblings = parent.subtasks.filter { $0.persistentModelID != subtask.persistentModelID }
+        subtask.sortOrder = nextSortOrder(for: siblings)
         modelContext.insert(subtask)
     }
 
@@ -204,7 +202,7 @@ final class ReminderEditorViewModel {
     }
 
     func subtasks(of parent: TaskItem) -> [TaskItem] {
-        parent.subtasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        parent.subtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
     }
 
     func canMoveSubtaskUp(_ subtask: TaskItem) -> Bool {
@@ -232,12 +230,10 @@ final class ReminderEditorViewModel {
 
     private func assignListSortOrder(for task: TaskItem, in list: ReminderList) {
         guard let existing = try? modelContext.fetch(FetchDescriptor<TaskItem>()) else { return }
-        let lastOrder = existing
-            .filter { $0.reminderList?.persistentModelID == list.persistentModelID && $0.persistentModelID != task.persistentModelID }
-            .compactMap { $0.sortOrder }
-            .sorted()
-            .last
-        task.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
+        let siblings = existing.filter {
+            $0.reminderList?.persistentModelID == list.persistentModelID && $0.persistentModelID != task.persistentModelID
+        }
+        task.sortOrder = nextSortOrder(for: siblings)
     }
 
     // MARK: - Helpers
@@ -245,11 +241,9 @@ final class ReminderEditorViewModel {
     private func assignInitialSortOrder(_ task: TaskItem) {
         guard let list = task.reminderList else { return }
         guard let existing = try? modelContext.fetch(FetchDescriptor<TaskItem>()) else { return }
-        let lastOrder = existing
-            .filter { $0.reminderList?.persistentModelID == list.persistentModelID && $0.persistentModelID != task.persistentModelID }
-            .compactMap { $0.sortOrder }
-            .sorted()
-            .last
-        task.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
+        let siblings = existing.filter {
+            $0.reminderList?.persistentModelID == list.persistentModelID && $0.persistentModelID != task.persistentModelID
+        }
+        task.sortOrder = nextSortOrder(for: siblings)
     }
 }

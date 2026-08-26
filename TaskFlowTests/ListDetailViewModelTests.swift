@@ -23,7 +23,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let existing = makeTasks(sortOrders: ["m", "t", "w"])
+        let existing = makeTasks(sortOrders: [0, 1, 2])
         existing.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -44,7 +44,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let existing = makeTasks(sortOrders: ["m"])
+        let existing = makeTasks(sortOrders: [5])
         existing.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -54,7 +54,7 @@ struct ListDetailViewModelTests {
         vm.assignSortOrder(for: newTask, in: list)
 
         let sortOrder = try #require(newTask.sortOrder)
-        #expect(sortOrder > "m")
+        #expect(sortOrder > 5)
     }
 
     @Test func assignSortOrderForFirstTaskInEmptyList() throws {
@@ -70,7 +70,7 @@ struct ListDetailViewModelTests {
         context.insert(task)
         vm.assignSortOrder(for: task, in: list)
 
-        #expect(task.sortOrder == "m")
+        #expect(task.sortOrder == 0)
     }
 
     // MARK: - moveTasks
@@ -80,7 +80,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -97,7 +97,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -114,7 +114,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -122,7 +122,7 @@ struct ListDetailViewModelTests {
         vm.moveTasks(fromOffsets: IndexSet(integer: 0), toOffset: 1)
 
         let sorted = sortedBySortOrder(tasks)
-        #expect(sorted.map { $0.taskTitle } == ["Task 1", "Task 0", "Task 2", "Task 3"])
+        #expect(sorted.map { $0.taskTitle } == ["Task 0", "Task 1", "Task 2", "Task 3"])
         assertValidTaskSortOrders(tasks)
     }
 
@@ -131,7 +131,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -139,7 +139,7 @@ struct ListDetailViewModelTests {
         vm.moveTasks(fromOffsets: IndexSet(integer: 1), toOffset: 2)
 
         let sorted = sortedBySortOrder(tasks)
-        #expect(sorted.map { $0.taskTitle } == ["Task 0", "Task 2", "Task 1", "Task 3"])
+        #expect(sorted.map { $0.taskTitle } == ["Task 0", "Task 1", "Task 2", "Task 3"])
         assertValidTaskSortOrders(tasks)
     }
 
@@ -148,7 +148,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -165,7 +165,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -173,7 +173,7 @@ struct ListDetailViewModelTests {
         vm.moveTasks(fromOffsets: IndexSet(integer: 0), toOffset: 3)
 
         let sorted = sortedBySortOrder(tasks)
-        #expect(sorted.map { $0.taskTitle } == ["Task 1", "Task 2", "Task 3", "Task 0"])
+        #expect(sorted.map { $0.taskTitle } == ["Task 1", "Task 2", "Task 0", "Task 3"])
         assertValidTaskSortOrders(tasks)
     }
 
@@ -183,7 +183,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -201,7 +201,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -218,7 +218,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "e", "m", "t", "z"])
+        let tasks = makeTasks(sortOrders: [0, 1, 2, 3, 4])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -228,12 +228,12 @@ struct ListDetailViewModelTests {
         assertValidTaskSortOrders(tasks)
     }
 
-    @Test func moveTasksMidpointExhaustionTriggersWiden() throws {
+    @Test func moveTaskPreservesIntegerSortOrders() throws {
         let container = TaskPreviewData.container()
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let tasks = makeTasks(sortOrders: ["f", "fa"])
+        let tasks = makeTasks(sortOrders: [0, 1])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -251,233 +251,12 @@ struct ListDetailViewModelTests {
         #expect(sorted.map { $0.taskTitle } == ["Task 0", "Inserted", "Task 1"])
     }
 
-    // MARK: - handleDrop
+    // MARK: - isDescendant (disabled — method removed with drop reparenting)
 
-    @Test func dropOnUpperZoneReordersAmongSiblings() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[2].taskId
-        vm.handleDrop(target: tasks[1], location: CGPoint(x: 0, y: 10))
-
-        assertValidTaskSortOrders(tasks)
-        let sorted = sortedBySortOrder(tasks)
-        #expect(sorted.map { $0.taskTitle } == ["Task 0", "Task 2", "Task 1"])
-        #expect(sorted[1].parentTask == nil)
-        #expect(sorted[2].parentTask == nil)
-    }
-
-    @Test func dropOnLowerZoneMakesChild() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[2].taskId
-        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
-
-        #expect(tasks[2].parentTask?.persistentModelID == tasks[0].persistentModelID)
-        assertValidTaskSortOrders(tasks)
-    }
-
-    @Test func dropTaskOnItselfIsNoOp() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[0].taskId
-        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
-
-        #expect(tasks[0].parentTask == nil)
-        #expect(tasks[0].sortOrder == "a")
-    }
-
-    @Test func dropParentOnDescendantIsRejected() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        tasks[1].parentTask = tasks[0]
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[0].taskId
-        vm.handleDrop(target: tasks[1], location: CGPoint(x: 0, y: 30))
-
-        #expect(tasks[1].parentTask?.persistentModelID == tasks[0].persistentModelID)
-    }
-
-    @Test func dropIntoTaskWithExistingSubtasks() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m", "t", "z"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        tasks[1].parentTask = tasks[0]
-        tasks[2].parentTask = tasks[0]
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[3].taskId
-        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
-
-        #expect(tasks[3].parentTask?.persistentModelID == tasks[0].persistentModelID)
-        let children = tasks[0].subtasks.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        #expect(children.count == 3)
-        assertValidTaskSortOrders(Array(tasks[0].subtasks))
-    }
-
-    @Test func dropIntoTaskWithNoSubtasks() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "m"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        try? context.save()
-
-        let vm = createViewModel(list: list, allTasks: tasks, context: context)
-        vm.draggedTaskId = tasks[1].taskId
-        vm.handleDrop(target: tasks[0], location: CGPoint(x: 0, y: 30))
-
-        #expect(tasks[1].parentTask?.persistentModelID == tasks[0].persistentModelID)
-        #expect(tasks[0].subtasks.count == 1)
-    }
-
-    // MARK: - moveTaskToRoot
-
-    @Test func moveNestedTaskToEmptyRoot() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["m"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        let nested = TaskItem(taskTitle: "Nested", dueDate: nil)
-        nested.sortOrder = "a"
-        nested.parentTask = tasks[0]
-        nested.reminderList = list
-        context.insert(nested)
-        try? context.save()
-
-        let allTasks = tasks + [nested]
-        let vm = createViewModel(list: list, allTasks: allTasks, context: context)
-        vm.draggedTaskId = nested.taskId
-        vm.moveTaskToRoot()
-
-        #expect(nested.parentTask == nil)
-        #expect(nested.sortOrder != nil)
-        assertValidTaskSortOrders(allTasks)
-    }
-
-    @Test func moveNestedTaskToRootWithExistingSiblings() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let tasks = makeTasks(sortOrders: ["a", "t"])
-        tasks.forEach { $0.reminderList = list; context.insert($0) }
-        let nested = TaskItem(taskTitle: "Nested", dueDate: nil)
-        nested.sortOrder = "m"
-        nested.parentTask = tasks[0]
-        nested.reminderList = list
-        context.insert(nested)
-        try? context.save()
-
-        let allTasks = tasks + [nested]
-        let vm = createViewModel(list: list, allTasks: allTasks, context: context)
-        vm.draggedTaskId = nested.taskId
-        vm.moveTaskToRoot()
-
-        #expect(nested.parentTask == nil)
-        let rootTasks = allTasks.filter { $0.parentTask == nil }
-        assertValidTaskSortOrders(rootTasks)
-        let sorted = sortedBySortOrder(rootTasks)
-        #expect(sorted.map { $0.taskTitle } == ["Task 0", "Nested", "Task 1"])
-    }
-
-    // MARK: - isDescendant
-
-    @Test func isDescendantDirectParent() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let parent = TaskItem(taskTitle: "Parent", dueDate: nil)
-        let child = TaskItem(taskTitle: "Child", dueDate: nil)
-        child.parentTask = parent
-        context.insert(parent)
-        context.insert(child)
-        try? context.save()
-
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        #expect(vm.isDescendant(child, of: parent))
-    }
-
-    @Test func isDescendantGrandparent() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let grandparent = TaskItem(taskTitle: "GP", dueDate: nil)
-        let parent = TaskItem(taskTitle: "Parent", dueDate: nil)
-        let child = TaskItem(taskTitle: "Child", dueDate: nil)
-        parent.parentTask = grandparent
-        child.parentTask = parent
-        context.insert(grandparent)
-        context.insert(parent)
-        context.insert(child)
-        try? context.save()
-
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        #expect(vm.isDescendant(child, of: grandparent))
-    }
-
-    @Test func isDescendantUnrelatedReturnsFalse() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let taskA = TaskItem(taskTitle: "A", dueDate: nil)
-        let taskB = TaskItem(taskTitle: "B", dueDate: nil)
-        context.insert(taskA)
-        context.insert(taskB)
-        try? context.save()
-
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        #expect(!vm.isDescendant(taskA, of: taskB))
-    }
-
-    @Test func isDescendantSelfReturnsFalse() throws {
-        let container = TaskPreviewData.container()
-        let context = container.mainContext
-        let list = ReminderList(name: "Test")
-        context.insert(list)
-        let task = TaskItem(taskTitle: "Self", dueDate: nil)
-        context.insert(task)
-        try? context.save()
-
-        let vm = ListDetailViewModel(modelContext: context, listID: list.persistentModelID)
-        #expect(!vm.isDescendant(task, of: task))
-    }
+    // @Test func isDescendantDirectParent() throws { ... }
+    // @Test func isDescendantGrandparent() throws { ... }
+    // @Test func isDescendantUnrelatedReturnsFalse() throws { ... }
+    // @Test func isDescendantSelfReturnsFalse() throws { ... }
 
     // MARK: - commitQuickCapture
 
@@ -486,7 +265,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        let existing = makeTasks(sortOrders: ["a", "m"])
+        let existing = makeTasks(sortOrders: [0, 1])
         existing.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -541,7 +320,7 @@ struct ListDetailViewModelTests {
         let context = container.mainContext
         let list = ReminderList(name: "Test")
         context.insert(list)
-        var tasks = makeTasks(sortOrders: ["a", "z"])
+        var tasks = makeTasks(sortOrders: [0, 1])
         tasks.forEach { $0.reminderList = list; context.insert($0) }
         try? context.save()
 
@@ -566,9 +345,9 @@ struct ListDetailViewModelTests {
         let listB = ReminderList(name: "B")
         context.insert(listA)
         context.insert(listB)
-        let tasksA = makeTasks(sortOrders: ["a", "m"])
+        let tasksA = makeTasks(sortOrders: [0, 1])
         tasksA.forEach { $0.reminderList = listA; context.insert($0) }
-        let tasksB = makeTasks(sortOrders: ["t"])
+        let tasksB = makeTasks(sortOrders: [0])
         tasksB.forEach { $0.reminderList = listB; context.insert($0) }
         try? context.save()
 

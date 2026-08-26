@@ -22,32 +22,29 @@ final class ListDetailViewModel {
     private(set) var allLists: [ReminderList] = []
     private var displayTasks: [TaskItem] = []
 
-    // MARK: - Collapse State (ViewModel-owned, persisted per list)
+    // MARK: - Collapse State
 
     var collapsedTasks: Set<String> = []
-
-    private static func collapseKey(for listID: ReminderList.ID) -> String {
-        "listDetail.collapsed.\(listID.stableKey)"
-    }
-
-    private func loadCollapsedTasks() -> Set<String> {
-        let key = Self.collapseKey(for: listID)
-        return Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
-    }
-
-    private func persistCollapsedTasks() {
-        let key = Self.collapseKey(for: listID)
-        UserDefaults.standard.set(Array(collapsedTasks), forKey: key)
-    }
+    private var manuallyExpanded: Set<String> = []
 
     func toggleTaskCollapsed(_ taskId: String) {
         if collapsedTasks.contains(taskId) {
             collapsedTasks.remove(taskId)
+            manuallyExpanded.insert(taskId)
         } else {
             collapsedTasks.insert(taskId)
+            manuallyExpanded.remove(taskId)
         }
-        persistCollapsedTasks()
         recompute()
+    }
+
+    private func collapseAllParentsWithSubtasks() {
+        let parents = tasks.filter { !$0.subtasks.isEmpty }
+        for task in parents {
+            if let taskId = task.taskId, !manuallyExpanded.contains(taskId) {
+                collapsedTasks.insert(taskId)
+            }
+        }
     }
 
     // MARK: - Init
@@ -55,12 +52,6 @@ final class ListDetailViewModel {
     init(modelContext: ModelContext, listID: ReminderList.ID) {
         self.modelContext = modelContext
         self.listID = listID
-        self.collapsedTasks = Self.loadCollapsedTasksStatic(listID: listID)
-    }
-
-    private static func loadCollapsedTasksStatic(listID: ReminderList.ID) -> Set<String> {
-        let key = collapseKey(for: listID)
-        return Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
     }
 
     // MARK: - Refresh / Update
@@ -106,7 +97,8 @@ final class ListDetailViewModel {
 
     private func recompute() {
         list = allLists.first { $0.persistentModelID == listID }
-        tasks = computeTasks().sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        tasks = computeTasks().sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+        collapseAllParentsWithSubtasks()
         let taskIDs = Set(tasks.map(\.persistentModelID))
         rootTasks = tasks.filter {
             guard let parent = $0.parentTask else { return true }
@@ -176,8 +168,7 @@ final class ListDetailViewModel {
             $0.reminderList?.persistentModelID == list.persistentModelID &&
             $0.persistentModelID != task.persistentModelID
         }
-        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpointOrWiden(between: lastOrder, and: nil)
+        task.sortOrder = nextSortOrder(for: listTasks)
     }
 
     // MARK: - Drag-Drop Reorder (2.4)
@@ -196,12 +187,27 @@ final class ListDetailViewModel {
 
         mutableTasks.insert(contentsOf: moved, at: insertAt)
 
-        var previous: String? = insertAt > 0 ? mutableTasks[insertAt - 1].sortOrder : nil
-        for i in insertAt..<(insertAt + moved.count) {
-            let upper = (i + 1) < mutableTasks.count ? mutableTasks[i + 1].sortOrder : nil
-            mutableTasks[i].sortOrder = midpointOrWiden(between: previous, and: upper)
-            previous = mutableTasks[i].sortOrder
+        recalculateSortOrders(for: mutableTasks)
+
+        try? modelContext.save()
+        recompute()
+    }
+
+    func moveSubtasks(fromOffsets: IndexSet, toOffset: Int, of parent: TaskItem) {
+        var siblings = parent.subtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+        let sortedFrom = fromOffsets.sorted()
+
+        let moved = Array(sortedFrom.reversed().map { siblings.remove(at: $0) }.reversed())
+
+        var adjustedOffset = toOffset
+        for idx in sortedFrom where idx < toOffset {
+            adjustedOffset -= 1
         }
+        let insertAt = min(adjustedOffset, siblings.count)
+
+        siblings.insert(contentsOf: moved, at: insertAt)
+
+        recalculateSortOrders(for: siblings)
 
         try? modelContext.save()
         recompute()
@@ -221,26 +227,18 @@ final class ListDetailViewModel {
 
     func moveToTop(task: TaskItem) {
         let sibs = siblings(of: task)
-        var sorted = sibs.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        var sorted = sibs.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
         sorted.insert(task, at: 0)
-        var previous: String? = nil
-        for t in sorted {
-            t.sortOrder = midpointOrWiden(between: previous, and: nil)
-            previous = t.sortOrder
-        }
+        recalculateSortOrders(for: sorted)
         try? modelContext.save()
         recompute()
     }
 
     func moveToBottom(task: TaskItem) {
         let sibs = siblings(of: task)
-        var sorted = sibs.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
+        var sorted = sibs.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
         sorted.append(task)
-        var previous: String? = nil
-        for t in sorted {
-            t.sortOrder = midpointOrWiden(between: previous, and: nil)
-            previous = t.sortOrder
-        }
+        recalculateSortOrders(for: sorted)
         try? modelContext.save()
         recompute()
     }

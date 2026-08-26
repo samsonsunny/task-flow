@@ -280,8 +280,7 @@ final class ReminderSegmentViewModel {
             $0.reminderList?.persistentModelID == list.persistentModelID &&
             $0.persistentModelID != task.persistentModelID
         }
-        let lastOrder = listTasks.compactMap { $0.sortOrder }.sorted().last
-        task.sortOrder = midpoint(between: lastOrder, and: nil)
+        task.sortOrder = nextSortOrder(for: listTasks)
     }
 
     func scheduleTask(_ task: TaskItem, dueDate: Date?, hasTime: Bool) {

@@ -76,9 +76,21 @@ func repairNilSortOrders(_ tasks: [TaskItem]) {
     let nilTasks = tasks.filter { $0.sortOrder == nil }
     guard !nilTasks.isEmpty else { return }
     let sorted = nilTasks.sorted { ($0.createdAt ?? .distantPast) < ($1.createdAt ?? .distantPast) }
-    var previous: String? = nil
+    var previous: Int = -1
     for task in sorted {
-        task.sortOrder = midpointOrWiden(between: previous, and: nil)
-        previous = task.sortOrder
+        previous += 1
+        task.sortOrder = previous
     }
+}
+
+// MARK: - Int Sort Order Utilities (for TaskItem)
+
+func recalculateSortOrders(for tasks: [TaskItem]) {
+    for (index, task) in tasks.enumerated() {
+        task.sortOrder = index
+    }
+}
+
+func nextSortOrder(for tasks: [TaskItem]) -> Int {
+    (tasks.compactMap { $0.sortOrder }.max() ?? -1) + 1
 }
