@@ -14,7 +14,6 @@ final class ListDetailViewModel {
 
     private(set) var justCompleted: Set<String> = []
     private(set) var now: Date = Date()
-    var draggedTaskId: String?
     private(set) var scheduledTask: TaskItem?
     private(set) var listSections: [ListSection] = []
     private(set) var lastAddedTaskID: PersistentIdentifier?
@@ -244,82 +243,6 @@ final class ListDetailViewModel {
         }
         try? modelContext.save()
         recompute()
-    }
-
-    // MARK: - Drag-Drop Nesting (2.5)
-
-    func handleDrop(target: TaskItem, location: CGPoint) {
-        guard let draggedTaskId,
-              let draggedTask = allTasks.first(where: { $0.taskId == draggedTaskId }),
-              draggedTask.persistentModelID != target.persistentModelID else { return }
-
-        guard !isDescendant(target, of: draggedTask) else { return }
-
-        let threshold: CGFloat = 22
-        if location.y < threshold {
-            removeDraggedFromParentSubtasks(draggedTask)
-            draggedTask.parentTask = target.parentTask
-            let siblings: [TaskItem]
-            if let parent = target.parentTask {
-                siblings = Array(parent.subtasks)
-            } else {
-                siblings = rootTasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
-            }
-            var sorted = siblings.sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-            if let idx = sorted.firstIndex(where: { $0.persistentModelID == target.persistentModelID }) {
-                sorted.insert(draggedTask, at: idx)
-                var previous: String? = nil
-                for t in sorted {
-                    t.sortOrder = midpointOrWiden(between: previous, and: nil)
-                    previous = t.sortOrder
-                }
-            }
-        } else {
-            removeDraggedFromParentSubtasks(draggedTask)
-            draggedTask.parentTask = target
-            var subbies = target.subtasks.filter { $0.persistentModelID != draggedTask.persistentModelID }
-                .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-            subbies.append(draggedTask)
-            var previous: String? = nil
-            for t in subbies {
-                t.sortOrder = midpointOrWiden(between: previous, and: nil)
-                previous = t.sortOrder
-            }
-        }
-        try? modelContext.save()
-        recompute()
-    }
-
-    func moveTaskToRoot() {
-        guard let draggedTaskId,
-              let task = allTasks.first(where: { $0.taskId == draggedTaskId }) else { return }
-        task.parentTask = nil
-        var siblings = rootTasks.filter { $0.persistentModelID != task.persistentModelID }
-            .sorted { ($0.sortOrder ?? "") < ($1.sortOrder ?? "") }
-        siblings.append(task)
-        var previous: String? = nil
-        for t in siblings {
-            t.sortOrder = midpointOrWiden(between: previous, and: nil)
-            previous = t.sortOrder
-        }
-        try? modelContext.save()
-        recompute()
-    }
-
-    func isDescendant(_ task: TaskItem, of potentialParent: TaskItem) -> Bool {
-        var current = task
-        while let parent = current.parentTask {
-            if parent.persistentModelID == potentialParent.persistentModelID {
-                return true
-            }
-            current = parent
-        }
-        return false
-    }
-
-    private func removeDraggedFromParentSubtasks(_ task: TaskItem) {
-        guard let oldParent = task.parentTask else { return }
-        oldParent.subtasks = oldParent.subtasks.filter { $0.persistentModelID != task.persistentModelID }
     }
 
     // MARK: - Scheduling (2.6)

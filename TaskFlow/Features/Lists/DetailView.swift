@@ -1,6 +1,5 @@
 import SwiftUI
 import Combine
-import UniformTypeIdentifiers
 import SwiftData
 
 private struct NewReminderConfig: Identifiable {
@@ -18,20 +17,6 @@ private struct ScheduleConfig: Identifiable {
 private struct BulkScheduleConfig: Identifiable {
     let id = UUID()
     let taskIDs: Set<PersistentIdentifier>
-}
-
-private struct TaskDropDelegate: DropDelegate {
-    let targetTask: TaskItem
-    let performDrop: (TaskItem, CGPoint) -> Void
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        performDrop(targetTask, info.location)
-        return true
-    }
 }
 
 struct ListDetailView: View {
@@ -467,15 +452,6 @@ struct ListDetailView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .padding(.leading, CGFloat(node.depth) * 20)
-        .onDrag {
-            guard !isSelecting else { return NSItemProvider() }
-            viewModel?.draggedTaskId = task.taskId
-            return NSItemProvider(object: (task.taskId ?? "") as NSString)
-        }
-        .onDrop(of: [.text], delegate: TaskDropDelegate(targetTask: task) { target, location in
-            guard !isSelecting else { return }
-            viewModel?.handleDrop(target: target, location: location)
-        })
     }
 
     private func flatToTaskIndex(_ flatIndex: Int) -> Int {
