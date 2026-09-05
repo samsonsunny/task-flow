@@ -52,6 +52,7 @@ struct ListsTabView: View {
                         viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
                     }
                 )
+                .presentationDetents([.medium])
             }
             .sheet(isPresented: $showGroupCreationSheet) {
                 GroupCreationSheet(
@@ -180,23 +181,24 @@ struct ListsTabView: View {
                     viewModel?.moveGroups(fromOffsets: fromOffsets, toOffset: toOffset)
                 }
             }
-
-            newListRow
         } header: {
             HStack {
                 Text("Lists")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+                    .textCase(nil)
                 Spacer()
                 Button {
                     showListCreationSheet = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.textSecondary)
+                        .foregroundStyle(AppTheme.colors.textPrimary)
                 }
                 .contentShape(Rectangle())
             }
+            .padding(.top, 16)
+            .padding(.bottom, 4)
         }
     }
 
@@ -232,27 +234,6 @@ struct ListsTabView: View {
     }
 
     // MARK: - Inline Creation Rows
-
-    private var newListRow: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "plus")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Text("New List")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            showListCreationSheet = true
-        }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .accessibilityIdentifier("new-list-row")
-    }
 
     // MARK: - List Navigation Link
 
