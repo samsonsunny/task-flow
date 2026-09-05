@@ -41,12 +41,12 @@ final class ListsTabViewModel {
 
     // MARK: - Derived Properties
 
-    var defaultList: ReminderList? {
-        lists.first(where: { $0.name == ReminderDefaults.defaultListName })
-    }
-
     var ungroupedLists: [ReminderList] {
-        lists.filter { $0.group == nil && $0.name != ReminderDefaults.defaultListName }
+        let nonDefault = lists.filter { $0.group == nil && $0.name != ReminderDefaults.defaultListName }
+        guard let inbox = lists.first(where: { $0.name == ReminderDefaults.defaultListName }) else {
+            return nonDefault
+        }
+        return [inbox] + nonDefault
     }
 
     // MARK: - List CRUD

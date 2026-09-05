@@ -26,14 +26,13 @@ struct ReminderSegmentDetailView: View {
 
     let segment: ReminderSegment
     var isSelecting: Binding<Bool>? = nil
+    var headerAccessory: (() -> AnyView)? = nil
 
     @State private var viewModel: ReminderSegmentViewModel?
     @State private var scheduleConfig: ScheduleConfig?
     @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
-    @State private var activeCaptureDate: Date?
-    @State private var quickCaptureText = ""
     @State private var refreshTimer: Timer?
     @State private var showOverdue = false
     @State private var selectedTasks: Set<PersistentIdentifier> = []
@@ -58,6 +57,12 @@ struct ReminderSegmentDetailView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
+                if let headerAccessory = headerAccessory {
+                    headerAccessory()
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                }
                 if segment == .today && !(viewModel?.overdueDisplayTasks.isEmpty ?? true) {
                 Section {
                     if showOverdue {
@@ -110,28 +115,13 @@ struct ReminderSegmentDetailView: View {
             }
         }
         .listStyle(.plain)
+        .listSectionSpacing(0)
+        .listRowSpacing(0)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.bottom, 72, for: .scrollContent)
         .scrollContentBackground(.hidden)
-        .background(AppTheme.colors.secondaryBackground)
         .scrollDismissesKeyboard(.interactively)
-        .simultaneousGesture(
-            TapGesture().onEnded { /* tap dismiss handled by QuickCaptureRow internally */ }
-        )
-        .quickCaptureScroll(isActive: activeCaptureDate != nil, proxy: proxy)
     }
-        .overlay(alignment: .bottomTrailing) {
-            ReminderFloatingAddButton {
-                if segment == .upcoming {
-                    newReminderConfig = NewReminderConfig(initialDate: nil, initialListID: nil, initialTitle: "")
-                } else {
-                    activeCaptureDate = Date()
-                }
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 24)
-            .opacity(activeCaptureDate == nil && !selecting ? 1 : 0)
-            .allowsHitTesting(activeCaptureDate == nil && !selecting)
-            .animation(.easeInOut(duration: 0.15), value: activeCaptureDate == nil)
-        }
         .overlay(alignment: .bottom) {
             if selecting {
                 BulkActionsToolbar(
@@ -289,14 +279,6 @@ struct ReminderSegmentDetailView: View {
             } else {
                 reorderableFlatContent(with: vm)
             }
-
-            if activeCaptureDate != nil && !selecting {
-                QuickCaptureRow(
-                    text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: activeCaptureDate) },
-                    onDismiss: { activeCaptureDate = nil }
-                )
-            }
         } header: {
             if let subtitle = segment.subtitle(now: vm.now), !subtitle.isEmpty {
                 Text(subtitle)
@@ -317,53 +299,47 @@ struct ReminderSegmentDetailView: View {
         if !groups.isEmpty {
             ForEach(groups) { group in
                 switch group {
-                case .categoryHeader(_, let title):
-                    categoryHeaderRow(title: title)
+                case .monthHeader(_, let date, let title):
+                    monthHeaderRow(title: title, date: date)
 
-                case .daySection(let id, let date, let title, let tasks, let isInHorizon):
+                case .monthSection(_, let date, let title, let dayGroups, _):
+                    if dayGroups.isEmpty {
+                        emptyMonthRow(title: title, date: date)
+                    } else {
+                        monthSectionView(title: title, date: date, dayGroups: dayGroups, vm: viewModel)
+                    }
+
+                case .daySection(_, let date, let title, let tasks, let isInHorizon):
                     if tasks.isEmpty {
-                        emptyDayRow(id: id, title: title, date: date)
+                        emptyDayRow(title: title, date: date)
                     } else {
                         let sectionNodes = viewModel?.flatNodes(for: tasks) ?? []
                         Section {
                             ForEach(sectionNodes) { node in
                                 taskListRow(node, showsDueDate: false)
                             }
-
-                            if activeCaptureDate == date {
-                                QuickCaptureRow(
-                                    text: $quickCaptureText,
-                                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
-                                    onDismiss: { activeCaptureDate = nil }
-                                )
-                            } else {
-                                addReminderButton(date: date)
-                            }
                         } header: {
                             dayHeader(title: title, date: date, isInHorizon: isInHorizon)
                         }
-                    }
-
-                case .monthSection(_, let date, let title, let dayGroups, let isCollapsible):
-                    if dayGroups.isEmpty {
-                        emptyMonthRow(title: title, date: date)
-                    } else {
-                        monthSectionView(title: title, date: date, dayGroups: dayGroups, isCollapsible: isCollapsible, vm: vm)
                     }
                 }
             }
         }
     }
 
-    private func categoryHeaderRow(title: String) -> some View {
+    private func monthHeaderRow(title: String, date: Date) -> some View {
         Section {
             EmptyView()
                 .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
         } header: {
             Text(title)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(AppTheme.colors.textPrimary)
                 .textCase(nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 24)
+                .padding(.bottom, 4)
         }
     }
 
@@ -377,22 +353,12 @@ struct ReminderSegmentDetailView: View {
             .padding(.bottom, 4)
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    activeCaptureDate = date
-                }
+                startCapture(for: date)
             }
     }
 
-    private func emptyDayRow(id: String, title: String, date: Date) -> some View {
+    private func emptyDayRow(title: String, date: Date) -> some View {
         Section {
-            if activeCaptureDate == date {
-                QuickCaptureRow(
-                    text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
-                    onDismiss: { activeCaptureDate = nil }
-                )
-            }
-
             EmptyView()
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -405,89 +371,38 @@ struct ReminderSegmentDetailView: View {
                 .padding(.vertical, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeCaptureDate = date
-                    }
+                    startCapture(for: date)
                 }
         }
     }
 
     private func emptyMonthRow(title: String, date: Date) -> some View {
         Section {
-            if activeCaptureDate == date {
-                QuickCaptureRow(
-                    text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
-                    onDismiss: { activeCaptureDate = nil }
-                )
-            }
-
             EmptyView()
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
         } header: {
             Text(title)
-                .font(.subheadline)
+                .font(.headline)
                 .foregroundStyle(AppTheme.colors.textTertiary)
                 .textCase(nil)
-                .padding(.vertical, 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 24)
+                .padding(.bottom, 4)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeCaptureDate = date
-                    }
+                    startCapture(for: date)
                 }
         }
     }
 
-    private func addReminderButton(date: Date) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: "plus")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Text("New Reminder")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                activeCaptureDate = date
-            }
-        }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .accessibilityIdentifier("upcoming-add-reminder-\(date)")
-    }
-
-    private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], isCollapsible: Bool, vm: ReminderSegmentViewModel) -> some View {
+    private func monthSectionView(title: String, date: Date, dayGroups: [TaskUIModel.DayInMonth], vm: ReminderSegmentViewModel?) -> some View {
         Section {
-            if activeCaptureDate == date {
-                QuickCaptureRow(
-                    text: $quickCaptureText,
-                    onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: date) },
-                    onDismiss: { activeCaptureDate = nil }
-                )
-            }
-
             ForEach(dayGroups) { dayGroup in
-                let dayNodes = vm.flatNodes(for: dayGroup.tasks)
+                let dayNodes = vm?.flatNodes(for: dayGroup.tasks) ?? []
                 Section {
                     ForEach(dayNodes) { node in
-                                taskListRow(node, showsDueDate: false)
-                    }
-
-                    if activeCaptureDate == dayGroup.date {
-                        QuickCaptureRow(
-                            text: $quickCaptureText,
-                            onSubmit: { viewModel?.commitQuickCapture(text: $0, notes: $1, captureDate: dayGroup.date) },
-                            onDismiss: { activeCaptureDate = nil }
-                        )
-                    } else if !dayGroup.tasks.isEmpty {
-                                addReminderButton(date: dayGroup.date)
+                        taskListRow(node, showsDueDate: false)
                     }
                 } header: {
                     Text(dayGroup.title)
@@ -497,25 +412,27 @@ struct ReminderSegmentDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                activeCaptureDate = dayGroup.date
-                            }
+                            startCapture(for: dayGroup.date)
                         }
-                        .listRowBackground(Color.clear)
                 }
             }
         } header: {
             Text(title)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(AppTheme.colors.textPrimary)
                 .textCase(nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 24)
+                .padding(.bottom, 4)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeCaptureDate = date
-                    }
+                    startCapture(for: date)
                 }
         }
+    }
+
+    private func startCapture(for date: Date) {
+        appState.pendingCaptureDate = date
     }
 
     private func sectionHeader(title: String, subtitle: String?, kind: TaskUIModel.DatedSection.Kind?) -> some View {
@@ -583,8 +500,6 @@ struct ReminderSegmentDetailView: View {
             onDelete: { viewModel?.delete(task: task) },
             onSwipeNextDay: (segment == .today || segment == .tomorrow) ? { viewModel?.rescheduleToNextDay(task) } : nil,
             onTap: {
-                activeCaptureDate = nil
-                quickCaptureText = ""
                 editingTask = task
             },
             showsDueDate: showsDueDate,

@@ -6,69 +6,40 @@ struct ListsTabView: View {
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
     @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
-    let onSettings: () -> Void
+    let headerAccessory: (() -> AnyView)?
+
+    init(headerAccessory: (() -> AnyView)? = nil) {
+        self.headerAccessory = headerAccessory
+    }
 
     @State private var viewModel: ListsTabViewModel?
     @State private var showListCreationSheet = false
     @State private var showGroupCreationSheet = false
     @State private var groupCreationSourceList: ReminderList?
-    @State private var capturingGroupID: PersistentIdentifier?
-    @State private var captureText = ""
-    @FocusState private var isCaptureFocused: Bool
     @State private var listToDeleteAll: ReminderList?
     @State private var showDeleteAllAlert = false
 
     var body: some View {
-        NavigationStack {
-            alertsContainer
-        }
+        alertsContainer
     }
 
     private var listContent: some View {
-        ScrollViewReader { proxy in
-            List {
-                defaultListSection
-                ungroupedSection
-                groupSections
+        List {
+            if let headerAccessory = headerAccessory {
+                headerAccessory()
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.secondaryBackground)
-            .scrollDismissesKeyboard(.interactively)
-            .onChange(of: capturingGroupID) { _, id in
-                if id != nil {
-                    DispatchQueue.main.async {
-                        withAnimation { proxy.scrollTo("group-list-capture", anchor: .bottom) }
-                    }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                guard capturingGroupID != nil else { return }
-                DispatchQueue.main.async {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        proxy.scrollTo("group-list-capture", anchor: .bottom)
-                    }
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .quickCaptureCommitted)) { _ in
-                guard capturingGroupID != nil else { return }
-                DispatchQueue.main.async {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        proxy.scrollTo("group-list-capture", anchor: .bottom)
-                    }
-                }
-            }
+            listsSection
         }
-        .navigationTitle("Organize")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    onSettings()
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-            }
-        }
+        .listStyle(.plain)
+        .listSectionSpacing(0)
+        .listRowSpacing(0)
+        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.bottom, 72, for: .scrollContent)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var alertsContainer: some View {
@@ -173,41 +144,40 @@ struct ListsTabView: View {
             }
     }
 
-    // MARK: - Default List Section
+    // MARK: - Lists Section
 
-    private var defaultListSection: some View {
-        Section {
-            if let defaultList = viewModel?.defaultList {
-                NavigationLink {
-                    ListDetailView(listID: defaultList.persistentModelID)
-                } label: {
-                    listRow(list: defaultList)
-                }
-                .accessibilityIdentifier("default-list-link")
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-        } header: {
-            HStack {
-                Text("Inbox")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                Spacer()
-            }
-        }
-    }
-
-    // MARK: - Ungrouped Lists Section
-
-    private var ungroupedSection: some View {
-        let items = viewModel?.ungroupedLists ?? []
+    private var listsSection: some View {
+        let ungroupedItems = viewModel?.ungroupedLists ?? []
         return Section {
-            ForEach(items) { list in
+            ForEach(ungroupedItems) { list in
                 listNavigationLink(for: list)
             }
             .onMove { fromOffsets, toOffset in
                 withAnimation(.easeInOut(duration: 0.18)) {
-                    viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items)
+                    viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: ungroupedItems)
+                }
+            }
+
+            ForEach(groups) { group in
+                let items = viewModel?.listsInGroup(group) ?? []
+                DisclosureGroup {
+                    ForEach(items) { list in
+                        listNavigationLink(for: list)
+                    }
+                    .onMove { fromOffsets, toOffset in
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items, group: group)
+                        }
+                    }
+                } label: {
+                    groupHeaderRow(for: group, count: items.count)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+            .onMove { fromOffsets, toOffset in
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    viewModel?.moveGroups(fromOffsets: fromOffsets, toOffset: toOffset)
                 }
             }
 
@@ -230,75 +200,33 @@ struct ListsTabView: View {
         }
     }
 
-    // MARK: - Group Sections
-
-    private var groupSections: some View {
-        Section {
-            ForEach(Array(groups.enumerated()), id: \.element.persistentModelID) { index, group in
-                let items = viewModel?.listsInGroup(group) ?? []
-                DisclosureGroup {
-                    ForEach(items) { list in
-                        listNavigationLink(for: list)
-                    }
-                    .onMove { fromOffsets, toOffset in
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            viewModel?.moveLists(fromOffsets: fromOffsets, toOffset: toOffset, in: items, group: group)
-                        }
-                    }
-                    groupListCaptureRow(for: group)
-                } label: {
-                    HStack {
-                        Image(systemName: "folder")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                        Text(group.name)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(AppTheme.colors.textPrimary)
-                        Spacer()
-                        Text("\(items.count)")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.colors.fillSubtle)
-                            .clipShape(Capsule())
-                    }
-                    .contextMenu {
-                        Button("Rename") {
-                            viewModel?.groupRenameText = group.name
-                            viewModel?.renameGroup = group
-                            viewModel?.isGroupRenamePresented = true
-                        }
-                        Button("Delete Group", role: .destructive) {
-                            viewModel?.deleteGroup = group
-                        }
-                    }
-                }
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+    private func groupHeaderRow(for group: ReminderListGroup, count: Int) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: "folder")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+            Text(group.name)
+                .font(.system(size: 17))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+            Spacer()
+            Text("\(count)")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(AppTheme.colors.fillSubtle)
+                .clipShape(Capsule())
+        }
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .contextMenu {
+            Button("Rename") {
+                viewModel?.groupRenameText = group.name
+                viewModel?.renameGroup = group
+                viewModel?.isGroupRenamePresented = true
             }
-            .onMove { fromOffsets, toOffset in
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    viewModel?.moveGroups(fromOffsets: fromOffsets, toOffset: toOffset)
-                }
-            }
-
-            newGroupRow
-        } header: {
-            HStack {
-                Text("Groups")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                Spacer()
-                Button {
-                    groupCreationSourceList = nil
-                    showGroupCreationSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(AppTheme.colors.textSecondary)
-                }
-                .contentShape(Rectangle())
+            Button("Delete Group", role: .destructive) {
+                viewModel?.deleteGroup = group
             }
         }
     }
@@ -324,85 +252,6 @@ struct ListsTabView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .accessibilityIdentifier("new-list-row")
-    }
-
-    private var newGroupRow: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "plus")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Text("New Group")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            groupCreationSourceList = nil
-            showGroupCreationSheet = true
-        }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .accessibilityIdentifier("new-group-row")
-    }
-
-    @ViewBuilder
-    private func groupListCaptureRow(for group: ReminderListGroup) -> some View {
-        if capturingGroupID == group.persistentModelID {
-            HStack(spacing: 16) {
-                Circle()
-                    .fill(AppTheme.colors.primaryAction)
-                    .frame(width: 20, height: 20)
-
-                NonDismissingTextField(
-                    text: $captureText,
-                    placeholder: "New List",
-                    onSubmit: {
-                        let t = captureText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !t.isEmpty else {
-                            isCaptureFocused = false
-                            return
-                        }
-                        viewModel?.createList(name: captureText, group: group)
-                        captureText = ""
-                        isCaptureFocused = false
-                    },
-                    isFocused: $isCaptureFocused
-                )
-                .onChange(of: isCaptureFocused) { _, focused in
-                    if !focused {
-                        capturingGroupID = nil
-                    }
-                }
-            }
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            .id("group-list-capture")
-        } else {
-            HStack(spacing: 16) {
-                Image(systemName: "plus")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-
-                Text("New List")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-
-                Spacer(minLength: 0)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                captureText = ""
-                capturingGroupID = group.persistentModelID
-                DispatchQueue.main.async {
-                    isCaptureFocused = true
-                }
-            }
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-        }
     }
 
     // MARK: - List Navigation Link

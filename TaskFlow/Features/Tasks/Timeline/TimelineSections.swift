@@ -3,13 +3,13 @@ import SwiftData
 
 struct TaskUIModel {
     enum UpcomingGroup: Identifiable {
-        case categoryHeader(id: String, title: String)
+        case monthHeader(id: String, date: Date, title: String)
         case daySection(id: String, date: Date, title: String, tasks: [TaskItem], isInHorizon: Bool)
         case monthSection(id: String, date: Date, title: String, dayGroups: [DayInMonth], isCollapsible: Bool)
 
         var id: String {
             switch self {
-            case .categoryHeader(let id, _): return id
+            case .monthHeader(let id, _, _): return id
             case .daySection(let id, _, _, _, _): return id
             case .monthSection(let id, _, _, _, _): return id
             }
@@ -22,6 +22,7 @@ struct TaskUIModel {
         let title: String
         let tasks: [TaskItem]
     }
+
     struct DatedSection: Identifiable, Hashable {
         enum Kind: Hashable {
             case overdue

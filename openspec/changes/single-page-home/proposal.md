@@ -1,159 +1,106 @@
 ## Why
 
-The current 4-tab `TabView` is a dead-end architecture — it locks the app into exactly 4 views with no room to grow. The long-term vision is a **personal assistant platform** that expands beyond tasks into journaling, logging, calendar events, notes, and more. A tab bar can't support that.
+The current 4-tab `TabView` is a dead-end architecture. It splits the app into four isolated containers — four `NavigationStack`s, four different capture patterns (per-screen FAB, inline date-aware quick-capture rows), and no shared command surface. Every new feature must be squeezed into one of four slots.
 
-The solution is a **single-page dashboard** as the app's entry point — a modular surface where each life domain gets a card. New modules (Journal, Calendar, Notes, etc.) can be added over time without restructuring navigation. Individual module pages are pushed from the dashboard via a shared `NavigationStack`.
+The fix is a **single-page layout**: the four primary surfaces become segments under one shared header, on one `NavigationStack`, with **one always-present capture bar** whose target is the selected segment. This buys three concrete things the tab bar can't:
 
-```
-TAB BAR (dead-end)              DASHBOARD (open)
-┌───┬───┬───┬───┐              ┌──────────────────────┐
-│ T │ T │ U │ L │              │  Module A      [>]   │
-├───┴───┴───┴───┤              │  Module B      [>]   │
-│               │              │  Module C      [>]   │
-│  4 slots max  │              │  Module D      [>]   │
-│  (can't grow) │              │  ...                 │
-└───────────────┘              │  (infinite)          │
-                               └──────────────────────┘
-```
+1. **One capture pattern** — a single persistent bar instead of screen-specific FAB/row behaviors, and it's always one tap away.
+2. **One navigation stack** — no split identities, `back` always means "back to the segment root".
+3. **Zero-tap segment switching** — Today → Upcoming stays a single tap, same as tabs, so task glanceability isn't sacrificed.
 
-The home page is a **glanceable command center** — like iOS widgets — where users see summaries, take quick actions, and tap into full detail pages. It is the foundation for the app's evolution from task manager to personal assistant.
+This is not the "infinite modules" dashboard from the earlier draft — a segmented control has the same slot ceiling as a tab bar. The honest trade is: we give up the extensibility story (Journal/Notes/Calendar cards) in exchange for a **unified capture + navigation surface**. If the assistant-platform expansion later requires more than 4 slots, that becomes a separate surface decision.
 
 ## What Changes
 
-Replace the `TabView` root navigation with a **single-page master-detail** pattern:
-
-### Home page (master)
-
-- **No FAB anywhere** — the FAB is removed from the entire app
-- **Persistent capture bar** at the bottom of every screen (home + all detail pages) — like ChatGPT's chat input bar. Always visible, always one tap away. This is the universal task creation pattern.
-- **Widget-like summary cards** for each module, some with expanded sizing
-- **Settings** → toolbar button (gear icon), pushes Settings as a detail page (not a sheet)
-- **Extensible** — new modules can be added as new cards without changing navigation
-
-### Card inventory (task-related modules)
-
-| Card | Content | Size | Component Type | Notes |
-|------|---------|------|----------------|-------|
-| **Overdue** | Count of overdue tasks + 1-2 titles | Compact (half-width) | Count card | Only shown when tasks are overdue; urgency signal |
-| **Today** | Task count + 1-2 task titles | Compact (half-width) | List card | Core attention card, checkmarks for quick completion |
-| **Tomorrow** | Task count + 1-2 task titles | Compact (half-width) | List card | Forward-looking, checkmarks |
-| **Upcoming** | Task count + next 1-2 tasks | Compact (half-width) | Count + preview | Week+ horizon |
-| **Organize** (renamed from Later) | List names + counts, group overview | **Expanded (full-width)** | List card | Primary organizational hub — deserves visual prominence |
-| **All Tasks** | Total active task count across all horizons | Compact (half-width) | Count card | Bird's-eye view of all work |
-| **Completed** | Count of tasks completed recently | Compact (half-width) | Stat card | Discoverable on home, not buried in Settings |
-
-### Component types
+Replace the `TabView` root with a single page: **top segmented control + segment content + persistent bottom capture bar**, all inside one shared `NavigationStack`.
 
 ```
-COUNT CARD              LIST CARD              STAT CARD
-┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-│  12 tasks    │       │  ☐ Task 1    │       │  ████████░░  │
-│  due today   │       │  ☐ Task 2    │       │  8/12 done   │
-└──────────────┘       └──────────────┘       └──────────────┘
- number + label         items + checkmarks     progress + stats
+[Organize]  [Today]  [Tomorrow]  [Upcoming]      ← top segmented control
+─────────────────────────────────────────────
+   segment content (the existing views,        ← one shared NavigationStack
+   NavigationStack wrappers stripped)              below this
+─────────────────────────────────────────────
+[●  New reminder —   [target chip ▾]   ]       ← persistent capture bar
 ```
 
-### Layout: 2-column grid
+### Segments
 
-The home page uses a 2-column grid for a dense, dashboard feel. The Organize card spans full width as the expanded anchor.
+| # | Segment | Content | Push targets |
+|---|---|---|---|
+| 1 | Organize | `ListsTabView` content (lists, groups, inline creation) | `ListDetailView`, etc. |
+| 2 | Today | `ReminderSegmentDetailView(.today)` | task editor via sheet |
+| 3 | Tomorrow | `ReminderSegmentDetailView(.tomorrow)` | task editor via sheet |
+| 4 | Upcoming | `ReminderSegmentDetailView(.upcoming)` | task editor via sheet |
 
-```
-┌────────────────────┬────────────────┐
-│  Overdue     (1)   │  Today     (3) │
-│  ☐ Call dentist    │  ☐ Finish rpt  │
-├────────────────────┼────────────────┤
-│  Tomorrow     (2)  │  Upcoming  (5) │
-│  ☐ Presentation    │  Next: Fri     │
-├────────────────────┴────────────────┤
-│  Organize (expanded)                │
-│  Inbox (5) · Work (3) · Pers (4)   │
-├─────────────────────────────────────┤
-│  All Tasks (12)  │  Completed (8)  │
-└─────────────────────────────────────┘
-```
+### Naming: segment is "Organize", list stays "Inbox"
 
-### Future modules (not in this change)
+- The 4th segment is **"Organize"** — NOT "Inbox" or "Later". The default list is already named "Inbox" (`ReminderDefaults.defaultListName`); a segment also called "Inbox" would put two "Inbox" labels on one screen (segment + section header + list row).
+- "Organize" is already the navigation title of this surface (`ListView.swift`), so no new naming is invented.
+- The default **list** keeps the name "Inbox"; capture while in the Organize segment lands in that list.
+- **Customer-facing rename:** "Later" → "Organize" touches the App Store listing and marketing articles (AGENTS.md lists "Later" as a customer-facing tab name). Flag for the content pipeline; not part of implementation tasks beyond renaming in-app strings.
 
-- Journal — daily entries, prompts, mood tracking
-- Calendar — events, schedule overview
-- Notes — quick capture, linked to tasks
-- Logging — habits, time tracking, mood
-- More TBD
+### Capture bar
 
-### Card behavior
+A single **persistent, non-dismissing** bar pinned at the bottom of every screen (segment root AND pushed details — ListDetail, etc.). Target = the selected segment, always resolved and always visible via a tappable target chip.
 
-- **Tap card or chevron** → pushes full detail page onto a single shared `NavigationStack`
-- **Checkmarks** on task titles for quick completion (like iOS widget actions)
-- **No complex interactions** on cards — no reschedule, no edit, no reorder
-- **Empty sections** → collapse or show subtle "All clear" state
-- **Module-specific CTAs** — each module defines its own quick actions (future)
-- **Arrangeable** — users can reorder cards on the home page to prioritize what matters to them
-- **Hideable** — users can hide cards they don't use (e.g., hide Overdue if they never have overdue tasks)
+| Segment | Default target | Chip shows | Tap chip → |
+|---|---|---|---|
+| Organize | default "Inbox" list, undated | `Inbox` | — (no date) |
+| Today | due today | `Today` | date/time picker if needed |
+| Tomorrow | due tomorrow | `Tomorrow` | date/time picker if needed |
+| Upcoming | nearest upcoming day = `ReminderSegmentLogic.upcomingStart` (D+2) | `Jul 8` (resolved date) | existing `TaskScheduleDatePickerSheet` (`.date` focus) |
 
-### Detail pages
+**Upcoming semantics (Decision 1):** the bar's default target is D+2 — the horizon start (`TimeSegments.swift:216`). A captured task lands under the first "next week" day section, visibly where the user is looking.
 
-- **Overdue detail** → `ReminderSegmentDetailView(segment: .overdue)` (existing view)
-- **Today detail** → `ReminderSegmentDetailView(segment: .today)` (existing view)
-- **Tomorrow detail** → `ReminderSegmentDetailView(segment: .tomorrow)` (existing view)
-- **Upcoming detail** → `ReminderSegmentDetailView(segment: .upcoming)` (existing view)
-- **Organize detail** → existing `ListsTabView` content (list of lists, groups, full management)
-- **All Tasks detail** → view showing all active tasks across all time horizons
-- **Completed detail** → existing `CompletedView` (recently completed, undo, delete)
-- **All detail pages** have the persistent capture bar at the bottom (replaces FAB)
-- Back button returns to home
+- **One-shot per session:** every capture session defaults to D+2; picking a date via the chip applies to that capture only — no persistent "remembered" date.
+- **Midnight rollover:** the chip recomputes via the existing minute-aligned timer path (`scheduleMinuteAlignedTimer`, `TimelineView.swift`); at midnight the horizon slides and the chip follows.
+- **Sorting:** new tasks stack under existing same-day tasks by `createdAt` (`defaultSort`, `TimeSegments.swift:195`).
+- **Specific-day fast path:** Upcoming keeps its per-day header capture rows for targeting an arbitrary day without the chip.
+- **Structural creation stays inline:** the Organize segment's "+ New List / + New Group" rows remain; the bar is *task* capture only.
+- Commit is context-blind to the list: tasks captured in any segment go to the default "Inbox" list unless adjusted in the editor.
 
 ### Navigation model
 
-```
-Home (single NavigationStack)
-  ├── tap Overdue card    → push OverdueDetail (ReminderSegmentDetailView)
-  ├── tap Today card      → push TodayDetail (ReminderSegmentDetailView)
-  ├── tap Tomorrow card   → push TomorrowDetail (ReminderSegmentDetailView)
-  ├── tap Upcoming card   → push UpcomingDetail (ReminderSegmentDetailView)
-  ├── tap Organize card   → push OrganizeDetail (ListsTabView content)
-  ├── tap All Tasks card  → push AllTasksDetail
-  ├── tap Completed card  → push CompletedDetail (CompletedView)
-  └── tap Settings        → push SettingsDetail (MoreView)
-```
+- **One shared `NavigationStack`** — all push targets (ListDetail, pushed details) live on it.
+- **Segment switch pops to root** and swaps content. No hidden per-segment stacks, no resurrection of a previous segment's depth.
+- **Back always means "back to the segment root."**
+- **Settings** stays reachable from the toolbar (existing gear/ellipsis), consistent with current per-screen menus.
 
-## Design Decisions
+### FAB removed entirely
+
+- `ReminderFloatingAddButton` overlay in `TimelineView` and the `FloatingAddButton` component are removed — replaced by the persistent capture bar.
+- The inline `activeCaptureDate`-driven quick-capture rows in Today/Tomorrow are removed (the bar replaces them). Upcoming's per-day header rows remain (specific-day fast path).
+
+### Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| FAB | Removed entirely | Replaced by persistent capture bar — cleaner UI, consistent pattern |
-| Task creation | Persistent capture bar at bottom of every screen | ChatGPT-style input bar — always visible, one tap away, familiar pattern |
-| Card interactivity | Checkmarks only + tap to navigate | Widget-like: minimal actions, not a full list |
-| Task titles per card | 1-2 max | Keeps cards compact, glanceable |
-| Empty sections | Collapse / "All clear" | Avoids noise, keeps dashboard clean |
-| Organize card (ex-Later) | Expanded size, list names + counts | Primary organizational hub — deserves visual prominence |
-| Overdue card | Separate card, only when overdue exists | Urgency signal, matches app icon badge logic |
-| All Tasks card | Total active count | Bird's-eye view of all work, not just today |
-| Completed card | Discoverable on home, not buried in Settings | Currently 3 taps deep — too hidden for a useful feature |
-| Navigation | Single shared `NavigationStack` | All detail pages push onto one stack |
-| Settings | Toolbar gear icon → push detail page | Consistent with single NavigationStack pattern, not a sheet
-| Deep linking | Out of scope for this change | Notifications open app to home page, no task-level routing |
-| Architecture | Modular dashboard | Supports future modules (Journal, Calendar, Notes, etc.) without nav restructuring |
-| Card customization | Users can reorder and hide cards | Personalized dashboard — each user prioritizes what matters to them |
-| Layout | 2-column grid | Dense, rich dashboard feel — more premium than single column |
-| Component types | Count card, List card, Stat card | Each card type matches its content — numbers get count cards, tasks get list cards |
-| Organize card | Full-width (spans both columns) | Expanded as the visual anchor — primary organizational hub |
+| Navigation surface | Top segmented control (4 segments) | Keeps zero-tap day switching — same glanceability as tabs |
+| Stack | One shared `NavigationStack`, pop-to-root on switch | No split identities; simple, predictable back |
+| Naming | Segment "Organize"; default list "Inbox" | Avoids double-"Inbox"; "Organize" already in code |
+| Task creation | Persistent contextual capture bar | One pattern everywhere; always visible; target = segment |
+| Capture target visibility | Always-on target chip | The bar never hides its date/list target — no ambiguity |
+| Upcoming capture default | D+2 (`upcomingStart`), one-shot | Horizon start; predictable, visible, adjustable via chip |
+| Upcoming date pick | Reuse `TaskScheduleDatePickerSheet` | Zero new picker machinery |
+| FAB | Removed entirely | Replaced by capture bar; single creation pattern |
+| Structural creation | Inline "+ New List / + New Group" rows stay | Bar is task capture only |
+| Specific-day capture (Upcoming) | Keep per-day header rows | Fast path for arbitrary dates, complements the bar |
+| Midnight handling | Recompute chip on minute-aligned timer | Horizon slides at midnight; chip follows |
+| In-flight changes | Cancel `fab-visibility-behavior`; absorb quick-capture + keyboard-chaining into the bar | Avoids throwaway work on a deleted pattern |
+| Extensibility | Deferred (future surface decision) | Segmented control has a slot ceiling; honest scope |
 
-## Specs to Replace
+### Specs to Replace
 
-- `openspec/specs/app-mental-model/spec.md` — two-axis model → modular dashboard model
-- `openspec/specs/tab-bar-navigation/spec.md` — TabView requirements → NavigationStack + push model
+- `openspec/specs/app-mental-model/spec.md` — two-axis tab model → single-page segmented model
+- `openspec/specs/tab-bar-navigation/spec.md` — TabView requirements → shared NavigationStack + segment switching
 
-## Impact
+### Impact
 
-- `MainTabView.swift` — rewrite: replace `TabView` with `ScrollView` + summary cards + `NavigationStack`
-- New: `HomeView.swift` or inline in `MainTabView` — summary card components
-- New: `CaptureBar.swift` — persistent task capture bar component (replaces FAB across entire app)
-- `TodayView.swift`, `TomorrowView.swift`, `UpcomingView.swift` — simplify to just `ReminderSegmentDetailView` (remove `NavigationStack` wrapper)
-- `ListView.swift` — extract content for use as detail page (no `NavigationStack` wrapper)
-- `CompletedView.swift` — may need minor adaptation for push navigation (currently expects to be pushed inside `MoreView`'s `NavigationStack`)
-- `FloatingAddButton.swift` — **removed** (replaced by persistent capture bar)
-- `ReminderSegmentDetailView.swift` — remove FAB overlay, integrate capture bar
-- `ContentView.swift` — no change
-- `TaskFlowApp.swift` — no change
-- All ViewModels — no change
-- All models — no change
+- `MainTabView.swift` — rewrite: segmented control + shared `NavigationStack` + persistent capture bar
+- New `CaptureBar.swift` (or evolve `QuickCaptureRow`) — persistent, focus-owning, target-chip bar
+- `TodayView.swift`, `TomorrowView.swift`, `UpcomingView.swift` — strip `NavigationStack` wrappers, keep toolbars
+- `ListView.swift` — strip `NavigationStack` wrapper; export segment content
+- `TimelineView.swift` — remove FAB overlay + Today/Tomorrow inline quick-capture rows; wire bar; keep Upcoming per-day capture
+- `FloatingAddButton.swift` / `ReminderFloatingAddButton` — removed
+- `MoreView.swift` — remains pushed from toolbar menus
+- All ViewModels, models — unchanged; commit paths reuse existing `commitQuickCapture` / `ReminderSegmentViewModel`

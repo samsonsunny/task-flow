@@ -21,7 +21,7 @@ private struct BulkScheduleConfig: Identifiable {
 
 struct ListDetailView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.editMode) private var editMode
+    @Environment(AppState.self) private var appState
     let listID: ReminderList.ID
 
     @Query(sort: \TaskItem.sortOrder, order: .forward) private var allTasks: [TaskItem]
@@ -32,23 +32,13 @@ struct ListDetailView: View {
     @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
     @State private var editingTask: TaskItem?
-    @State private var quickCaptureText = ""
     @State private var isSelecting = false
     @State private var selectedTasks: Set<PersistentIdentifier> = []
     @State private var showDeleteConfirmation = false
     @State private var showScrollToBottom = false
-    @FocusState private var quickCaptureFocused: Bool
 
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     private let newTaskScrollDuration: Double = 1.4
-
-    private var isBarIdle: Bool {
-        !quickCaptureFocused && quickCaptureText.isEmpty
-    }
-
-    private var hasValidCaptureContent: Bool {
-        !quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
 
     private func enterSelectionMode() {
         selectedTasks = []
@@ -129,6 +119,12 @@ struct ListDetailView: View {
                 viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
                 let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
                 viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
+                appState.activeListID = listID
+            }
+            .onDisappear {
+                if appState.activeListID == listID {
+                    appState.activeListID = nil
+                }
             }
             .onChange(of: allTasks) { _, newTasks in
                 let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }
@@ -144,15 +140,19 @@ struct ListDetailView: View {
         scrolledList(proxy: proxy)
             .navigationTitle(viewModel?.list?.name ?? "")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar(.hidden, for: .tabBar)
             .toolbar {
                 topBarToolbar
             }
             .overlay(alignment: .bottom) {
                 if isSelecting {
                     bulkActionsOverlay
-                } else {
-                    bottomBar(proxy: proxy)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !isSelecting && showScrollToBottom {
+                    scrollToBottomButton(proxy: proxy)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 12)
                 }
             }
     }
@@ -161,20 +161,12 @@ struct ListDetailView: View {
         listContent
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background(AppTheme.colors.secondaryBackground)
             .scrollDismissesKeyboard(.interactively)
             .onScrollGeometryChange(
                 for: ScrollGeometry.self,
                 of: { $0 },
                 action: { _, geometry in
                     updateScrollState(geometry)
-                }
-            )
-            .simultaneousGesture(
-                TapGesture().onEnded {
-                    if quickCaptureFocused {
-                        quickCaptureFocused = false
-                    }
                 }
             )
     }
@@ -230,15 +222,6 @@ struct ListDetailView: View {
         let overflows = geometry.contentSize.height > geometry.containerSize.height + 1
         let isNearBottom = geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - threshold
         showScrollToBottom = overflows && !isNearBottom
-    }
-
-    private func bottomBar(proxy: ScrollViewProxy) -> some View {
-        VStack(spacing: 0) {
-            if showScrollToBottom {
-                scrollToBottomButton(proxy: proxy)
-            }
-            quickCaptureBar
-        }
     }
 
     @ToolbarContentBuilder
@@ -327,90 +310,6 @@ struct ListDetailView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var quickCaptureBar: some View {
-        HStack(spacing: 10) {
-            if isBarIdle {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.primaryAction)
-                    .transition(.scale.combined(with: .opacity))
-                    .allowsHitTesting(false)
-                    .accessibilityIdentifier("list-bar-plus")
-            }
-
-            ZStack(alignment: .topLeading) {
-                TextField("", text: $quickCaptureText, axis: .vertical)
-.focused($quickCaptureFocused)
-                        .lineLimit(1...5)
-                        .frame(minHeight: 28, alignment: .center)
-                        .submitLabel(.return)
-                        .textInputAutocapitalization(.sentences)
-                        .accessibilityIdentifier("list-bar-field")
-                        .onSubmit { commitQuickCapture() }
-                        .onChange(of: quickCaptureText) { _, newValue in
-                            guard newValue.contains("\n") else { return }
-                            quickCaptureText = newValue.replacingOccurrences(of: "\n", with: "")
-                            commitQuickCapture()
-                        }
-
-                if quickCaptureText.isEmpty {
-                    Text("Add a task...")
-                        .foregroundStyle(AppTheme.colors.textSecondary)
-                        .frame(minHeight: 28, alignment: .center)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.trailing, 48)
-        }
-        .padding(.leading, 14)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-        .onTapGesture { quickCaptureFocused = true }
-        .animation(.easeInOut(duration: 0.15), value: isBarIdle)
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 5)
-        .overlay(alignment: .bottomTrailing) {
-            Button {
-                commitQuickCapture()
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
-                    .frame(width: 28, height: 28)
-                    .background(Circle().fill(AppTheme.colors.primaryAction))
-            }
-            .buttonStyle(.plain)
-            .opacity(hasValidCaptureContent ? 1 : 0)
-            .allowsHitTesting(hasValidCaptureContent)
-            .disabled(!hasValidCaptureContent)
-            .animation(.easeInOut(duration: 0.15), value: hasValidCaptureContent)
-            .accessibilityIdentifier("list-bar-submit")
-            .padding(.trailing, 14)
-            .padding(.bottom, 10)
-        }
-        .padding(.horizontal, quickCaptureFocused ? 8 : 32)
-        .animation(.easeInOut(duration: 0.2), value: quickCaptureFocused)
-        .padding(.bottom, 12)
-        .frame(maxWidth: .infinity)
-    }
-
-    private func commitQuickCapture() {
-        let text = quickCaptureText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            quickCaptureFocused = false
-            return
-        }
-        quickCaptureText = ""
-        viewModel?.commitQuickCapture(text: text, in: listID)
-    }
-
     private func taskListRow(_ node: FlatTaskNode) -> some View {
         let task = node.task
         let sibs = viewModel?.siblings(of: task) ?? []
@@ -446,7 +345,6 @@ struct ListDetailView: View {
             onMoveToTop: sibs.count > 1 ? { viewModel?.moveToTop(task: task) } : nil,
             onMoveToBottom: sibs.count > 1 ? { viewModel?.moveToBottom(task: task) } : nil,
             onTap: {
-                quickCaptureFocused = false
                 editingTask = task
             },
             showsDueDate: true,

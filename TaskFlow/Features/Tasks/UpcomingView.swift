@@ -1,37 +1,13 @@
 import SwiftUI
 
 struct UpcomingView: View {
-    let onSettings: () -> Void
-    @State private var isSelecting = false
+    let headerAccessory: (() -> AnyView)?
+
+    init(headerAccessory: (() -> AnyView)? = nil) {
+        self.headerAccessory = headerAccessory
+    }
 
     var body: some View {
-        NavigationStack {
-            ReminderSegmentDetailView(segment: .upcoming, isSelecting: $isSelecting)
-                .navigationTitle(ReminderSegment.upcoming.navigationTitle)
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if isSelecting {
-                            Button("Done") {
-                                isSelecting = false
-                            }
-                        } else {
-                            Menu {
-                                Button("Select Items") {
-                                    isSelecting = true
-                                }
-                                Divider()
-                                Button {
-                                    onSettings()
-                                } label: {
-                                    Label("Settings", systemImage: "gearshape")
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                        }
-                    }
-                }
-        }
+        ReminderSegmentDetailView(segment: .upcoming, headerAccessory: headerAccessory)
     }
 }

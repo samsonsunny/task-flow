@@ -229,7 +229,8 @@ enum ReminderSegmentLogic {
         let horizonEnd = calendar.date(byAdding: .day, value: 7, to: start) ?? start
 
         let currentMonthStart = calendar.dateInterval(of: .month, for: todayStart)?.start ?? todayStart
-        let windowEnd = calendar.date(byAdding: .month, value: 12, to: currentMonthStart) ?? calendar.startOfDay(for: now)
+        let gridEnd = calendar.date(byAdding: .month, value: 2, to: currentMonthStart) ?? currentMonthStart
+        let yearWindowEnd = calendar.date(byAdding: .month, value: 12, to: currentMonthStart) ?? gridEnd
 
         func tasksOn(_ dayStart: Date) -> [TaskItem] {
             sortedTasks(
@@ -242,100 +243,59 @@ enum ReminderSegmentLogic {
             )
         }
 
-        var groups: [TaskUIModel.UpcomingGroup] = []
-
-        for offset in 0..<7 {
-            let dayStart = calendar.date(byAdding: .day, value: offset, to: start) ?? start
-            let tasks = tasksOn(dayStart)
-            let title = TaskUIModel.compactDayTitle(for: dayStart, calendar: calendar)
-            let id = "h7-\(calendar.component(.year, from: dayStart))-\(calendar.ordinality(of: .day, in: .year, for: dayStart) ?? offset)"
-            groups.append(.daySection(id: id, date: dayStart, title: title, tasks: tasks, isInHorizon: true))
-        }
-
-        let nextYearTasks = allUpcoming.filter { task in
-            guard let due = task.dueDate else { return false }
-            let dayStart = calendar.startOfDay(for: due)
-            return dayStart >= horizonEnd && dayStart < windowEnd
-        }
-
-        let startMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: horizonEnd))!
-        let endMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: windowEnd))!
-
-        var monthStart = startMonth
-        while monthStart < endMonth {
-            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: monthStart) else { break }
-
-            let monthTasks = nextYearTasks.filter { task in
-                guard let due = task.dueDate else { return false }
-                return due >= monthStart && due < nextMonth
+        func dayGroups(from monthTasks: [TaskItem]) -> [TaskUIModel.DayInMonth] {
+            let sortedDates = Set(monthTasks.compactMap { $0.dueDate.map { calendar.startOfDay(for: $0) } }).sorted()
+            return sortedDates.map { date in
+                let tasks = sortedTasks(
+                    monthTasks.filter { task in
+                        guard let due = task.dueDate else { return false }
+                        return calendar.isDate(due, inSameDayAs: date)
+                    },
+                    for: .upcoming,
+                    calendar: calendar
+                )
+                let id = "d-\(calendar.component(.year, from: date))-\(calendar.ordinality(of: .day, in: .year, for: date) ?? 0)"
+                return TaskUIModel.DayInMonth(id: id, date: date, title: TaskUIModel.compactDayTitle(for: date, calendar: calendar), tasks: tasks)
             }
+        }
 
+        var groups: [TaskUIModel.UpcomingGroup] = []
+        var offset = 0
+
+        var monthStart = currentMonthStart
+        while monthStart < yearWindowEnd {
+            guard let nextMonthStart = calendar.date(byAdding: .month, value: 1, to: monthStart) else { break }
             let monthTitle = TaskUIModel.monthTitle(for: monthStart, relativeTo: todayStart, calendar: calendar)
 
-            let dayGroups: [TaskUIModel.DayInMonth]
-            if !monthTasks.isEmpty {
-                let sortedDates = Set(monthTasks.compactMap { $0.dueDate.map { calendar.startOfDay(for: $0) } }).sorted()
-                dayGroups = sortedDates.map { date in
-                    let tasks = sortedTasks(
-                        monthTasks.filter { task in
-                            guard let due = task.dueDate else { return false }
-                            return calendar.isDate(due, inSameDayAs: date)
-                        },
-                        for: .upcoming,
-                        calendar: calendar
-                    )
-                    let dayTitle = TaskUIModel.compactDayTitle(for: date, calendar: calendar)
-                    let id = "d-\(calendar.component(.year, from: date))-\(calendar.ordinality(of: .day, in: .year, for: date) ?? 0)"
-                    return TaskUIModel.DayInMonth(id: id, date: date, title: dayTitle, tasks: tasks)
+            if monthStart < gridEnd {
+                let firstDay = max(monthStart, start)
+                if firstDay < nextMonthStart {
+                    let monthID = "m-\(calendar.component(.year, from: monthStart))-\(calendar.component(.month, from: monthStart))"
+                    groups.append(.monthHeader(id: monthID, date: monthStart, title: monthTitle))
+
+                    var day = firstDay
+                    while day < nextMonthStart {
+                        let tasks = tasksOn(day)
+                        let title = TaskUIModel.compactDayTitle(for: day, calendar: calendar)
+                        let isInHorizon = day < horizonEnd
+                        let id = "u-\(calendar.component(.year, from: day))-\(calendar.ordinality(of: .day, in: .year, for: day) ?? offset)"
+                        groups.append(.daySection(id: id, date: day, title: title, tasks: tasks, isInHorizon: isInHorizon))
+                        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+                        day = nextDay
+                        offset += 1
+                    }
                 }
             } else {
-                dayGroups = []
-            }
-
-            let mid = "m-\(calendar.component(.year, from: monthStart))-\(calendar.component(.month, from: monthStart))"
-            groups.append(.monthSection(id: mid, date: monthStart, title: monthTitle, dayGroups: dayGroups, isCollapsible: false))
-
-            monthStart = nextMonth
-        }
-
-        let beyondTasks = allUpcoming.filter { task in
-            guard let due = task.dueDate else { return false }
-            return calendar.startOfDay(for: due) >= windowEnd
-        }
-
-        if !beyondTasks.isEmpty {
-            let monthStarts = Set(beyondTasks.compactMap { task -> Date? in
-                guard let due = task.dueDate else { return nil }
-                let comps = calendar.dateComponents([.year, .month], from: due)
-                return calendar.date(from: comps)
-            }).sorted()
-
-            for monthStart in monthStarts {
-                let monthTasks = beyondTasks.filter { task in
+                let monthTasks = allUpcoming.filter { task in
                     guard let due = task.dueDate else { return false }
-                    return calendar.isDate(due, equalTo: monthStart, toGranularity: .month)
+                    return due >= monthStart && due < nextMonthStart
                 }
-
-                let monthTitle = TaskUIModel.monthTitle(for: monthStart, relativeTo: todayStart, calendar: calendar)
-                let sortedDates = Set(monthTasks.compactMap { $0.dueDate.map { calendar.startOfDay(for: $0) } }).sorted()
-
-                let dayGroups: [TaskUIModel.DayInMonth] = sortedDates.map { date in
-                    let tasks = sortedTasks(
-                        monthTasks.filter { task in
-                            guard let due = task.dueDate else { return false }
-                            return calendar.isDate(due, inSameDayAs: date)
-                        },
-                        for: .upcoming,
-                        calendar: calendar
-                    )
-                    let dayTitle = TaskUIModel.compactDayTitle(for: date, calendar: calendar)
-                    let id = "d-\(calendar.component(.year, from: date))-\(calendar.ordinality(of: .day, in: .year, for: date) ?? 0)"
-                    return TaskUIModel.DayInMonth(id: id, date: date, title: dayTitle, tasks: tasks)
-                }
-
-                let mid = "b-\(calendar.component(.year, from: monthStart))-\(calendar.component(.month, from: monthStart))"
+                let dayGroups = dayGroups(from: monthTasks)
+                let mid = "m2-\(calendar.component(.year, from: monthStart))-\(calendar.component(.month, from: monthStart))"
                 groups.append(.monthSection(id: mid, date: monthStart, title: monthTitle, dayGroups: dayGroups, isCollapsible: false))
             }
+
+            monthStart = nextMonthStart
         }
 
         return groups

@@ -4,6 +4,8 @@ import SwiftData
 @Observable
 final class AppState {
     private(set) var mutationCount: Int = 0
+    var activeListID: PersistentIdentifier?
+    var pendingCaptureDate: Date?
 
     private static let _currentDate: Date = {
         for arg in ProcessInfo.processInfo.arguments {
