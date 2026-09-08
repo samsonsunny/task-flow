@@ -1,5 +1,11 @@
 # Changelog
 
+## 26.9.9 — What's New
+
+- Today, Tomorrow, and Upcoming now live in the sidebar beside your lists — jump straight to the day you're planning
+- Tapping a task opens its details right on the page instead of a floating sheet
+- The capture bar only shows the keyboard when you're ready to type — at launch and on brand-new lists
+
 ## 26.6.24 — What's New
 
 - **All-New Sidebar Navigation** — Inbox, Overdue, and Completed tasks are now just a tap away in the sidebar, keeping your tab bar focused on Today, Tomorrow, and Upcoming.

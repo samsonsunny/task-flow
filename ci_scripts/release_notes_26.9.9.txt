@@ -1,0 +1,5 @@
+26.9.9
+
+- Today, Tomorrow, and Upcoming now live in the sidebar beside your lists — jump straight to the day you're planning
+- Tapping a task opens its details right on the page instead of a floating sheet
+- The capture bar only shows the keyboard when you're ready to type — at launch and on brand-new lists
