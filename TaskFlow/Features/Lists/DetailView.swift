@@ -104,8 +104,8 @@ struct ListDetailView: View {
             .sheet(item: $newReminderConfig) { config in
                 ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID, initialTitle: config.initialTitle)
             }
-            .sheet(item: $editingTask) { task in
-                ReminderEditorView(task: task)
+            .navigationDestination(item: $editingTask) { task in
+                ReminderEditorView(task: task, embedInNavigationStack: false)
             }
             .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
                 Button("Cancel", role: .cancel) {}
@@ -119,12 +119,6 @@ struct ListDetailView: View {
                 viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
                 let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
                 viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
-                appState.activeListID = listID
-            }
-            .onDisappear {
-                if appState.activeListID == listID {
-                    appState.activeListID = nil
-                }
             }
             .onChange(of: allTasks) { _, newTasks in
                 let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }

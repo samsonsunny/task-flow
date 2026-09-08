@@ -15,17 +15,41 @@ final class TaskFlowUITests: XCTestCase {
 
     override func tearDownWithError() throws { }
 
-    @MainActor
-    func testRootTabsArePresentAndTomorrowTabShowsTomorrowTask() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
+    private func launch(_ app: XCUIApplication, args: [String]) {
+        app.launchArguments = args
         app.launch()
+    }
 
-        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.tabBars.buttons["Tomorrow"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Upcoming"].exists)
+    private func openSidebar(_ app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["My Lists"].waitForExistence(timeout: 5))
+        app.buttons["My Lists"].tap()
+        XCTAssertTrue(app.navigationBars["My Lists"].waitForExistence(timeout: 5))
+    }
 
-        app.tabBars.buttons["Tomorrow"].tap()
+    private func openTimePage(_ app: XCUIApplication, row: String, title: String) {
+        openSidebar(app)
+        app.descendants(matching: .any).matching(identifier: row).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testTodayPageShowsTodayTasksAtLaunch() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        // Launch lands on the Today page with the capture bar focused once
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.segmentedControls["home-segment-picker"].exists)
+        XCTAssertTrue(app.textFields["capture-bar-field"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testSidebarTomorrowPageShowsTomorrowTasks() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        openTimePage(app, row: "sidebar-tomorrow-row", title: "Tomorrow")
         XCTAssertTrue(app.staticTexts["Prepare"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Reply to design review"].exists)
     }
@@ -33,9 +57,9 @@ final class TaskFlowUITests: XCTestCase {
     @MainActor
     func testUpcomingShowsDayAndMonthSections() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_SECTIONS", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_SECTIONS", "UITEST_FIXED_NOW_2026_05_13"])
 
+        XCTAssertTrue(app.navigationBars["Upcoming"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Fri, May 15"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Tue, May 19"].waitForExistence(timeout: 2))
@@ -43,7 +67,6 @@ final class TaskFlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Plan sprint kickoff"].exists)
 
         // Far-future tasks appear in month sections (D+2 → +∞ per mental model)
-        // Scroll down to reveal lazy-loaded List content outside visible area
         for _ in 0..<5 {
             if app.staticTexts["Far future milestone"].exists { break }
             app.collectionViews.firstMatch.swipeUp()
@@ -54,12 +77,10 @@ final class TaskFlowUITests: XCTestCase {
     @MainActor
     func testUpcomingShowsFarFutureTasksInMonthSections() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_EMPTY", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_OPEN_UPCOMING", "UITEST_FIXTURE_UPCOMING_EMPTY", "UITEST_FIXED_NOW_2026_05_13"])
 
-        // All future tasks appear — D+2 → +∞ per mental model spec
+        XCTAssertTrue(app.navigationBars["Upcoming"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 2))
-        // Scroll down to reveal lazy-loaded List content outside visible area
         for _ in 0..<5 {
             if app.staticTexts["Quarterly planning"].exists { break }
             app.collectionViews.firstMatch.swipeUp()
@@ -68,44 +89,37 @@ final class TaskFlowUITests: XCTestCase {
     }
 
     @MainActor
-    func testReminderCreateFlowRequiresContentBeforeSave() throws {
+    func testEditorSaveRequiresContent() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        // Switch to Upcoming tab where FAB opens the full editor
-        app.tabBars.buttons["Upcoming"].tap()
-        XCTAssertTrue(app.buttons["reminder-create-button"].waitForExistence(timeout: 2))
-        app.buttons["reminder-create-button"].tap()
-
-        let saveButton = app.buttons["reminder-editor-save"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 2))
-        XCTAssertFalse(saveButton.isEnabled)
+        openTimePage(app, row: "sidebar-tomorrow-row", title: "Tomorrow")
+        XCTAssertTrue(app.staticTexts["Reply to design review"].waitForExistence(timeout: 2))
+        app.staticTexts["Reply to design review"].tap()
 
         let titleField = app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch
         XCTAssertTrue(titleField.waitForExistence(timeout: 2))
-        titleField.tap()
-        titleField.typeText("Weekend plan")
-
+        let saveButton = app.buttons["reminder-editor-save"]
+        XCTAssertTrue(saveButton.exists)
         XCTAssertTrue(saveButton.isEnabled)
 
-        // Enable due date so it shows up in Today
-        app.switches["reminder-editor-has-date"].tap()
+        // Clearing the title disables Save
+        titleField.tap()
+        let current = (titleField.value as? String) ?? ""
+        titleField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        XCTAssertFalse(saveButton.isEnabled)
 
-        saveButton.tap()
-
-        // Verify it shows up in Today
-        app.tabBars.buttons["Today"].tap()
-        XCTAssertTrue(app.staticTexts["Weekend plan"].waitForExistence(timeout: 2))
+        // Typing re-enables it
+        titleField.typeText("Weekend plan")
+        XCTAssertTrue(saveButton.isEnabled)
     }
 
     @MainActor
     func testReminderEditFlowShowsExistingReminderValues() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Tomorrow"].tap()
+        openTimePage(app, row: "sidebar-tomorrow-row", title: "Tomorrow")
         app.staticTexts["Reply to design review"].tap()
 
         let titleField = app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch
@@ -123,65 +137,86 @@ final class TaskFlowUITests: XCTestCase {
     @MainActor
     func testQuickCaptureCommitsOnEnter() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        // Tap FAB to show quick capture row on Today tab
-        app.buttons["reminder-create-button"].tap()
+        // The capture bar lives at the bottom of the Today/time home
+        let captureField = app.textFields["capture-bar-field"]
+        XCTAssertTrue(captureField.waitForExistence(timeout: 5))
+        captureField.tap()
+        captureField.typeText("Test task\n")
 
-        // Wait for quick capture field to appear and ensure it's focused
-        let quickCaptureField = app.textFields["quick-capture-field"]
-        XCTAssertTrue(quickCaptureField.waitForExistence(timeout: 2))
-        quickCaptureField.tap()
-
-        // Type text and press Enter to commit (works with both software and hardware keyboard)
-        quickCaptureField.typeText("Test task\n")
-
-        // Verify the task appears in the list
         XCTAssertTrue(app.staticTexts["Test task"].waitForExistence(timeout: 2))
-
-        // Quick capture field stays visible for rapid chaining
-        XCTAssertTrue(quickCaptureField.exists)
+        XCTAssertTrue(captureField.exists)
     }
 
-    // MARK: - Later Tab Inline Creation Tests
+    // MARK: - Sidebar Tests
 
     @MainActor
-    func testLaterTabShowsInlineCreationRows() throws {
+    func testSidebarRevealShowsTimeRowsAndLists() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        openSidebar(app)
 
-        XCTAssertTrue(app.staticTexts["New List"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["New Group"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "sidebar-today-row").firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "sidebar-tomorrow-row").firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "sidebar-upcoming-row").firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "default-list-link").firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Inbox"].exists)
     }
 
     @MainActor
-    func testLaterTabFABRemoved() throws {
+    func testCaptureBarAbsentOnSidebar() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        // Present on the time home
+        XCTAssertTrue(app.textFields["capture-bar-field"].waitForExistence(timeout: 5))
 
-        let fab = app.buttons["reminder-create-button"]
-        XCTAssertFalse(fab.waitForExistence(timeout: 1))
+        openSidebar(app)
+
+        // Absent on the Lists overview
+        XCTAssertFalse(app.textFields["capture-bar-field"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testCaptureBarPresentInListDetail() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        openSidebar(app)
+        app.descendants(matching: .any).matching(identifier: "default-list-link").firstMatch.tap()
+
+        XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["capture-bar-field"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testSidebarTodayRowReturnsHome() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        openSidebar(app)
+        app.descendants(matching: .any).matching(identifier: "default-list-link").firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5))
+
+        // Back to the sidebar, then Today returns to the Today page
+        app.buttons["My Lists"].tap()
+        XCTAssertTrue(app.navigationBars["My Lists"].waitForExistence(timeout: 5))
+        app.descendants(matching: .any).matching(identifier: "sidebar-today-row").firstMatch.tap()
+
+        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["capture-bar-field"].waitForExistence(timeout: 2))
     }
 
     @MainActor
     func testListCreationSheetCreateDisabledWhenEmpty() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        openSidebar(app)
 
-        app.staticTexts["New List"].tap()
+        app.buttons["Add"].tap()
 
         let createButton = app.buttons["Create"]
         XCTAssertTrue(createButton.waitForExistence(timeout: 2))
@@ -191,32 +226,27 @@ final class TaskFlowUITests: XCTestCase {
     @MainActor
     func testListCreationSheetCancelDismisses() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        openSidebar(app)
 
-        app.staticTexts["New List"].tap()
+        app.buttons["Add"].tap()
 
         let cancelButton = app.buttons["Cancel"]
         XCTAssertTrue(cancelButton.waitForExistence(timeout: 2))
-
         cancelButton.tap()
 
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.navigationBars["My Lists"].waitForExistence(timeout: 2))
     }
 
     @MainActor
     func testListCreationViaSheet() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"]
-        app.launch()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
-        app.tabBars.buttons["Later"].tap()
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
+        openSidebar(app)
 
-        app.staticTexts["New List"].tap()
+        app.buttons["Add"].tap()
 
         let textField = app.textFields["List Name"]
         XCTAssertTrue(textField.waitForExistence(timeout: 2))
@@ -227,7 +257,29 @@ final class TaskFlowUITests: XCTestCase {
         XCTAssertTrue(createButton.isEnabled)
         createButton.tap()
 
-        XCTAssertTrue(app.navigationBars["Later"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Test List"].waitForExistence(timeout: 2))
+        // Auto-opens the newly created list's detail, capture bar focused once
+        XCTAssertTrue(app.navigationBars["Test List"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["capture-bar-field"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testBackFromEditorDoesNotRefocusCapture() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        openTimePage(app, row: "sidebar-tomorrow-row", title: "Tomorrow")
+
+        // Navigating to a time page must not pop the keyboard (intent-only focus)
+        XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1), "Switching pages opened the keyboard")
+
+        app.staticTexts["Reply to design review"].tap()
+        XCTAssertTrue(app.buttons["reminder-editor-save"].waitForExistence(timeout: 2))
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Tomorrow"].waitForExistence(timeout: 5))
+
+        // Returning from the editor must not refocus the capture bar
+        XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1), "Pop-back refocused the capture bar")
     }
 }

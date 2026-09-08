@@ -1,16 +1,13 @@
 import SwiftUI
 import SwiftData
 
-struct ListsTabView: View {
+struct ListsSidebarView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
     @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
-    let headerAccessory: (() -> AnyView)?
-
-    init(headerAccessory: (() -> AnyView)? = nil) {
-        self.headerAccessory = headerAccessory
-    }
+    @Binding var selection: SidebarDestination?
 
     @State private var viewModel: ListsTabViewModel?
     @State private var showListCreationSheet = false
@@ -24,22 +21,46 @@ struct ListsTabView: View {
     }
 
     private var listContent: some View {
-        List {
-            if let headerAccessory = headerAccessory {
-                headerAccessory()
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-            }
+        List(selection: $selection) {
+            timeSection
             listsSection
         }
         .listStyle(.plain)
         .listSectionSpacing(0)
         .listRowSpacing(0)
         .contentMargins(.top, 0, for: .scrollContent)
-        .contentMargins(.bottom, 72, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
+        .navigationTitle("My Lists")
+    }
+
+    // MARK: - Time Section
+
+    private var timeSection: some View {
+        Section {
+            timeRow(title: "Today", icon: "calendar", destination: .today, identifier: "sidebar-today-row")
+            timeRow(title: "Tomorrow", icon: "sun.max", destination: .tomorrow, identifier: "sidebar-tomorrow-row")
+            timeRow(title: "Upcoming", icon: "calendar.badge.clock", destination: .upcoming, identifier: "sidebar-upcoming-row")
+        }
+    }
+
+    private func timeRow(title: String, icon: String, destination: SidebarDestination, identifier: String) -> some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(AppTheme.colors.primaryAction)
+
+            Text(title)
+                .font(.system(size: 17))
+                .foregroundStyle(AppTheme.colors.textPrimary)
+
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .tag(destination)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .accessibilityIdentifier(identifier)
     }
 
     private var alertsContainer: some View {
@@ -48,8 +69,11 @@ struct ListsTabView: View {
                 ListCreationSheet(
                     modelContext: modelContext,
                     onCreate: { name, group in
-                        viewModel?.createList(name: name, group: group)
-                        viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+                        if let created = viewModel?.createList(name: name, group: group) {
+                            viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+                            selection = SidebarDestination.list(created.persistentModelID)
+                            appState.requestCaptureFocus()
+                        }
                     }
                 )
                 .presentationDetents([.medium])
@@ -151,7 +175,7 @@ struct ListsTabView: View {
         let ungroupedItems = viewModel?.ungroupedLists ?? []
         return Section {
             ForEach(ungroupedItems) { list in
-                listNavigationLink(for: list)
+                selectableListRow(for: list)
             }
             .onMove { fromOffsets, toOffset in
                 withAnimation(.easeInOut(duration: 0.18)) {
@@ -163,7 +187,7 @@ struct ListsTabView: View {
                 let items = viewModel?.listsInGroup(group) ?? []
                 DisclosureGroup {
                     ForEach(items) { list in
-                        listNavigationLink(for: list)
+                        selectableListRow(for: list)
                     }
                     .onMove { fromOffsets, toOffset in
                         withAnimation(.easeInOut(duration: 0.18)) {
@@ -237,18 +261,16 @@ struct ListsTabView: View {
 
     // MARK: - List Navigation Link
 
-    private func listNavigationLink(for list: ReminderList) -> some View {
-        NavigationLink {
-            ListDetailView(listID: list.persistentModelID)
-        } label: {
-            listRow(list: list)
-        }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .contextMenu {
-            contextMenuItems(for: list)
-        }
-        .swipeActions(edge: .trailing) {
+    private func selectableListRow(for list: ReminderList) -> some View {
+        listRow(list: list)
+            .tag(SidebarDestination.list(list.persistentModelID))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .accessibilityIdentifier(list.name == ReminderDefaults.defaultListName ? "default-list-link" : "list-link-\(list.name)")
+            .contextMenu {
+                contextMenuItems(for: list)
+            }
+            .swipeActions(edge: .trailing) {
             if list.name != ReminderDefaults.defaultListName {
                 let hasTasks = allTasks.contains(where: { $0.reminderList?.persistentModelID == list.persistentModelID })
                 let destinations = availableListsForMove(excluding: list)
@@ -393,15 +415,13 @@ struct ListsTabView: View {
 
             Spacer()
 
-            if count > 0 {
-                Text("\(count)")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textSecondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(AppTheme.colors.fillSubtle)
-                    .clipShape(Capsule())
-            }
+            Text("\(count)")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(AppTheme.colors.fillSubtle)
+                .clipShape(Capsule())
         }
     }
 }

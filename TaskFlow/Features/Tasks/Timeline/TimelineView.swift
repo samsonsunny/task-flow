@@ -26,7 +26,6 @@ struct ReminderSegmentDetailView: View {
 
     let segment: ReminderSegment
     var isSelecting: Binding<Bool>? = nil
-    var headerAccessory: (() -> AnyView)? = nil
 
     @State private var viewModel: ReminderSegmentViewModel?
     @State private var scheduleConfig: ScheduleConfig?
@@ -57,12 +56,6 @@ struct ReminderSegmentDetailView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                if let headerAccessory = headerAccessory {
-                    headerAccessory()
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
-                }
                 if segment == .today && !(viewModel?.overdueDisplayTasks.isEmpty ?? true) {
                 Section {
                     if showOverdue {
@@ -118,7 +111,6 @@ struct ReminderSegmentDetailView: View {
         .listSectionSpacing(0)
         .listRowSpacing(0)
         .contentMargins(.top, 0, for: .scrollContent)
-        .contentMargins(.bottom, 72, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
     }
@@ -172,8 +164,8 @@ struct ReminderSegmentDetailView: View {
         .sheet(item: $newReminderConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID, initialTitle: config.initialTitle)
         }
-        .sheet(item: $editingTask) { task in
-            ReminderEditorView(task: task)
+        .navigationDestination(item: $editingTask) { task in
+            ReminderEditorView(task: task, embedInNavigationStack: false)
         }
         .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}

@@ -17,6 +17,7 @@ struct ReminderEditorView: View {
     private let initialDate: Date?
     private let initialListID: ReminderList.ID?
     private let initialTitle: String
+    private let embedInNavigationStack: Bool
 
     @State private var viewModel: ReminderEditorViewModel?
     @State private var expandedPicker: ExpandedPicker?
@@ -27,48 +28,59 @@ struct ReminderEditorView: View {
     @State private var isListPickerPresented = false
     @FocusState private var isTitleFocused: Bool
 
-    init(task: TaskItem? = nil, initialDate: Date? = nil, initialListID: ReminderList.ID? = nil, initialTitle: String = "") {
+    init(task: TaskItem? = nil, initialDate: Date? = nil, initialListID: ReminderList.ID? = nil, initialTitle: String = "", embedInNavigationStack: Bool = true) {
         self.task = task
         self.initialDate = initialDate
         self.initialListID = initialListID
         self.initialTitle = initialTitle
+        self.embedInNavigationStack = embedInNavigationStack
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                contentSection
-                listSection
-                scheduleSection
-                if let parent = task, parent.parentTask == nil {
-                    subtaskSection(for: parent)
-                }
+        if embedInNavigationStack {
+            NavigationStack {
+                editorContent
             }
-            .navigationTitle(task == nil ? "New Task" : "Edit Task")
-            .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                let vm = ReminderEditorViewModel(
-                    modelContext: modelContext,
-                    task: task,
-                    reminderLists: reminderLists,
-                    reminderTags: reminderTags,
-                    initialDate: initialDate,
-                    initialListID: initialListID,
-                    initialTitle: initialTitle
-                )
-                viewModel = vm
-                if task == nil {
-                    isTitleFocused = true
-                }
+        } else {
+            editorContent
+        }
+    }
+
+    private var editorContent: some View {
+        Form {
+            contentSection
+            listSection
+            scheduleSection
+            if let parent = task, parent.parentTask == nil {
+                subtaskSection(for: parent)
             }
-            .onChange(of: reminderLists) { _, newValue in
-                viewModel?.update(reminderLists: newValue, reminderTags: reminderTags)
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            let vm = ReminderEditorViewModel(
+                modelContext: modelContext,
+                task: task,
+                reminderLists: reminderLists,
+                reminderTags: reminderTags,
+                initialDate: initialDate,
+                initialListID: initialListID,
+                initialTitle: initialTitle
+            )
+            viewModel = vm
+            if task == nil {
+                isTitleFocused = true
             }
-            .onChange(of: reminderTags) { _, newValue in
-                viewModel?.update(reminderLists: reminderLists, reminderTags: newValue)
-            }
-            .onChange(of: expandedPicker) { _, _ in isTitleFocused = false }
-            .toolbar {
+        }
+        .onChange(of: reminderLists) { _, newValue in
+            viewModel?.update(reminderLists: newValue, reminderTags: reminderTags)
+        }
+        .onChange(of: reminderTags) { _, newValue in
+            viewModel?.update(reminderLists: reminderLists, reminderTags: newValue)
+        }
+        .onChange(of: expandedPicker) { _, _ in isTitleFocused = false }
+        .toolbar {
+            if embedInNavigationStack {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         handleClose()
@@ -77,61 +89,61 @@ struct ReminderEditorView: View {
                     }
                     .accessibilityIdentifier("reminder-editor-close")
                 }
+            }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        saveReminder()
-                    } label: {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(viewModel?.draft.normalizedTitle.isEmpty ?? true)
-                    .accessibilityIdentifier("reminder-editor-save")
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    saveReminder()
+                } label: {
+                    Image(systemName: "checkmark")
                 }
+                .disabled(viewModel?.draft.normalizedTitle.isEmpty ?? true)
+                .accessibilityIdentifier("reminder-editor-save")
             }
-            .sheet(item: $editingSubtask) { subtask in
-                ReminderEditorView(task: subtask)
-            }
-            .sheet(item: $subtaskScheduleConfig) { config in
-                TaskScheduleDatePickerSheet(
-                    isPresented: Binding(
-                        get: { subtaskScheduleConfig != nil },
-                        set: { if !$0 { subtaskScheduleConfig = nil } }
-                    ),
-                    initialDueDate: config.subtask.dueDate,
-                    initialFocus: config.subtask.dueDate == nil ? .date : .time,
-                    onCommit: { dueDate, hasTime in
-                        viewModel?.scheduleSubtask(config.subtask, dueDate: dueDate, hasTime: hasTime)
+        }
+        .sheet(item: $editingSubtask) { subtask in
+            ReminderEditorView(task: subtask)
+        }
+        .sheet(item: $subtaskScheduleConfig) { config in
+            TaskScheduleDatePickerSheet(
+                isPresented: Binding(
+                    get: { subtaskScheduleConfig != nil },
+                    set: { if !$0 { subtaskScheduleConfig = nil } }
+                ),
+                initialDueDate: config.subtask.dueDate,
+                initialFocus: config.subtask.dueDate == nil ? .date : .time,
+                onCommit: { dueDate, hasTime in
+                    viewModel?.scheduleSubtask(config.subtask, dueDate: dueDate, hasTime: hasTime)
+                }
+            )
+        }
+        .sheet(isPresented: $isListPickerPresented) {
+            NavigationStack {
+                ListPickerView(
+                    allLists: reminderLists,
+                    selectedListName: viewModel?.draft.listName ?? "",
+                    onSelect: { selected in
+                        viewModel?.draft.listName = selected
+                        isListPickerPresented = false
                     }
                 )
-            }
-            .sheet(isPresented: $isListPickerPresented) {
-                NavigationStack {
-                    ListPickerView(
-                        allLists: reminderLists,
-                        selectedListName: viewModel?.draft.listName ?? "",
-                        onSelect: { selected in
-                            viewModel?.draft.listName = selected
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
                             isListPickerPresented = false
-                        }
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                isListPickerPresented = false
-                            }
                         }
                     }
                 }
-                .presentationDetents(reminderLists.count <= 8 ? [.medium, .large] : [.large])
             }
-            .alert("Discard Changes?", isPresented: discardConfirmationBinding) {
-                Button("Keep Editing", role: .cancel) {}
-                Button("Discard", role: .destructive) {
-                    dismiss()
-                }
-            } message: {
-                Text("Your draft has unsaved changes.")
+            .presentationDetents(reminderLists.count <= 8 ? [.medium, .large] : [.large])
+        }
+        .alert("Discard Changes?", isPresented: discardConfirmationBinding) {
+            Button("Keep Editing", role: .cancel) {}
+            Button("Discard", role: .destructive) {
+                dismiss()
             }
+        } message: {
+            Text("Your draft has unsaved changes.")
         }
     }
 
@@ -140,6 +152,11 @@ struct ReminderEditorView: View {
             get: { viewModel?.isDiscardConfirmationPresented ?? false },
             set: { viewModel?.isDiscardConfirmationPresented = $0 }
         )
+    }
+
+    private var title: String {
+        if let title = task?.taskTitle { return title }
+        return task == nil ? "New Task" : "Edit Task"
     }
 
     private var draftBinding: Binding<ReminderDraft> {

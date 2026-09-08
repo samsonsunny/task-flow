@@ -51,23 +51,27 @@ final class ListsTabViewModel {
 
     // MARK: - List CRUD
 
-    func createList(name: String) {
+    @discardableResult
+    func createList(name: String) -> ReminderList? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         let list = ReminderList(name: trimmed)
         modelContext.insert(list)
         list.assignInitialSortOrder(in: modelContext)
         try? modelContext.save()
+        return list
     }
 
-    func createList(name: String, group: ReminderListGroup?) {
+    @discardableResult
+    func createList(name: String, group: ReminderListGroup?) -> ReminderList? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         let list = ReminderList(name: trimmed)
         list.group = group
         modelContext.insert(list)
         list.assignInitialSortOrder(in: modelContext)
         try? modelContext.save()
+        return list
     }
 
     func renameList(_ list: ReminderList, to newName: String) {
