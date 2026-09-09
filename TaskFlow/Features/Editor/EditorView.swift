@@ -21,7 +21,6 @@ struct ReminderEditorView: View {
 
     @State private var viewModel: ReminderEditorViewModel?
     @State private var expandedPicker: ExpandedPicker?
-    @State private var pressedRow: ExpandedPicker?
     @State private var newSubtaskTitle = ""
     @State private var editingSubtask: TaskItem?
     @State private var subtaskScheduleConfig: SubtaskScheduleConfig?
@@ -92,13 +91,14 @@ struct ReminderEditorView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    saveReminder()
-                } label: {
-                    Image(systemName: "checkmark")
+                if viewModel?.isDirty == true, viewModel?.draft.normalizedTitle.isEmpty == false {
+                    Button {
+                        saveReminder()
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .accessibilityIdentifier("reminder-editor-save")
                 }
-                .disabled(viewModel?.draft.normalizedTitle.isEmpty ?? true)
-                .accessibilityIdentifier("reminder-editor-save")
             }
         }
         .sheet(item: $editingSubtask) { subtask in
@@ -313,23 +313,11 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-date")
         }
         .contentShape(Rectangle())
-        .listRowBackground(
-            pressedRow == .date
-                ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color(.secondarySystemGroupedBackground)
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard viewModel?.draft.dueDate != nil else { return }
-                    pressedRow = .date
-                }
-                .onEnded { _ in
-                    pressedRow = nil
-                    guard viewModel?.draft.dueDate != nil else { return }
-                    expandedPicker = expandedPicker == .date ? nil : .date
-                }
-        )
+        .listRowBackground(Color(.secondarySystemGroupedBackground))
+        .onTapGesture {
+            guard viewModel?.draft.dueDate != nil else { return }
+            expandedPicker = expandedPicker == .date ? nil : .date
+        }
     }
 
     private var timeRow: some View {
@@ -374,23 +362,11 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-time")
         }
         .contentShape(Rectangle())
-        .listRowBackground(
-            pressedRow == .time
-                ? AppTheme.colors.textSecondary.opacity(0.15)
-                : Color(.secondarySystemGroupedBackground)
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard viewModel?.draft.hasTime == true else { return }
-                    pressedRow = .time
-                }
-                .onEnded { _ in
-                    pressedRow = nil
-                    guard viewModel?.draft.hasTime == true else { return }
-                    expandedPicker = expandedPicker == .time ? nil : .time
-                }
-        )
+        .listRowBackground(Color(.secondarySystemGroupedBackground))
+        .onTapGesture {
+            guard viewModel?.draft.hasTime == true else { return }
+            expandedPicker = expandedPicker == .time ? nil : .time
+        }
     }
 
     private enum ExpandedPicker {

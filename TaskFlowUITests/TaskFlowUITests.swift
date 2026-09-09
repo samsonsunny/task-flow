@@ -100,17 +100,19 @@ final class TaskFlowUITests: XCTestCase {
         let titleField = app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch
         XCTAssertTrue(titleField.waitForExistence(timeout: 2))
         let saveButton = app.buttons["reminder-editor-save"]
-        XCTAssertTrue(saveButton.exists)
-        XCTAssertTrue(saveButton.isEnabled)
 
-        // Clearing the title disables Save
+        // No unsaved changes yet — the save tick is hidden
+        XCTAssertFalse(saveButton.exists)
+
+        // Clearing the title still hides Save (empty title is not saveable)
         titleField.tap()
         let current = (titleField.value as? String) ?? ""
         titleField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertFalse(saveButton.exists)
 
-        // Typing re-enables it
+        // Typing a title makes the draft dirty + saveable, so the tick appears
         titleField.typeText("Weekend plan")
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 2))
         XCTAssertTrue(saveButton.isEnabled)
     }
 
@@ -274,7 +276,7 @@ final class TaskFlowUITests: XCTestCase {
         XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1), "Switching pages opened the keyboard")
 
         app.staticTexts["Reply to design review"].tap()
-        XCTAssertTrue(app.buttons["reminder-editor-save"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "reminder-editor-title").firstMatch.waitForExistence(timeout: 2))
 
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Tomorrow"].waitForExistence(timeout: 5))
