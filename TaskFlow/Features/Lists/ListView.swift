@@ -29,6 +29,7 @@ struct ListsSidebarView: View {
         .listSectionSpacing(0)
         .listRowSpacing(0)
         .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.bottom, AppTheme.captureBarClearance, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("My Lists")

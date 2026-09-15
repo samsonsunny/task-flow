@@ -111,6 +111,7 @@ struct ReminderSegmentDetailView: View {
         .listSectionSpacing(0)
         .listRowSpacing(0)
         .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.bottom, AppTheme.captureBarClearance, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
     }
@@ -131,6 +132,7 @@ struct ReminderSegmentDetailView: View {
                     onComplete: { bulkToggleCompletion() },
                     onDone: { exitSelectionMode() }
                 )
+                .padding(.bottom, AppTheme.captureBarClearance)
                 .transition(.move(edge: .bottom))
                 .animation(.easeInOut(duration: 0.25), value: selecting)
             }

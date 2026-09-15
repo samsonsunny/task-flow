@@ -168,7 +168,7 @@ final class TaskFlowUITests: XCTestCase {
     }
 
     @MainActor
-    func testCaptureBarAbsentOnSidebar() throws {
+    func testCaptureBarPresentOnSidebar() throws {
         let app = XCUIApplication()
         launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
 
@@ -177,8 +177,39 @@ final class TaskFlowUITests: XCTestCase {
 
         openSidebar(app)
 
-        // Absent on the Lists overview
-        XCTAssertFalse(app.textFields["capture-bar-field"].waitForExistence(timeout: 1))
+        // Present on the Lists overview too
+        let sidebarField = app.textFields["capture-bar-field"].firstMatch
+        XCTAssertTrue(sidebarField.waitForExistence(timeout: 2))
+        XCTAssertTrue(sidebarField.isHittable)
+
+        // Capture an undated task from the overview → default Inbox
+        sidebarField.tap()
+        sidebarField.typeText("Captured from overview\n")
+
+        // Open Inbox detail and assert the undated task landed there
+        app.descendants(matching: .any).matching(identifier: "default-list-link").firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Inbox"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Captured from overview"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testCaptureDraftPersistsAcrossSurfaces() throws {
+        let app = XCUIApplication()
+        launch(app, args: ["UITEST_FIXTURE_REMINDER_HOME", "UITEST_FIXED_NOW_2026_05_13"])
+
+        // Type in the detail column's bar without committing
+        let field = app.textFields["capture-bar-field"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("continuity")
+
+        // Reveal the sidebar — the shared VM keeps the in-flight draft
+        openSidebar(app)
+
+        let sidebarField = app.textFields["capture-bar-field"].firstMatch
+        XCTAssertTrue(sidebarField.waitForExistence(timeout: 2))
+        let value = (sidebarField.value as? String) ?? ""
+        XCTAssertFalse(value.isEmpty, "Draft should persist when revealing the sidebar")
     }
 
     @MainActor

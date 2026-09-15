@@ -1,6 +1,12 @@
 import SwiftUI
 import SwiftData
 
+enum CaptureTarget: Hashable {
+    case segment(HomeSegment)
+    case list(ReminderList.ID)
+    case inbox
+}
+
 @MainActor
 @Observable
 final class CaptureBarViewModel {
@@ -8,6 +14,7 @@ final class CaptureBarViewModel {
 
     private(set) var now: Date = Date()
     var isFocusingCapture = false
+    var text = ""
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext

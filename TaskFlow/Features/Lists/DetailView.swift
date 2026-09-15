@@ -146,7 +146,7 @@ struct ListDetailView: View {
                 if !isSelecting && showScrollToBottom {
                     scrollToBottomButton(proxy: proxy)
                         .padding(.trailing, 16)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 12 + AppTheme.captureBarClearance)
                 }
             }
     }
@@ -156,6 +156,7 @@ struct ListDetailView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
+            .contentMargins(.bottom, AppTheme.captureBarClearance, for: .scrollContent)
             .onScrollGeometryChange(
                 for: ScrollGeometry.self,
                 of: { $0 },
@@ -253,6 +254,7 @@ struct ListDetailView: View {
             onComplete: { bulkToggleCompletion() },
             onDone: { exitSelectionMode() }
         )
+        .padding(.bottom, AppTheme.captureBarClearance)
         .transition(.move(edge: .bottom))
         .animation(.easeInOut(duration: 0.25), value: isSelecting)
     }

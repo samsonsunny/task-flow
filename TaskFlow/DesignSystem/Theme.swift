@@ -8,4 +8,8 @@ struct AppTheme {
     static let fonts = AppFont.self
     static let radius = AppRadius.self
 
+    /// Approximate visual height of the capture bar (including its bottom breathing room).
+    static let captureBarHeight: CGFloat = 60
+    /// Bottom scroll-content clearance that keeps the last row resting above the bar.
+    static let captureBarClearance: CGFloat = 72
 }

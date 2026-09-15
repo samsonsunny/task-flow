@@ -1,18 +1,25 @@
 import SwiftUI
 
 struct CaptureBar: View {
+    let viewModel: CaptureBarViewModel
     let onCommit: (String, String) -> Void
     var autofocusRequest: Bool = false
 
-    @State private var text = ""
     @FocusState private var isFocused: Bool
 
+    private var textBinding: Binding<String> {
+        Binding(
+            get: { viewModel.text },
+            set: { viewModel.text = $0 }
+        )
+    }
+
     private var isBarIdle: Bool {
-        !isFocused && text.isEmpty
+        !isFocused && viewModel.text.isEmpty
     }
 
     private var hasValidContent: Bool {
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -27,7 +34,7 @@ struct CaptureBar: View {
             }
 
             ZStack(alignment: .topLeading) {
-                TextField("", text: $text, axis: .vertical)
+                TextField("", text: textBinding, axis: .vertical)
                     .focused($isFocused)
                     .lineLimit(1...5)
                     .frame(minHeight: 28, alignment: .center)
@@ -35,13 +42,13 @@ struct CaptureBar: View {
                     .textInputAutocapitalization(.sentences)
                     .accessibilityIdentifier("capture-bar-field")
                     .onSubmit { commit() }
-                    .onChange(of: text) { _, newValue in
+                    .onChange(of: viewModel.text) { _, newValue in
                         guard newValue.contains("\n") else { return }
-                        text = newValue.replacingOccurrences(of: "\n", with: "")
+                        viewModel.text = newValue.replacingOccurrences(of: "\n", with: "")
                         commit()
                     }
 
-                if text.isEmpty {
+                if viewModel.text.isEmpty {
                     Text("Add a task...")
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .frame(minHeight: 28, alignment: .center)
@@ -90,22 +97,25 @@ struct CaptureBar: View {
         .onChange(of: autofocusRequest) { _, requested in
             if requested {
                 isFocused = true
+                viewModel.isFocusingCapture = false
             }
         }
         .onAppear {
             if autofocusRequest {
                 isFocused = true
+                viewModel.isFocusingCapture = false
             }
         }
     }
 
     private func commit() {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let t = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else {
             isFocused = false
             return
         }
-        text = ""
+        viewModel.text = ""
+        viewModel.isFocusingCapture = false
         onCommit(t, "")
     }
 }
