@@ -1,5 +1,11 @@
 # Changelog
 
+## 26.9.23 — What's New
+
+- **iCloud Sync** — your tasks now stay in sync across all your Apple devices automatically. Sign in with the same Apple ID and you're all set — there's nothing to configure.
+- **Pick up where you left off** — create a task on one device and complete it on another. Lists, subtasks, and tags follow you everywhere.
+- **Instant updates & tidier data** — everything refreshes as soon as it changes, and duplicate "Inbox" lists created during the update are merged automatically.
+
 ## 26.9.9 — What's New
 
 - Today, Tomorrow, and Upcoming now live in the sidebar beside your lists — jump straight to the day you're planning
