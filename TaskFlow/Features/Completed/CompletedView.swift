@@ -88,6 +88,9 @@ struct CompletedView: View {
         .onChange(of: allTasks) { _, newTasks in
             viewModel?.update(tasks: newTasks)
         }
+        .refreshOnModelContextSave {
+            viewModel?.update(tasks: allTasks)
+        }
         .alert("Delete \(selectedTasks.count) task\(selectedTasks.count == 1 ? "" : "s")?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {

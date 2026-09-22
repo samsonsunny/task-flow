@@ -109,7 +109,7 @@ final class ReminderEditorViewModel {
         subtask.createdAt = Date()
         subtask.reminderList = parent.reminderList
         subtask.parentTask = parent
-        let siblings = parent.subtasks.filter { $0.persistentModelID != subtask.persistentModelID }
+        let siblings = parent.subtasksArray.filter { $0.persistentModelID != subtask.persistentModelID }
         subtask.sortOrder = nextSortOrder(for: siblings)
         modelContext.insert(subtask)
     }
@@ -202,7 +202,7 @@ final class ReminderEditorViewModel {
     }
 
     func subtasks(of parent: TaskItem) -> [TaskItem] {
-        parent.subtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+        parent.subtasksArray.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
     }
 
     func canMoveSubtaskUp(_ subtask: TaskItem) -> Bool {

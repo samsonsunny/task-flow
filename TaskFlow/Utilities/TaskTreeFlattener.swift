@@ -17,8 +17,8 @@ struct SubtaskSummary: Equatable {
 
 extension TaskItem {
     var subtaskSummary: SubtaskSummary {
-        let total = subtasks.count
-        let completed = subtasks.filter { $0.isCompleted == true }.count
+        let total = subtasksArray.count
+        let completed = subtasksArray.filter { $0.isCompleted == true }.count
         return SubtaskSummary(total: total, pending: total - completed, completed: completed)
     }
 }
@@ -58,8 +58,8 @@ enum TaskTreeFlattener {
         let taskId = task.taskId ?? ""
         let isCollapsed = collapsed.contains(taskId)
         let activeSubtasks = includeCompleted
-            ? Array(task.subtasks)
-            : task.subtasks.filter { !($0.isCompleted == true) }
+            ? task.subtasksArray
+            : task.subtasksArray.filter { !($0.isCompleted == true) }
         let sortedSubtasks = activeSubtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
         result.append(FlatTaskNode(id: taskId, task: task, depth: depth, subtaskSummary: task.subtaskSummary))
         if !isCollapsed {

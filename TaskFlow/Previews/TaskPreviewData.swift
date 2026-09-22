@@ -10,9 +10,9 @@ import Foundation
 
 enum TaskPreviewData {
     static func container() -> ModelContainer {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         return try! ModelContainer(
-            for: Schema(versionedSchema: TaskFlowSchemaV9.self),
+            for: Schema(versionedSchema: TaskFlowSchemaV10.self),
             configurations: config
         )
     }

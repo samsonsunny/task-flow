@@ -29,7 +29,6 @@ struct ListsSidebarView: View {
         .listSectionSpacing(0)
         .listRowSpacing(0)
         .contentMargins(.top, 0, for: .scrollContent)
-        .contentMargins(.bottom, AppTheme.captureBarClearance, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("My Lists")
@@ -166,6 +165,9 @@ struct ListsSidebarView: View {
                 viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
             }
             .onChange(of: allTasks) { _, _ in
+                viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
+            }
+            .refreshOnModelContextSave {
                 viewModel?.update(lists: lists, groups: groups, allTasks: allTasks)
             }
     }

@@ -1,5 +1,20 @@
 # Decisions
 
+## Decision: Prioritize Core Features And Data Safety Over Cloud Sync
+
+**Date:** 2026-09-09
+
+**Decision:** TaskFlow remains a local-only SwiftData app. Focus stays on core feature velocity with retention as the driving goal. Cloud sync is deferred, and a local Export/Restore feature becomes the near-term data-safety investment instead. The schema will be kept CloudKit-compatible as a background discipline so a future sync reintroduction is a configuration change, not a rewrite.
+
+**Rationale:** Retention is won in the same-device daily loop (capture -> schedule -> complete -> reflect), not in multi-device sync. Sync carries heavy cost (accounts/auth/backend or CloudKit schema compatibility, conflict handling, offline semantics, testing) that would stall the weekly release cadence with no visible retention payoff. The real churn risk of local-only storage is data-loss anxiety; a lightweight Export/Restore feature defuses that at a fraction of sync's cost and doubles as groundwork for later migration.
+
+**Impact:**
+- Extends the 2026-02-10 "Remove iCloud Sync (CloudKit)" decision: remains local-only for the current roadmap phase.
+- A local JSON/CSV Export and Restore/Import feature is planned as the near-term data-safety work.
+- Schema evolution (new `TaskFlowSchema` versions) will keep CloudKit constraints in mind: optional relationships, no unsupported unique constraints, stable typealiases.
+- No accounts, auth, custom backend, or EventKit integration will be added in this phase.
+- Sync will be revisited only when forced by evidence: multi-device churn, retention plateau, or App Store demand.
+
 ## Decision: Defer Strict Reminder URL And Attachment Semantics
 
 **Date:** 2026-05-23

@@ -41,16 +41,16 @@ struct MainTabView: View {
     @State private var isOverviewFrontmost = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            NavigationSplitView(columnVisibility: $columnVisibility) {
-                ListsSidebarView(selection: $selectedDestination)
-                    .onAppear { isOverviewFrontmost = true }
-                    .onDisappear { isOverviewFrontmost = false }
-            } detail: {
-                detailColumn
-            }
-            .navigationSplitViewStyle(.prominentDetail)
-
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            ListsSidebarView(selection: $selectedDestination)
+                .onAppear { isOverviewFrontmost = true }
+                .onDisappear { isOverviewFrontmost = false }
+        } detail: {
+            detailColumn
+        }
+        .navigationSplitViewStyle(.prominentDetail)
+        .scrollEdgeEffectStyle(.soft, for: .bottom)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if let vm = captureViewModel {
                 captureBarDock(vm: vm, target: currentCaptureTarget)
             }

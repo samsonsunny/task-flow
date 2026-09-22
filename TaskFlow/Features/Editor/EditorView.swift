@@ -78,6 +78,9 @@ struct ReminderEditorView: View {
             viewModel?.update(reminderLists: reminderLists, reminderTags: newValue)
         }
         .onChange(of: expandedPicker) { _, _ in isTitleFocused = false }
+        .refreshOnModelContextSave {
+            viewModel?.update(reminderLists: reminderLists, reminderTags: reminderTags)
+        }
         .toolbar {
             if embedInNavigationStack {
                 ToolbarItem(placement: .topBarLeading) {

@@ -128,6 +128,10 @@ struct ListDetailView: View {
                 let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
                 viewModel?.update(tasks: listTasks, lists: newLists, allTasks: allTasks)
             }
+            .refreshOnModelContextSave {
+                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+                viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks)
+            }
     }
 
     private func baseList(proxy: ScrollViewProxy) -> some View {
@@ -156,7 +160,6 @@ struct ListDetailView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .contentMargins(.bottom, AppTheme.captureBarClearance, for: .scrollContent)
             .onScrollGeometryChange(
                 for: ScrollGeometry.self,
                 of: { $0 },

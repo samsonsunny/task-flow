@@ -56,5 +56,5 @@ import SwiftData
     #expect(task.assignedContactName == "Alex")
     #expect(task.imageAttachmentReference == "boarding-pass.png")
     #expect(task.tagLabels == ["Home", "Urgent"])
-    #expect(task.tags.contains(where: { $0 === existingTag }))
+    #expect(task.tagsArray.contains(where: { $0 === existingTag }))
 }

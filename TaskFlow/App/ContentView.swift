@@ -9,6 +9,7 @@ struct ContentView: View {
             .onAppear {
                 migrateDefaultListName()
                 migrateOrphanedTasks()
+                reconcileInboxLists(in: modelContext)
                 backfillSortOrdersIfNeeded(in: modelContext)
                 backfillListSortOrdersIfNeeded(in: modelContext)
             }

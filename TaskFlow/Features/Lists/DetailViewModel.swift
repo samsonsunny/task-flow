@@ -39,7 +39,7 @@ final class ListDetailViewModel {
     }
 
     private func collapseAllParentsWithSubtasks() {
-        let parents = tasks.filter { !$0.subtasks.isEmpty }
+        let parents = tasks.filter { !$0.subtasksArray.isEmpty }
         for task in parents {
             if let taskId = task.taskId, !manuallyExpanded.contains(taskId) {
                 collapsedTasks.insert(taskId)
@@ -91,6 +91,7 @@ final class ListDetailViewModel {
         if next, let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)
         }
+        try? modelContext.save()
         recompute()
         BadgeService.update(modelContext: modelContext)
     }
@@ -194,7 +195,7 @@ final class ListDetailViewModel {
     }
 
     func moveSubtasks(fromOffsets: IndexSet, toOffset: Int, of parent: TaskItem) {
-        var siblings = parent.subtasks.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+        var siblings = parent.subtasksArray.sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
         let sortedFrom = fromOffsets.sorted()
 
         let moved = Array(sortedFrom.reversed().map { siblings.remove(at: $0) }.reversed())

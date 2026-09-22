@@ -828,6 +828,133 @@ enum TaskFlowSchemaV9: VersionedSchema {
     }
 }
 
+enum TaskFlowSchemaV10: VersionedSchema {
+    static var versionIdentifier = Schema.Version(10, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [TaskItem.self, ReminderList.self, ReminderTag.self, ReminderListGroup.self]
+    }
+
+    @Model
+    final class TaskItem {
+        var taskId: String?
+        var taskTitle: String?
+        var taskDescription: String?
+        var isCompleted: Bool?
+        var isFlagged: Bool?
+        var completionDate: Date?
+        var dueDate: Date?
+        var createdAt: Date?
+
+        var urlString: String?
+        var priorityRawValue: String?
+        var assignedContactName: String?
+        var imageAttachmentReference: String?
+        @Relationship(inverse: \ReminderList.reminders) var reminderList: ReminderList?
+        @Relationship var tags: [ReminderTag]?
+
+        var sortOrder: Int?
+        var hasTime: Bool?
+        var deferCount: Int?
+
+        @Relationship(inverse: \TaskItem.subtasks) var parentTask: TaskItem?
+        @Relationship var subtasks: [TaskItem]?
+
+        init(
+            taskId: String? = UUID().uuidString,
+            taskTitle: String? = "",
+            taskDescription: String? = "",
+            dueDate: Date? = nil,
+            createdAt: Date? = Date(),
+            urlString: String? = nil,
+            priorityRawValue: String? = ReminderPriority.none.rawValue,
+            assignedContactName: String? = nil,
+            imageAttachmentReference: String? = nil,
+            reminderList: ReminderList? = nil,
+            tags: [ReminderTag] = [],
+            sortOrder: Int? = nil,
+            hasTime: Bool? = nil,
+            deferCount: Int? = nil,
+            parentTask: TaskItem? = nil
+        ) {
+            self.taskId = taskId
+            self.taskTitle = taskTitle
+            self.taskDescription = taskDescription
+            self.isCompleted = false
+            self.isFlagged = false
+            self.dueDate = dueDate
+            self.createdAt = createdAt
+            self.urlString = urlString
+            self.priorityRawValue = priorityRawValue
+            self.assignedContactName = assignedContactName
+            self.imageAttachmentReference = imageAttachmentReference
+            self.reminderList = reminderList
+            self.tags = tags
+            self.sortOrder = sortOrder
+            self.hasTime = hasTime
+            self.deferCount = deferCount
+            self.parentTask = parentTask
+            self.subtasks = []
+        }
+
+        var tagsArray: [ReminderTag] { tags ?? [] }
+
+        var subtasksArray: [TaskItem] { subtasks ?? [] }
+    }
+
+    @Model
+    final class ReminderList {
+        var name: String = ""
+        var createdAt: Date = Date()
+        var reminders: [TaskItem]?
+        var sortOrder: String?
+        @Relationship(inverse: \ReminderListGroup.lists) var group: ReminderListGroup?
+
+        init(name: String = "", createdAt: Date = Date(), reminders: [TaskItem] = [], sortOrder: String? = nil, group: ReminderListGroup? = nil) {
+            self.name = name
+            self.createdAt = createdAt
+            self.reminders = reminders
+            self.sortOrder = sortOrder
+            self.group = group
+        }
+
+        var remindersArray: [TaskItem] { reminders ?? [] }
+    }
+
+    @Model
+    final class ReminderTag {
+        var label: String = ""
+        var normalizedLabel: String = ""
+        @Relationship(inverse: \TaskItem.tags) var tasks: [TaskItem]?
+
+        init(label: String) {
+            self.label = label
+            self.normalizedLabel = ReminderTag.normalize(label)
+        }
+
+        static func normalize(_ label: String) -> String {
+            label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+    }
+
+    @Model
+    final class ReminderListGroup {
+        var name: String = ""
+        var sortOrder: String?
+        var createdAt: Date = Date()
+        var lists: [ReminderList]?
+
+        init(name: String = "", sortOrder: String? = nil, createdAt: Date = Date(), lists: [ReminderList] = []) {
+            self.name = name
+            self.sortOrder = sortOrder
+            self.createdAt = createdAt
+            self.lists = lists
+        }
+
+        var listsArray: [ReminderList] { lists ?? [] }
+    }
+}
+
 enum TaskFlowMigrationPlan: SchemaMigrationPlan {
     // NOTE: When adding a new schema version, also update the Schema(versionedSchema:)
     // in TaskFlowApp.swift and TaskPreviewData.swift to reference the latest schema.
@@ -848,13 +975,13 @@ enum TaskFlowMigrationPlan: SchemaMigrationPlan {
     }
 }
 
-typealias TaskItem = TaskFlowSchemaV9.TaskItem
+typealias TaskItem = TaskFlowSchemaV10.TaskItem
 
-typealias ReminderList = TaskFlowSchemaV9.ReminderList
+typealias ReminderList = TaskFlowSchemaV10.ReminderList
 
-typealias ReminderTag = TaskFlowSchemaV9.ReminderTag
+typealias ReminderTag = TaskFlowSchemaV10.ReminderTag
 
-typealias ReminderListGroup = TaskFlowSchemaV9.ReminderListGroup
+typealias ReminderListGroup = TaskFlowSchemaV10.ReminderListGroup
 
 enum ReminderPriority: String, CaseIterable, Identifiable {
     case none
@@ -964,14 +1091,14 @@ extension TaskItem {
     }
 
     var tagLabels: [String] {
-        tags
+        tagsArray
             .map(\.label)
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     @MainActor
     func completeDescendants() {
-        for subtask in subtasks {
+        for subtask in subtasksArray {
             subtask.isCompleted = true
             subtask.completionDate = Date()
             if let taskId = subtask.taskId {
@@ -983,7 +1110,7 @@ extension TaskItem {
 
     @MainActor
     func uncompleteDescendants() {
-        for subtask in subtasks {
+        for subtask in subtasksArray {
             subtask.isCompleted = false
             subtask.completionDate = nil
             subtask.uncompleteDescendants()
@@ -992,7 +1119,7 @@ extension TaskItem {
 
     @MainActor
     func deleteDescendants() {
-        for subtask in subtasks {
+        for subtask in subtasksArray {
             if let taskId = subtask.taskId {
                 NotificationService.shared.cancel(taskId: taskId)
             }
