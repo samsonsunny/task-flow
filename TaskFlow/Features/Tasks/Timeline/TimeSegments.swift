@@ -204,10 +204,14 @@ enum ReminderSegmentLogic {
             return lhsDue < rhsDue
         }
 
+        // Newest first, matching Recents and `TaskUIModel.datedSections`. Every task in a
+        // single-day segment ties on the due-date key above, so this is the order the user
+        // actually sees on Today and Tomorrow — without it those two read oldest-first while
+        // the grouped Upcoming/Overdue sections read newest-first.
         let lhsCreatedAt = lhs.createdAt ?? .distantPast
         let rhsCreatedAt = rhs.createdAt ?? .distantPast
         if lhsCreatedAt != rhsCreatedAt {
-            return lhsCreatedAt < rhsCreatedAt
+            return lhsCreatedAt > rhsCreatedAt
         }
 
         return TaskUIModel.taskKey(for: lhs) < TaskUIModel.taskKey(for: rhs)

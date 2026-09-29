@@ -45,6 +45,32 @@ import SwiftData
     #expect(titles == ["Older Overdue", "Newer Overdue"])
 }
 
+/// Every task in a single-day segment ties on the due-date key, so `createdAt` is the order
+/// the user actually sees on Today and Tomorrow. It must match Recents — newest first — or
+/// those screens read oldest-first while the grouped Upcoming/Overdue sections read
+/// newest-first.
+@Test func singleDaySegmentsFallBackToNewestCreatedFirst() {
+    let calendar = makeCalendar()
+    let now = makeDate(year: 2026, month: 5, day: 13, calendar: calendar)
+    let todayStart = calendar.startOfDay(for: now)
+
+    let older = TaskItem(taskTitle: "Older", dueDate: todayStart)
+    older.createdAt = calendar.date(byAdding: .hour, value: -6, to: now)
+    let newer = TaskItem(taskTitle: "Newer", dueDate: todayStart)
+    newer.createdAt = now
+
+    for segment in [ReminderSegment.today, .tomorrow] {
+        // Tomorrow needs a tomorrow due date; the sort only reads the day bucket.
+        if segment == .tomorrow {
+            older.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+            newer.dueDate = calendar.date(byAdding: .day, value: 1, to: todayStart)
+        }
+
+        let sorted = ReminderSegmentLogic.sortedTasks([older, newer], for: segment, calendar: calendar)
+        #expect(sorted.map(\.safeTitle) == ["Newer", "Older"], "\(segment.rawValue) must be newest first")
+    }
+}
+
 @Test func upcomingFilteringIncludesAllFutureTasksAfterTomorrow() {
     let calendar = makeCalendar()
     let now = makeDate(year: 2026, month: 5, day: 13, calendar: calendar)
