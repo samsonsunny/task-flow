@@ -62,15 +62,6 @@ struct TaskRowView: View, Equatable {
                 isSelected ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
             )
             .animation(.easeInOut(duration: 0.18), value: isSelected)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if isSelecting {
-                    onSelectToggle?()
-                } else {
-                    onTap?()
-                }
-            }
-            .disabled(isSelecting && onSelectToggle == nil)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 if let onDelete, !isSelecting {
                     Button(role: .destructive) {
@@ -167,12 +158,31 @@ struct TaskRowView: View, Equatable {
     private var rowContent: some View {
         HStack(alignment: .center, spacing: 16) {
             if isSelecting {
-                SelectionCircle(isSelected: isSelected)
+                Button {
+                    onSelectToggle?()
+                } label: {
+                    SelectionCircle(isSelected: isSelected)
+                }
+                .buttonStyle(.plain)
+                .disabled(onSelectToggle == nil)
+                .accessibilityLabel(isSelected ? "Deselect" : "Select")
+                .accessibilityIdentifier("task-select-toggle")
             } else {
                 completionButton
             }
 
+            // The open-row gesture lives on the text block only. A row-wide `onTapGesture`
+            // competes with the completion button and swallows taps aimed at the circle, so
+            // the two must not share a hit region.
             titleView
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isSelecting {
+                        onSelectToggle?()
+                    } else {
+                        onTap?()
+                    }
+                }
 
             Spacer(minLength: 0)
 
@@ -323,6 +333,7 @@ struct TaskRowView: View, Equatable {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("task-complete-toggle")
         .accessibilityLabel(isCompletedVisualState ? "Mark active" : "Mark complete")
         .accessibilityHint(isCompletedVisualState ? "Reverts this task to pending" : "Marks this task as completed")
     }

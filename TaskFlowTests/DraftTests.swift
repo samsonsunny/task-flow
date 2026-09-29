@@ -18,20 +18,22 @@ import SwiftData
 }
 
 @MainActor
-@Test func reminderDraftMapperUsesDefaultListAndReusesExistingTags() throws {
+@Test func reminderDraftMapperResolvesBucketByIDAndReusesExistingTags() throws {
     let container = TaskPreviewData.container()
     let context = container.mainContext
 
+    let groups = seedDefaultAreas(in: context)
+    let bucket = groups[0].inboxBucket!
+
     let existingTag = ReminderTag(label: "Home")
-    let existingList = ReminderList(name: ReminderDefaults.defaultListName)
     context.insert(existingTag)
-    context.insert(existingList)
 
     let draft = ReminderDraft(
         title: "Plan trip",
         notes: "Passport renewal",
         urlString: "https://example.com",
-        listName: "",
+        listName: "Inbox",
+        listID: bucket.persistentModelID,
         tagLabels: ["Home", "Urgent"],
         priority: .medium,
         assignedContactName: "Alex",
@@ -43,7 +45,7 @@ import SwiftData
     ReminderDraftMapper.apply(
         draft,
         to: task,
-        availableLists: [existingList],
+        availableLists: [bucket],
         availableTags: [existingTag],
         in: context
     )
@@ -51,10 +53,44 @@ import SwiftData
     #expect(task.safeTitle == "Plan trip")
     #expect(task.notes == "Passport renewal")
     #expect(task.reminderURL == "https://example.com")
-    #expect(task.listName == ReminderDefaults.defaultListName)
+    #expect(task.reminderList?.persistentModelID == bucket.persistentModelID)
     #expect(task.priority == .medium)
     #expect(task.assignedContactName == "Alex")
     #expect(task.imageAttachmentReference == "boarding-pass.png")
     #expect(task.tagLabels == ["Home", "Urgent"])
     #expect(task.tagsArray.contains(where: { $0 === existingTag }))
+}
+
+@MainActor
+@Test func reminderDraftMapperFallsBackByNameWhenNoID() throws {
+    let container = TaskPreviewData.container()
+    let context = container.mainContext
+
+    let existingList = ReminderList(name: "Groceries")
+    existingList.group = ReminderListGroup(name: "Work")
+    context.insert(existingList)
+    context.insert(existingList.group!)
+
+    let draft = ReminderDraft(
+        title: "Buy milk",
+        notes: "",
+        urlString: "",
+        listName: "Groceries",
+        tagLabels: [],
+        priority: .none,
+        assignedContactName: "",
+        imageAttachmentReference: "",
+        dueDate: nil
+    )
+
+    let task = TaskItem()
+    ReminderDraftMapper.apply(
+        draft,
+        to: task,
+        availableLists: [existingList],
+        availableTags: [],
+        in: context
+    )
+
+    #expect(task.reminderList?.persistentModelID == existingList.persistentModelID)
 }

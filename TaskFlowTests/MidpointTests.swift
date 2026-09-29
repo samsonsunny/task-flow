@@ -105,7 +105,7 @@ import Testing
     let r3 = midpointOrWiden(between: "f", and: "fa")
     let r4 = midpointOrWiden(between: nil, and: nil)
     let r5 = midpointOrWiden(between: nil, and: "")
-    #expect(r1 > "")
+    #expect(r1 < "a")
     #expect(r2 > "")
     #expect(r3 > "f")
     #expect(r4 == "m")

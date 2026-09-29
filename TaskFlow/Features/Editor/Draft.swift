@@ -6,6 +6,7 @@ struct ReminderDraft: Equatable {
     var notes: String
     var urlString: String
     var listName: String
+    var listID: ReminderList.ID?
     var tagLabels: [String]
     var priority: ReminderPriority
     var assignedContactName: String
@@ -18,6 +19,7 @@ struct ReminderDraft: Equatable {
         notes: "",
         urlString: "",
         listName: "",
+        listID: nil,
         tagLabels: [],
         priority: .none,
         assignedContactName: "",
@@ -31,6 +33,7 @@ struct ReminderDraft: Equatable {
         notes: String,
         urlString: String,
         listName: String,
+        listID: ReminderList.ID? = nil,
         tagLabels: [String],
         priority: ReminderPriority,
         assignedContactName: String,
@@ -42,6 +45,7 @@ struct ReminderDraft: Equatable {
         self.notes = notes
         self.urlString = urlString
         self.listName = listName
+        self.listID = listID
         self.tagLabels = tagLabels
         self.priority = priority
         self.assignedContactName = assignedContactName
@@ -56,6 +60,7 @@ struct ReminderDraft: Equatable {
         self.notes = task.notes
         self.urlString = task.reminderURL
         self.listName = task.reminderList?.name ?? ""
+        self.listID = task.reminderList?.persistentModelID
         self.tagLabels = task.tagLabels
         self.priority = task.priority
         self.assignedContactName = task.assignedContactName ?? ""
@@ -131,7 +136,7 @@ enum ReminderDraftMapper {
             task.dueDate = draft.dueDate.map { Calendar.current.startOfDay(for: $0) }
         }
         task.reminderList = resolvedList(
-            from: draft.normalizedListName,
+            from: draft,
             availableLists: availableLists,
             in: modelContext
         )
@@ -143,19 +148,21 @@ enum ReminderDraftMapper {
     }
 
     private static func resolvedList(
-        from draftListName: String,
+        from draft: ReminderDraft,
         availableLists: [ReminderList],
         in modelContext: ModelContext
-    ) -> ReminderList {
-        let requestedName = draftListName.isEmpty ? ReminderDefaults.defaultListName : draftListName
-
-        if let existing = availableLists.first(where: { $0.name.compare(requestedName, options: .caseInsensitive) == .orderedSame }) {
+    ) -> ReminderList? {
+        if let listID = draft.listID,
+           let existing = availableLists.first(where: { $0.persistentModelID == listID }) {
             return existing
         }
 
-        let list = ReminderList(name: requestedName)
-        modelContext.insert(list)
-        return list
+        let requestedName = draft.normalizedListName
+        guard !requestedName.isEmpty else { return nil }
+
+        return availableLists.first {
+            $0.name.compare(requestedName, options: .caseInsensitive) == .orderedSame
+        }
     }
 
     private static func resolvedTags(

@@ -4,73 +4,32 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
+    /// Reconciliation must finish before any `@Query` in the tree reads area state —
+    /// otherwise Home can render a third synced area, or an `AppState` reference to a group
+    /// the merge is about to delete. Gating the root on the pass makes the ordering a
+    /// property of the structure rather than a hope about `onAppear` timing.
+    @State private var isReconciled = false
+
     var body: some View {
-        MainTabView()
-            .onAppear {
-                migrateDefaultListName()
-                migrateOrphanedTasks()
-                reconcileInboxLists(in: modelContext)
-                backfillSortOrdersIfNeeded(in: modelContext)
-                backfillListSortOrdersIfNeeded(in: modelContext)
+        Group {
+            if isReconciled {
+                MainTabView()
+            } else {
+                Color.clear
             }
-    }
-
-    private func migrateDefaultListName() {
-        let key = "did_migrate_default_list_name_v1"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
-
-        let oldName = "Reminders"
-        let newName = ReminderDefaults.defaultListName
-
-        let listDescriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == oldName }
-        )
-        guard let remindersList = try? modelContext.fetch(listDescriptor).first else { return }
-
-        let inboxDescriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == newName }
-        )
-        let existingInbox = try? modelContext.fetch(inboxDescriptor).first
-        guard existingInbox == nil else { return }
-
-        remindersList.name = newName
-        try? modelContext.save()
-    }
-
-    private func migrateOrphanedTasks() {
-        let key = "did_migrate_orphaned_tasks_v1"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
-
-        let descriptor = FetchDescriptor<TaskItem>(
-            predicate: #Predicate { $0.reminderList == nil }
-        )
-        guard let orphans = try? modelContext.fetch(descriptor), !orphans.isEmpty else { return }
-
-        let defaultName = ReminderDefaults.defaultListName
-        let listDescriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == defaultName }
-        )
-        let defaultList: ReminderList
-        if let existing = try? modelContext.fetch(listDescriptor).first {
-            defaultList = existing
-        } else {
-            let list = ReminderList(name: ReminderDefaults.defaultListName)
-            modelContext.insert(list)
-            defaultList = list
         }
-
-        for task in orphans {
-            task.reminderList = defaultList
+        .task {
+            migrateGlobalInboxToFirstGroup(in: modelContext)
+            reconcileLockedAreas(in: modelContext)
+            backfillSortOrdersIfNeeded(in: modelContext)
+            isReconciled = true
         }
-        try? modelContext.save()
     }
 }
 
 #Preview("Empty State") {
     let container = TaskPreviewData.container()
-    TaskPreviewData.ensureDefaultListExists(in: container.mainContext)
+    TaskPreviewData.seedDefaultAreas(in: container.mainContext)
     return ContentView()
         .modelContainer(container)
         .environment(AppState())

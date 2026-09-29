@@ -44,9 +44,10 @@ final class ReminderEditorViewModel {
         self.initialDraft = initialDraft
         self.draft = initialDraft
 
-        if let initialListID, draft.listName.isEmpty {
+        if let initialListID, draft.listID == nil {
             if let list = try? modelContext.model(for: initialListID) as? ReminderList {
                 draft.listName = list.name
+                draft.listID = list.persistentModelID
             }
         }
     }

@@ -21,6 +21,15 @@ final class ReminderSegmentViewModel {
     private(set) var lists: [ReminderList] = []
     private(set) var allTasks: [TaskItem] = []
 
+    /// The area this screen is scoped to. `nil` means unscoped (previews/tests).
+    private(set) var areaID: ReminderListGroup.ID?
+    private(set) var otherAreaName: String?
+    private(set) var otherAreaOverdueCount: Int = 0
+    private(set) var otherAreaTodayCount: Int = 0
+
+    /// Tasks belonging to the scoped area, derived from the full set.
+    private(set) var scopedTasks: [TaskItem] = []
+
     private static let dailyOrderKeyPrefix = "daily-order-"
 
     init(modelContext: ModelContext, segment: ReminderSegment) {
@@ -80,18 +89,66 @@ final class ReminderSegmentViewModel {
         self.now = now
         self.lists = lists
         self.allTasks = tasks
-        self.overdueTasks = ReminderSegmentLogic.filteredTasks(tasks, for: .overdue, now: now)
-        self.filteredTasks = ReminderSegmentLogic.filteredTasks(tasks, for: segment, now: now)
-        self.groupedSections = ReminderSegmentLogic.datedSections(from: tasks, for: segment, now: now)
-        self.upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: tasks, now: now)
-        let displayable = (self.filteredTasks + tasks.filter { justCompleted.contains($0.taskId ?? "") })
+        applyAreaScope(now: now)
+    }
+
+    /// Re-points the screen at a different area without the caller re-fetching tasks.
+    func setArea(_ id: ReminderListGroup.ID?) {
+        guard id != areaID else { return }
+        areaID = id
+        applyAreaScope(now: now)
+    }
+
+    private var scopedListIDs: Set<ReminderListGroup.ID>? {
+        guard let areaID else { return nil }
+        return Set(lists.filter { $0.group?.persistentModelID == areaID }.map(\.persistentModelID))
+    }
+
+    private func applyAreaScope(now: Date) {
+        let ids = scopedListIDs
+        let visible = ids.map { allowed in
+            allTasks.filter { task in
+                guard let listID = task.reminderList?.persistentModelID else { return false }
+                return allowed.contains(listID)
+            }
+        } ?? allTasks
+
+        scopedTasks = visible
+        otherAreaName = otherAreaDisplayName()
+        otherAreaOverdueCount = countOtherArea(.overdue, now: now)
+        otherAreaTodayCount = countOtherArea(.today, now: now)
+
+        overdueTasks = ReminderSegmentLogic.filteredTasks(visible, for: .overdue, now: now)
+        filteredTasks = ReminderSegmentLogic.filteredTasks(visible, for: segment, now: now)
+        groupedSections = ReminderSegmentLogic.datedSections(from: visible, for: segment, now: now)
+        upcomingGroups = ReminderSegmentLogic.upcomingGroups(from: visible, now: now)
+        let displayable = (filteredTasks + visible.filter { justCompleted.contains($0.taskId ?? "") })
         let customOrderIndex = readDailyOrder()
-        if !customOrderIndex.isEmpty {
-            print("[REORDER]   update(segment=\(segment.rawValue)) read back \(customOrderIndex.count) daily-order ids | filteredRoots=\(ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex).map(\.safeTitle))")
-        }
-        self.sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex)
-        self.listSections = buildListSections(from: lists)
+        sortedFlatTasks = ReminderSegmentLogic.sortedTasks(displayable, for: segment, customOrderIndex: customOrderIndex)
+        listSections = buildListSections(from: ids.map { allowed in
+            lists.filter { allowed.contains($0.persistentModelID) }
+        } ?? lists)
         rebuildTree()
+    }
+
+    private func otherAreaDisplayName() -> String? {
+        guard let areaID else { return nil }
+        let area = lists.first { $0.group?.persistentModelID == areaID }?.group
+        let other = lists.first { $0.group?.persistentModelID != areaID }?.group
+        if let other, other.persistentModelID != area?.persistentModelID { return other.name }
+        guard let area else { return nil }
+        return area.name == "Work" ? "Personal" : "Work"
+    }
+
+    /// The nudge exists so area scoping never hides a deadline: it reports the *other*
+    /// area's outstanding due-today and overdue work so it can be disclosed in one tap.
+    private func countOtherArea(_ filter: ReminderSegment, now: Date) -> Int {
+        guard let ids = scopedListIDs else { return 0 }
+        let other = allTasks.filter { task in
+            guard let listID = task.reminderList?.persistentModelID else { return false }
+            return !ids.contains(listID)
+        }
+        return ReminderSegmentLogic.filteredTasks(other, for: filter, now: now).count
     }
 
     private func rebuildTree() {
@@ -169,16 +226,7 @@ final class ReminderSegmentViewModel {
     }
 
     func resolvedQuickCaptureList() -> ReminderList {
-        let defaultName = ReminderDefaults.defaultListName
-        let descriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == defaultName }
-        )
-        if let existing = try? modelContext.fetch(descriptor).first {
-            return existing
-        }
-        let list = ReminderList(name: ReminderDefaults.defaultListName)
-        modelContext.insert(list)
-        return list
+        resolveAreaBucket(for: areaID, in: modelContext)
     }
 
     func shouldShowDueDate(for segment: ReminderSegment) -> Bool {

@@ -36,7 +36,7 @@ func midpoint(between lower: String?, and upper: String?) -> String? {
                 result.append("a")
                 continue
             }
-            return nil
+            return lower == nil ? result : nil
         }
 
         result.append(charFrom(lv))

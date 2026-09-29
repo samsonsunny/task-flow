@@ -106,14 +106,21 @@ struct CaptureBar: View {
                 viewModel.isFocusingCapture = false
             }
         }
+        .onChange(of: isFocused) { _, focused in
+            // Leaving the bar (e.g. tapping a list header) should not leave it latched
+            // open; the next autofocus request has to be able to re-focus it.
+            if !focused {
+                viewModel.isFocusingCapture = false
+            }
+        }
     }
 
     private func commit() {
         let t = viewModel.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else {
-            isFocused = false
-            return
-        }
+        // Resign focus on every commit path, including the blank one: leaving the field
+        // focused keeps the keyboard and the bar pinned open after the user is done.
+        isFocused = false
+        guard !t.isEmpty else { return }
         viewModel.text = ""
         viewModel.isFocusingCapture = false
         onCommit(t, "")

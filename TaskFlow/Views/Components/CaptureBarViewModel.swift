@@ -4,7 +4,9 @@ import SwiftData
 enum CaptureTarget: Hashable {
     case segment(HomeSegment)
     case list(ReminderList.ID)
-    case inbox
+    /// Capture into a specific area's Inbox bucket — the Home target. There is no positional
+    /// fallback: a task is never silently filed into a different area than the one selected.
+    case area(ReminderListGroup.ID)
 }
 
 @MainActor
@@ -45,7 +47,13 @@ final class CaptureBarViewModel {
 
     // MARK: - Commit
 
-    func commit(text: String, notes: String, target: CaptureTarget, overrideDate: Date? = nil) {
+    func commit(
+        text: String,
+        notes: String,
+        target: CaptureTarget,
+        selectedAreaID: ReminderListGroup.ID?,
+        overrideDate: Date? = nil
+    ) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -55,32 +63,32 @@ final class CaptureBarViewModel {
         )
         task.createdAt = Date()
         task.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        task.reminderList = resolveTargetList(for: target)
+        task.reminderList = resolveTargetList(for: target, selectedAreaID: selectedAreaID)
         modelContext.insert(task)
         try? modelContext.save()
         BadgeService.update(modelContext: modelContext)
     }
 
-    private func resolveTargetList(for target: CaptureTarget) -> ReminderList? {
-        if case .list(let listID) = target {
-            if let active = try? modelContext.fetch(
+    /// The list a capture for `target` lands in.
+    ///
+    /// `.list` is exact. `.area` is the named area's bucket, resolved by pointer.
+    /// `.segment` uses the currently selected area's bucket, so a Personal user on Today
+    /// never has a task filed into Work.
+    func resolveTargetList(
+        for target: CaptureTarget,
+        selectedAreaID: ReminderListGroup.ID?
+    ) -> ReminderList? {
+        switch target {
+        case .list(let listID):
+            return try? modelContext.fetch(
                 FetchDescriptor<ReminderList>(
                     predicate: #Predicate { $0.persistentModelID == listID }
                 )
-            ).first {
-                return active
-            }
+            ).first
+        case .area(let areaID):
+            return resolveAreaBucket(for: areaID, in: modelContext)
+        case .segment:
+            return resolveAreaBucket(for: selectedAreaID, in: modelContext)
         }
-        let defaultName = ReminderDefaults.defaultListName
-        let descriptor = FetchDescriptor<ReminderList>(
-            predicate: #Predicate { $0.name == defaultName }
-        )
-        if let existing = try? modelContext.fetch(descriptor).first {
-            return existing
-        }
-        let list = ReminderList(name: ReminderDefaults.defaultListName)
-        modelContext.insert(list)
-        try? modelContext.save()
-        return list
     }
 }

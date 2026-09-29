@@ -919,6 +919,19 @@ enum TaskFlowSchemaV10: VersionedSchema {
         }
 
         var remindersArray: [TaskItem] { reminders ?? [] }
+
+        /// The area's Inbox bucket — derived, never persisted.
+        ///
+        /// A bucket is simply the owning area's list named "Inbox". This is a computed
+        /// property rather than a stored pointer because the CloudKit production schema for
+        /// this record is already sealed: adding `defaultForGroup` to it makes every
+        /// mirroring export abort with "Cannot create or modify field in production
+        /// schema", silently stranding local changes off-device. `AreaReconciler` runs on
+        /// every launch and guarantees exactly one "Inbox" per locked area, so the name is
+        /// an unambiguous key and no persisted claim is needed.
+        var isBucket: Bool {
+            group != nil && name == AreaNames.inbox
+        }
     }
 
     @Model
@@ -952,6 +965,22 @@ enum TaskFlowSchemaV10: VersionedSchema {
         }
 
         var listsArray: [ReminderList] { lists ?? [] }
+
+        /// Whether this area is one of the two locked areas — derived, never persisted.
+        ///
+        /// `isLocked` was a stored `Bool` on this record in the uncommitted areas work. The
+        /// CloudKit production schema for `ReminderListGroup` is already sealed, so the
+        /// extra column made every export abort. `AreaReconciler` renames the two locked
+        /// areas to the canonical names on every launch and merges away everything else,
+        /// so the name alone determines lock state.
+        var isLocked: Bool {
+            name == AreaNames.work || name == AreaNames.personal
+        }
+
+        /// The area's Inbox bucket — derived, never persisted (see `ReminderList.isBucket`).
+        var inboxBucket: ReminderList? {
+            listsArray.first { $0.isBucket }
+        }
     }
 }
 
@@ -1087,7 +1116,7 @@ extension TaskItem {
     }
 
     var listName: String {
-        reminderList?.name ?? ReminderDefaults.defaultListName
+        reminderList?.name ?? ""
     }
 
     var tagLabels: [String] {
@@ -1126,10 +1155,6 @@ extension TaskItem {
             subtask.deleteDescendants()
         }
     }
-}
-
-enum ReminderDefaults {
-    static let defaultListName = "Inbox"
 }
 
 private extension String {

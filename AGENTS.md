@@ -71,6 +71,16 @@ When adding a new property to an existing `@Model`, you have two options:
 1. **Preferred (simple additions):** Add the property directly to the latest schema version and remove `migrationPlan:` from `ModelContainer`. SwiftData does implicit lightweight migration without checksum validation.
 2. **Full versioned schema:** Create a new schema version (e.g., `TaskFlowSchemaV10`), add the property there, update typealiases, and update `Schema(versionedSchema:)` in `TaskFlowApp.swift` and `TaskPreviewData.swift`. **Do NOT add a `migrationPlan:`** — it triggers checksum validation which can collide with existing stages for minimal schema changes.
 
+### CloudKit schema immutability
+
+The iCloud model is mirrored to CloudKit (`ModelConfiguration(cloudKitDatabase:)`). CloudKit **production record types are immutable and sealed by the app's build number**: the schema generation CloudKit accepts is keyed to `CFBundleVersion` (`CURRENT_PROJECT_VERSION`).
+
+- **Any change to a CloudKit-mirrored `@Model` — a new field, relationship, or rename — MUST ship with a strictly higher `CURRENT_PROJECT_VERSION` (build number).** Never change the model and leave the build number unchanged: the mirroring delegate then tries to add the field to the sealed production record type and aborts every export/import with `Cannot create or modify field '<name>' in record '<type>' in production schema`. The failure is silent to the user — local changes appear to save but never leave the device, and a reinstall shows "all data gone".
+- Bumping `MARKETING_VERSION` alone does NOT help; only `CURRENT_PROJECT_VERSION` moves the CloudKit schema generation.
+- Adding a brand-new entity alone does not need a bump (new record types are always creatable); adding fields/relationships to an **existing** mirrored entity does.
+- If a bump is not possible for an in-progress feature, do not add the fields to already-deployed entities — derive them at runtime instead.
+- Recovery: install a build whose build number is higher than the one that sealed the schema; the delegate then deploys a new generation and re-imports existing records. Resetting the CloudKit production environment (Dashboard) is destructive to all users and is a last resort only.
+
 ---
 
 ## Content Marketing System

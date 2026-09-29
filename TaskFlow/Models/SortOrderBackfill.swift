@@ -29,27 +29,52 @@ func backfillSortOrdersIfNeeded(in modelContext: ModelContext) {
 
 @MainActor
 func backfillListSortOrdersIfNeeded(in modelContext: ModelContext) {
+    guard backfillListSortOrders(in: modelContext) else { return }
+    try? modelContext.save()
+}
+
+/// Assigns sort orders to any list missing one, without saving.
+///
+/// The reconciler calls this directly so a merge can fold the backfill into its own single
+/// save — saving here would commit a half-applied merge.
+@discardableResult
+@MainActor
+func backfillListSortOrders(in modelContext: ModelContext) -> Bool {
     let descriptor = FetchDescriptor<ReminderList>()
     let allLists = (try? modelContext.fetch(descriptor)) ?? []
 
     let unassigned = allLists.filter { $0.sortOrder == nil }
-    guard !unassigned.isEmpty else { return }
+    guard !unassigned.isEmpty else { return false }
 
     let sorted = allLists.sorted { lhs, rhs in
-        if lhs.name == ReminderDefaults.defaultListName { return true }
-        if rhs.name == ReminderDefaults.defaultListName { return false }
-        return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+        let groupOrder = (lhs.group?.sortOrder ?? "~~~", rhs.group?.sortOrder ?? "~~~")
+        if groupOrder.0 != groupOrder.1 {
+            return groupOrder.0 < groupOrder.1
+        }
+
+        let lhsIsBucket = lhs.isBucket
+        let rhsIsBucket = rhs.isBucket
+        if lhsIsBucket != rhsIsBucket {
+            return lhsIsBucket
+        }
+
+        let nameOrder = lhs.name.localizedCompare(rhs.name)
+        if nameOrder != .orderedSame {
+            return nameOrder == .orderedAscending
+        }
+        return lhs.createdAt < rhs.createdAt
     }
 
     let assigned = sorted.filter { $0.sortOrder != nil }
     let needsOrder = sorted.filter { $0.sortOrder == nil }
 
-    let lastAssigned = assigned.compactMap { $0.sortOrder }.sorted().last
+    let lastAssigned = assigned.compactMap { $0.sortOrder }.max()
     var previous = lastAssigned
     for list in needsOrder {
-        list.sortOrder = midpoint(between: previous, and: nil)
-        previous = list.sortOrder
+        let order = midpointOrWiden(between: previous, and: nil)
+        list.sortOrder = order
+        previous = order
     }
 
-    try? modelContext.save()
+    return true
 }

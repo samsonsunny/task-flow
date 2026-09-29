@@ -28,6 +28,7 @@ struct ListDetailView: View {
     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
 
     @State private var viewModel: ListDetailViewModel?
+    @State private var captureViewModel: CaptureBarViewModel?
     @State private var scheduleConfig: ScheduleConfig?
     @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
@@ -58,6 +59,31 @@ struct ListDetailView: View {
         ScrollViewReader { proxy in
             detailList(proxy: proxy)
         }
+        // Each pushed screen owns its capture bar. The old split view supplied one
+        // globally via `safeAreaInset`, so removing it silently left list detail with no
+        // way to capture.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            CaptureBar(
+                viewModel: captureViewModel ?? CaptureBarViewModel(modelContext: modelContext),
+                onCommit: { text, notes in
+                    captureViewModel?.commit(
+                        text: text,
+                        notes: notes,
+                        target: .list(listID),
+                        selectedAreaID: appState.selectedAreaID
+                    )
+                    captureViewModel?.isFocusingCapture = false
+                    reloadTasks()
+                },
+                autofocusRequest: captureViewModel?.isFocusingCapture ?? false
+            )
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func reloadTasks() {
+        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
+        viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
     }
 
     private func detailList(proxy: ScrollViewProxy) -> some View {
@@ -117,8 +143,10 @@ struct ListDetailView: View {
             }
             .onAppear {
                 viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
-                let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-                viewModel?.update(tasks: listTasks, lists: allLists, allTasks: allTasks, now: Date())
+                if captureViewModel == nil {
+                    captureViewModel = CaptureBarViewModel(modelContext: modelContext)
+                }
+                reloadTasks()
             }
             .onChange(of: allTasks) { _, newTasks in
                 let listTasks = newTasks.filter { $0.reminderList?.persistentModelID == listID }

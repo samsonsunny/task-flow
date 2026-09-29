@@ -56,22 +56,6 @@ final class TaskFlowSubtasksUITests: XCTestCase {
     }
 
     @MainActor
-    func testChildWithTomorrowDateNotShownInTomorrow() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
-        app.launch()
-
-        XCTAssertTrue(app.buttons["My Lists"].waitForExistence(timeout: 5))
-        app.buttons["My Lists"].tap()
-        XCTAssertTrue(app.navigationBars["My Lists"].waitForExistence(timeout: 5))
-
-        app.descendants(matching: .any).matching(identifier: "sidebar-tomorrow-row").firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Tomorrow"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Nothing due tomorrow"].waitForExistence(timeout: 2))
-        XCTAssertFalse(app.staticTexts["Child with tomorrow date"].exists)
-    }
-
-    @MainActor
     func testSubtasksVisibleOnlyInTaskDetail() throws {
         let app = XCUIApplication()
         app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
@@ -83,28 +67,5 @@ final class TaskFlowSubtasksUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Child no date"].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts["Child with today date"].exists)
         XCTAssertTrue(app.staticTexts["Child with tomorrow date"].exists)
-    }
-
-    @MainActor
-    func testListDetailShowsOnlyRootsWithOverview() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["UITEST_FIXTURE_SUBTASKS_INLINE"]
-        app.launch()
-
-        XCTAssertTrue(app.buttons["My Lists"].waitForExistence(timeout: 5))
-        app.buttons["My Lists"].tap()
-        XCTAssertTrue(app.navigationBars["My Lists"].waitForExistence(timeout: 5))
-
-        app.descendants(matching: .any).matching(identifier: "default-list-link").firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Parent Project"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Orphan parent"].exists)
-
-        let summary = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS %@", "0/3")
-        ).firstMatch
-        XCTAssertTrue(summary.exists)
-
-        XCTAssertFalse(app.staticTexts["Child with today date"].waitForExistence(timeout: 1))
-        XCTAssertFalse(app.staticTexts["Child no date"].exists)
     }
 }

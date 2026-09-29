@@ -1,9 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct ListPickerView: View {
     let allLists: [ReminderList]
-    let selectedListName: String
-    let onSelect: (String) -> Void
+    let selectedListID: ReminderList.ID?
+    let onSelect: (ReminderList.ID) -> Void
 
     @State private var searchText = ""
 
@@ -54,21 +55,21 @@ struct ListPickerView: View {
     private func listRows(for lists: [ReminderList]) -> some View {
         ForEach(lists) { list in
             Button {
-                onSelect(list.name)
+                onSelect(list.persistentModelID)
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: list.name == ReminderDefaults.defaultListName ? "tray" : "list.bullet")
+                    Image(systemName: list.isBucket ? "tray" : "list.bullet")
                         .font(.system(size: 16))
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .frame(width: 24)
 
-                    Text(list.name)
+                    Text(rowTitle(for: list))
                         .font(.system(size: 17))
                         .foregroundStyle(AppTheme.colors.textPrimary)
 
                     Spacer()
 
-                    if list.name == selectedListName {
+                    if list.persistentModelID == selectedListID {
                         Image(systemName: "checkmark")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(AppTheme.colors.primaryAction)
@@ -80,6 +81,13 @@ struct ListPickerView: View {
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
         }
+    }
+
+    private func rowTitle(for list: ReminderList) -> String {
+        if list.isBucket, let group = list.group {
+            return "\(group.name) · \(list.name)"
+        }
+        return list.name
     }
 
     private var emptyState: some View {

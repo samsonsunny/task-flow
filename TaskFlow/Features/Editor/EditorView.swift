@@ -124,9 +124,12 @@ struct ReminderEditorView: View {
             NavigationStack {
                 ListPickerView(
                     allLists: reminderLists,
-                    selectedListName: viewModel?.draft.listName ?? "",
-                    onSelect: { selected in
-                        viewModel?.draft.listName = selected
+                    selectedListID: viewModel?.draft.listID,
+                    onSelect: { selectedID in
+                        if let selected = reminderLists.first(where: { $0.persistentModelID == selectedID }) {
+                            viewModel?.draft.listName = selected.name
+                            viewModel?.draft.listID = selected.persistentModelID
+                        }
                         isListPickerPresented = false
                     }
                 )
@@ -216,12 +219,13 @@ struct ReminderEditorView: View {
     private var listSection: some View {
         Section("List") {
             HStack {
-                Image(systemName: viewModel?.draft.listName == ReminderDefaults.defaultListName ? "tray" : "list.bullet")
+                let draftList = resolvedDraftList
+                Image(systemName: draftList?.isBucket == true ? "tray" : "list.bullet")
                     .font(.system(size: 16))
                     .foregroundStyle(AppTheme.colors.textSecondary)
                     .frame(width: 24)
 
-                Text(viewModel?.draft.listName ?? ReminderDefaults.defaultListName)
+                Text(listSectionTitle)
                     .font(.system(size: 17))
                     .foregroundStyle(AppTheme.colors.textPrimary)
 
@@ -237,6 +241,19 @@ struct ReminderEditorView: View {
             }
             .accessibilityIdentifier("reminder-editor-list-row")
         }
+    }
+
+    private var listSectionTitle: String {
+        guard let draft = viewModel?.draft else { return "No List" }
+        if let list = resolvedDraftList, let group = list.group, list.isBucket {
+            return "\(group.name) · \(list.name)"
+        }
+        return draft.listName.isEmpty ? "No List" : draft.listName
+    }
+
+    private var resolvedDraftList: ReminderList? {
+        guard let listID = viewModel?.draft.listID else { return nil }
+        return reminderLists.first { $0.persistentModelID == listID }
     }
 
     private var scheduleSection: some View {
@@ -453,7 +470,7 @@ struct ReminderEditorView: View {
 
 #Preview("New Reminder") {
     let container = TaskPreviewData.container()
-    TaskPreviewData.ensureDefaultListExists(in: container.mainContext)
+    TaskPreviewData.seedDefaultAreas(in: container.mainContext)
 
     return ReminderEditorView()
         .modelContainer(container)
