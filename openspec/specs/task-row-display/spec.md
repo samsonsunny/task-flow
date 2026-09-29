@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define how a task is rendered in list rows: title, chips, flags, due-date formatting, and completion affordances.
+
+## Requirements
 
 ### Requirement: Task row displays the full title without truncation
 The system SHALL display the full task title in `TaskRowView`, removing the existing `.lineLimit(2)` constraint. The title SHALL have no line limit — the full text is visible without truncation. The title SHALL use 17pt regular weight with the same color, opacity, and line-spacing treatment as the current implementation.

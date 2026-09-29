@@ -1,58 +1,79 @@
-## Mental Model
+# app-mental-model
 
-### Two axes
+## Purpose
 
-The app has two orthogonal axes of navigation:
+Define the two-axis product mental model (attention vs. home) that the app’s navigation, organization, and capture behavior build on.
+## Requirements
+### Requirement: Two axes
+The app SHALL organize navigation and task visibility around two orthogonal axes: an attention axis driven by due date, and a home axis driven by list membership. A task SHALL always belong to a list in the home axis; it SHALL surface in a time tab only while it carries a due date. Clearing the due date SHALL return the task to Later-only visibility.
 
-```
-ATTENTION AXIS (time-based tabs)       HOME AXIS (Later tab)
-─────────────────────────────────      ─────────────────────
+#### Scenario: A task lives in both axes simultaneously
+- **WHEN** a user creates a task inside a list and gives it a due date
+- **THEN** the task appears in that list's detail (home axis) and in the matching time tab (attention axis)
 
-[Today] [Tomorrow] [Upcoming]          [Later]
-tasks are surfaced based on           tasks live here
-their due date                        permanently, organized
-                                      into groups and lists
+#### Scenario: Clearing the due date returns a task to Later only
+- **WHEN** the user removes a task's due date
+- **THEN** the task SHALL no longer appear in any time tab
+- **AND** it SHALL remain in its list
 
-┌──────┐ ┌────────┐ ┌──────────┐      ┌──────────────────┐
-│Today │ │Tomorrow│ │Upcoming  │      │ Group: Work      │
-│      │ │        │ │          │      │ ├── List: Proj A │
-│ tasks│ │ tasks  │ │ tasks    │      │ ├── List: Proj B │
-│ due  │ │ due    │ │ due      │      │ └── tasks…      │
-│today │ │tomorrow│ │ D+2→+∞   │      └──────────────────┘
-└──────┘ └────────┘ └──────────┘
-```
-
-**A task lives in both axes simultaneously:**
-- It belongs to a list in Later (its permanent home)
-- If it has a due date, it surfaces in a time tab (its attention signal)
-- Removing the due date ("Move to Later" context action) returns it to Later-only visibility
-
-**Subtasks in time tabs:**
-- Every task — top-level or subtask — qualifies for a time tab solely by its own `dueDate`. Only subtasks that carry their own due date surface in time tabs, rendered as standalone flat rows alongside top-level tasks (no indentation, no expand/collapse).
-- Subtasks without a due date are invisible in time tabs; they are visible only in their permanent home (list detail) and the editor.
-- Parent rows indicate remaining subtask work via a completed/total fraction (e.g., "1/3") instead of inline trees.
-- Nesting is capped at one level: a subtask can never have children. Legacy deeper hierarchies are flattened by detaching everything below depth 1 into independent top-level tasks (see `task-subtasks`).
-
-### Navigation
-
-The app has a **single 4-tab `TabView`** as its only navigation surface. There is no sidebar.
+### Requirement: Navigation
+The app SHALL expose a single 4-tab `TabView` as its only navigation surface, with no separate sidebar surface.
 
 | Tab | Purpose | Content |
-|---|---|---|---|
+|---|---|---|
 | Today | Attention now | Tasks due today (dated subtasks included, flat) |
 | Tomorrow | Attention next | Tasks due tomorrow (dated subtasks included, flat) |
 | Upcoming | Coming in future | Tasks due D+2 onward (dated subtasks included, flat) |
 | Later | Permanent home | Groups (areas) and lists — the organizational structure |
 
-### Later tab
+#### Scenario: Time tabs split the attention axis
+- **WHEN** the user opens Today, Tomorrow, or Upcoming
+- **THEN** each tab SHALL show only the tasks whose due date falls in that tab's range
 
-- "Later" is **not** a someday bucket. It is the permanent organizational home of a user's tasks, lists, and projects, independent of due dates.
-- Later's content: `ReminderListGroup` (grouped as expandable sections) and `ReminderList` items.
-- The default list is called **"Inbox"** (not "Reminders"). It is a staging area for new/uncategorized tasks.
-- Tapping a list pushes `ListDetailView` onto Later's `NavigationStack`.
+#### Scenario: Later holds the home axis
+- **WHEN** the user opens the Later tab
+- **THEN** the app SHALL show the user's groups (areas) and their lists
 
-### Dead code
+### Requirement: Later tab
 
-The `ReminderSegment.later` case has been **removed**. It was unused — no view referenced it. The enum contains only `.today`, `.tomorrow`, `.upcoming`, `.overdue`.
+"Later" is **not** a someday bucket. It is the permanent organizational home of a user's tasks, lists, and projects, independent of due dates. Later SHALL contain `ReminderListGroup` (areas, grouped as expandable sections) and `ReminderList` items. Every list SHALL belong to a group/area — there SHALL be no ungrouped section and no standalone global list. Each group/area SHALL contain an Inbox bucket: a protected first list (named "Inbox", tray icon) that is the area's neutral landing zone for new/uncategorized tasks. Tapping a list SHALL push `ListDetailView` onto Later's `NavigationStack`.
 
-The context menu exposes due-date actions inside a single "Deadline" submenu — **"None"** (always listed, no leading icon), a divider, then Today, Tomorrow, This Weekend, Next Week, Custom… (in `TaskRowView.swift`). Each preset row carries a leading calendar icon with its target day-of-month. The menu is state-aware via an active-item checkmark: "None" is ticked when the task has no date, the matching preset when the due date equals its target day, and Custom… for any other date; nothing is hidden. "None" clears a task's due date, causing it to disappear from time tabs and appear only in the Later tab — which is consistent with the mental model.
+#### Scenario: Every list belongs to an area
+
+- **WHEN** the user views the Later tab after migration
+- **THEN** every visible list SHALL appear within a group/area section
+- **AND** no global "Inbox" list SHALL appear outside a group
+
+#### Scenario: Each area shows its own Inbox bucket
+
+- **WHEN** the user expands a group/area in Later
+- **THEN** the area's Inbox bucket SHALL be the first list shown
+- **AND** the bucket SHALL carry an inbox tray icon
+
+### Requirement: Deadline submenu
+The task context menu SHALL expose all due-date actions inside a single "Deadline" submenu in `TaskRowView`: "None" (always listed, no leading icon), a divider, then Today, Tomorrow, This Weekend, Next Week, and Custom…. Each preset SHALL carry a leading calendar icon with its target day-of-month. The submenu SHALL be state-aware via an active-item checkmark: "None" SHALL be ticked when the task has no date, the matching preset when the due date equals its target day, and Custom… for any other date. No due-date option SHALL be hidden.
+
+#### Scenario: Active due-date option is checked
+- **WHEN** the user opens the Deadline submenu on a task due today
+- **THEN** the "Today" preset SHALL show an active checkmark
+
+#### Scenario: Selecting None clears the due date
+- **WHEN** the user selects "None" from the Deadline submenu
+- **THEN** the task's due date SHALL be cleared
+- **AND** the task SHALL disappear from time tabs while remaining in its list
+
+### Requirement: Default capture target
+
+The default neutral capture target — used when no explicit list or area is selected — SHALL be the first group's Inbox bucket (first by `sortOrder`, then `createdAt`). There is no single global "Inbox" list; "Inbox" is a per-area concept.
+
+#### Scenario: Default capture lands in first area's bucket
+
+- **WHEN** the user captures a task with no list or area selected
+- **THEN** the task SHALL be assigned to the first group's Inbox bucket
+
+#### Scenario: Empty store resolves to seeded Work area
+
+- **WHEN** the user captures a task and no groups exist
+- **THEN** the default Work and Personal areas SHALL be created
+- **AND** the task SHALL be assigned to the Work area's Inbox bucket
+

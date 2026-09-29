@@ -1,4 +1,8 @@
-## MODIFIED Requirements
+## Purpose
+
+Define how the Overdue segment surfaces and orders tasks whose due dates are in the past.
+
+## Requirements
 
 ### Requirement: Sidebar displays Overdue filter
 

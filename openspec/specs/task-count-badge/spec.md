@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the tab bar badge counts derived from due dates, including overdue and completed handling.
+
+## Requirements
 
 ### Requirement: Badge shows overdue + today task count
 The system SHALL display a badge on the app icon equal to the number of uncompleted tasks that are overdue or due today.

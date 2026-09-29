@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the task editor experience: fields, validation, date/time entry, list selection, and save semantics.
+
+## Requirements
 
 ### Requirement: Reminder authoring supports rich reminder fields
 The system SHALL provide reminder create and edit flows that support title, notes, URL, list assignment, tags, flag state, priority, assigned contact, image attachment, and optional schedule-related inputs. List assignment SHALL be exposed via a tappable row that navigates to a full-screen list picker.

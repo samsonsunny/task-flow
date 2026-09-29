@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define how the Completed view lists, filters, and presents finished tasks, including grouping by completion date and bulk clearing.
+
+## Requirements
 
 ### Requirement: Sidebar contains Completed smart filter
 

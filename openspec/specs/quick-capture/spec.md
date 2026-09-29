@@ -5,28 +5,31 @@
 Define how tasks are captured across all contexts: the floating + button's context-aware defaults, the shared inline quick-capture row in list and segment views, per-day capture in Upcoming, and hand-off to the full editor.
 
 Consolidates (2026-08): `contextual-task-creation`, `list-inline-capture`, `upcoming-inline-capture`.
-
 ## Requirements
-
 ### Requirement: Context-aware + button
-The floating + button SHALL create tasks with context-appropriate defaults based on the currently active tab and sidebar selection.
+
+The floating + button SHALL create tasks with context-appropriate defaults based on the currently active tab and sidebar selection. When no explicit list is selected, the task SHALL be assigned to the first group's Inbox bucket (the default capture target), resolved by pointer. When a specific list is selected, the task SHALL be assigned to that list.
 
 #### Scenario: + on Today tab
+
 - **WHEN** user is on the Today tab and taps the + button
 - **THEN** a new task is created with `dueDate = today`
-- **AND** the task is assigned to the currently selected sidebar list (or Inbox list if none selected)
+- **AND** the task is assigned to the currently selected sidebar list, or to the first group's Inbox bucket if none is selected
 
 #### Scenario: + on Tomorrow tab
+
 - **WHEN** user is on the Tomorrow tab and taps the + button
 - **THEN** a new task is created with `dueDate = tomorrow`
-- **AND** the task is assigned to the currently selected sidebar list (or Inbox list if none selected)
+- **AND** the task is assigned to the currently selected sidebar list, or to the first group's Inbox bucket if none is selected
 
 #### Scenario: + on Upcoming tab
+
 - **WHEN** user is on the Upcoming tab and taps the + button
 - **THEN** the task editor opens with the date picker shown
 - **AND** no default date is pre-filled
 
 #### Scenario: + with a list selected in sidebar
+
 - **WHEN** user has selected a list in the sidebar and taps the + button on any tab
 - **THEN** the task is assigned to that list
 - **AND** if on a date tab, the date is also set per the tab context
@@ -152,6 +155,20 @@ The system SHALL use a shared `QuickCaptureRow` component (defined in `Views/Com
 - Use `.transition(.move(edge: .bottom).combined(with: .opacity))`
 - Dismiss on tap-away (handled by parent via `onChange(of: isQuickCaptureFocused)`)
 
+#### Scenario: Inline field renders consistently across surfaces
+- **WHEN** the user opens an inline capture field on any surface (Today, Upcoming day section, list detail)
+- **THEN** the field SHALL render with the same filled-circle affordance, text field, and layout
+
+#### Scenario: Date hint is shown when provided
+- **WHEN** an inline capture field is configured with a `dateHint`
+- **THEN** the hint label SHALL be displayed below the field
+- **AND** when no `dateHint` is provided, no hint label SHALL be rendered
+
+#### Scenario: Inline field supports rapid successive entry
+- **WHEN** the user commits a task from an inline field
+- **THEN** the field SHALL clear and remain focused
+- **AND** `.id("quick-capture")` SHALL keep the field anchored in view for the next entry
+
 ### Requirement: Per-day inline quick capture in upcoming view
 The system SHALL allow the user to create a task inline within any day section or month sub-section of the Upcoming view. Tapping any existing "Add Reminder" CTA (dashed circle button, day header, empty day row, month day sub-section) SHALL activate an inline text field within that section. Committing the field SHALL create a task with that day's date. Only one inline field SHALL be active at a time across the entire view.
 
@@ -199,3 +216,42 @@ The system SHALL allow the user to create a task inline within any day section o
 - **THEN** the inline field is dismissed
 - **AND** the "Add Reminder" button reappears
 - **AND** any typed text is discarded
+
+### Requirement: Overview capture targets the first group's bucket
+
+When capturing on the Lists overview (sidebar column), the capture bar's default target SHALL be the first group's Inbox bucket, resolved by pointer, with no `dueDate`. If the store has no groups yet, the resolver SHALL create the default Work/Personal areas and target Work's bucket.
+
+#### Scenario: Capture on overview creates undated bucket task
+
+- **WHEN** the user types a task title on the Lists overview bar and submits
+- **THEN** a new `TaskItem` is created with `reminderList` set to the first group's Inbox bucket
+- **AND** `dueDate` is `nil`
+
+#### Scenario: Overview capture in an empty store seeds areas first
+
+- **WHEN** the user captures on the overview and no groups exist
+- **THEN** the resolver SHALL create the default Work/Personal areas with buckets
+- **AND** the captured task SHALL be assigned to the Work Inbox bucket
+
+### Requirement: Capture target resolves from the selected surface
+
+The capture bar's default target SHALL resolve from the active surface: the selected time segment's date on time segment roots, the selected list (undated) when viewing a list's tasks, **or the first group's Inbox bucket (undated) when viewing the Lists overview**.
+
+#### Scenario: Capture on a time segment assigns the segment date
+
+- **WHEN** the user captures a task on the Today segment
+- **THEN** the task is created with `dueDate = start of today`
+- **AND** the task is assigned to the first group's Inbox bucket
+
+#### Scenario: Capture in a list assigns to that list
+
+- **WHEN** the user captures a task while viewing a specific list's tasks
+- **THEN** the task is created with no `dueDate`
+- **AND** the task is assigned to the viewed list
+
+#### Scenario: Capture inside a group's bucket assigns to that bucket
+
+- **WHEN** the user captures a task while viewing a group's Inbox bucket
+- **THEN** the task is created with no `dueDate`
+- **AND** the task is assigned to that bucket
+

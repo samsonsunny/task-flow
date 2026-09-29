@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the list picker surface used when assigning or moving a task to a list, including group disambiguation.
+
+## Requirements
 
 ### Requirement: List picker displays all lists organized by groups
 The system SHALL present a full-screen list picker showing all available lists grouped by their `ReminderListGroup`, with the default list (Inbox) shown first, followed by grouped lists, then ungrouped lists. Lists within each group SHALL be sorted by their `sortOrder`.

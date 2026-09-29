@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define how the SwiftData schema evolves without data loss, and the constraints that keep it CloudKit-compatible.
+
+## Requirements
 
 ### Requirement: Existing reminders remain intact after model expansion
 The system SHALL preserve existing saved reminders when the reminder data model is expanded, including legacy title, notes/description, due date, flag state, completion state, and creation metadata.

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define the inline "Create New Group" flow that creates a group (with its Inbox bucket) and moves the source list into it.
+
+## Requirements
 
 ### Requirement: Inline creation rows replace FAB in Later tab
 

@@ -1,11 +1,5 @@
-# list-management
+## MODIFIED Requirements
 
-## Purpose
-
-Define CRUD and ordering operations on lists themselves: rename via context menu, delete with explicit cascade semantics, and drag-to-reorder using the shared fractional-string sort order.
-
-Consolidates (2026-08): `list-delete`, `list-rename`, `list-reorder`.
-## Requirements
 ### Requirement: User can rename any unprotected list via context menu
 
 The system SHALL allow users to rename any list that is not an area's Inbox bucket. A list SHALL be identified as a protected bucket by pointer (`list == list.group?.defaultList`), never by name. Inbox buckets SHALL NOT show a rename option in their context menu.
@@ -19,23 +13,6 @@ The system SHALL allow users to rename any list that is not an area's Inbox buck
 
 - **WHEN** the user long-presses an area's Inbox bucket row in the sidebar
 - **THEN** the context menu SHALL NOT include a "Rename" option
-
-### Requirement: Rename uses an alert with a text field
-When the user taps "Rename" from the context menu, the system SHALL present an alert containing a text field pre-filled with the current list name. The user can edit the name and confirm or cancel.
-
-#### Scenario: Rename with valid name
-- **WHEN** the user edits the name in the alert text field and confirms
-- **THEN** the list's `name` field SHALL be updated to the new value
-- **AND** the new name SHALL be reflected immediately in `ListsTabView` and `ListDetailView` navigation titles
-
-#### Scenario: Rename with empty name is rejected
-- **WHEN** the user clears the name field and confirms
-- **THEN** the system SHALL NOT update the list name
-- **AND** the alert SHALL remain visible or dismiss without changes
-
-#### Scenario: Cancel rename
-- **WHEN** the user taps Cancel in the rename alert
-- **THEN** the list name SHALL remain unchanged
 
 ### Requirement: User can delete any unprotected list via context menu
 
@@ -92,22 +69,6 @@ The system SHALL allow users to reorder lists in the sidebar by dragging rows. R
 - **WHEN** the user attempts to drag a group's Inbox bucket to another position
 - **THEN** the bucket SHALL remain the first list of its group
 
-### Requirement: List sort order uses fractional string encoding
-The system SHALL store each list's position as a `String?` sortOrder using the same lexicographic midpoint algorithm used for task ordering. Only the dragged list's sortOrder SHALL be updated per drag operation.
-
-#### Scenario: Single drag updates one record
-- **WHEN** a list is dragged to a new position between two other lists
-- **THEN** the system SHALL update only that list's `sortOrder` in the database
-- **AND** SHALL NOT modify `sortOrder` on any other list
-
-### Requirement: New lists append to end
-When a list is created, the system SHALL assign it a sortOrder that places it after all existing lists.
-
-#### Scenario: New list appears at bottom
-- **WHEN** a user creates a new list
-- **THEN** the list SHALL appear as the last item in `ListsTabView`
-- **AND** all existing list positions SHALL remain unchanged
-
 ### Requirement: Existing lists backfilled on migration
 
 On the first launch after the update, all existing `ReminderList` entries without a `sortOrder` SHALL receive an initial sortOrder based on their current display order. Each group's Inbox bucket SHALL receive the first sortOrder within its group; remaining lists SHALL be ordered alphabetically within their group, then sequentially by createdAt. The legacy "Inbox-first global" special case SHALL be removed.
@@ -118,4 +79,3 @@ On the first launch after the update, all existing `ReminderList` entries withou
 - **THEN** every existing `ReminderList` SHALL have a non-nil `sortOrder`
 - **AND** each group's Inbox bucket SHALL sort before that group's other lists
 - **AND** remaining lists SHALL follow in name-then-createdAt order within their group
-

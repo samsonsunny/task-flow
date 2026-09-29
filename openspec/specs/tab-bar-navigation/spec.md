@@ -1,4 +1,10 @@
-## ADDED Requirements
+# tab-bar-navigation
+
+## Purpose
+
+Define the tab bar structure, its four tabs, and how tab selection drives the detail column and navigation state.
+
+## Requirements
 
 ### Requirement: Root navigation is a 4-tab bottom TabView
 
@@ -90,11 +96,3 @@ When the user creates a task via the quick-capture field in any time-based tab's
 #### Scenario: Quick-capture in time tabs assigns to Inbox
 - **WHEN** the user quick-captures a task from the Today tab
 - **THEN** the task is created with `reminderList` set to the default "Inbox" list
-
-## REMOVED Requirements
-
-### Requirement: Later and Completed have no entry point
-
-**Reason**: The "Later" view concept was replaced by the Later tab, which serves as the permanent organizational home. The Later tab is now a first-class entry point in the tab bar.
-
-**Migration**: Remove this requirement entirely. The Later tab replaces the "no entry point" rule.

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define parent/subtask relationships, their visibility in time tabs, depth limits, and summary display on parent rows.
+
+## Requirements
 
 ### Requirement: Task has a parent-child relationship
 A `TaskItem` SHALL support an optional self-referencing parent-child relationship. A task MAY have one parent task. A task MAY have zero or more child tasks. The relationship SHALL form a tree (no cycles).
