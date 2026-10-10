@@ -187,26 +187,48 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
     private var plannedContent: some View {
-        if let viewModel, viewModel.datedSections.isEmpty {
-            emptyState(
-                title: "Nothing scheduled",
-                message: "Tasks with a due date will appear here."
-            )
-        } else {
-            // Due-date buckets, overdue first, then today, then future work. Empty buckets are
-            // dropped by the ViewModel; the list name rides on each row's secondary line.
-            ForEach(viewModel?.datedSections ?? []) { section in
-                Section {
+        // Due-date buckets, overdue first, then today, then future work. The ViewModel always
+        // includes today, so an empty one gets a nudge row instead of vanishing and leaving the
+        // schedule looking blank. Overdue and upcoming only appear when they carry work.
+        ForEach(viewModel?.datedSections ?? []) { section in
+            Section {
+                if section.tasks.isEmpty {
+                    todayNudge
+                } else {
                     ForEach(section.tasks) { task in
                         taskRow(task, showsDueDate: true)
                     }
-                } header: {
-                    sectionHeader(section)
                 }
+            } header: {
+                sectionHeader(section)
             }
         }
+    }
+
+    /// Placeholder shown under the Today header when nothing is due — keeps the Planned half
+    /// anchored and doubles as a gentle prompt to plan the day.
+    private var todayNudge: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sun.max")
+                .font(.system(size: 16))
+                .foregroundStyle(AppTheme.colors.textTertiary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Nothing due today")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+
+                Text("A clear day. Add something whenever you're ready.")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.colors.textTertiary)
+            }
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

@@ -44,8 +44,9 @@ final class HomeViewModel {
     private(set) var area: ReminderListGroup?
 
     /// The selected area's incomplete *dated* tasks, split into overdue / today / upcoming and
-    /// sorted by due date within each bucket. Empty buckets are dropped. Lists are not a
-    /// grouping level here — the list name rides along on each row's secondary line instead.
+    /// sorted by due date within each bucket. Today is always present — even when empty — so the
+    /// Planned half never reads as broken; overdue and upcoming drop away when they carry no work.
+    /// Lists are not a grouping level here — the list name rides along on each row's secondary line.
     private(set) var datedSections: [HomeTaskSection] = []
 
     /// The selected area's incomplete tasks that carry no due date — the Unplanned half of
@@ -111,7 +112,8 @@ final class HomeViewModel {
 
     // MARK: - Sectioning
 
-    /// Splits dated tasks into overdue / today / upcoming buckets, dropping empty ones.
+    /// Splits dated tasks into overdue / today / upcoming buckets. Today is kept even when empty
+    /// so the Planned half always has an anchor; overdue and upcoming are dropped when empty.
     /// `.upcoming` here means "anything after today" — the pushed Upcoming screen starts two
     /// days out, but Home is the full schedule, so tomorrow belongs in the future bucket.
     static func sections(
@@ -144,7 +146,7 @@ final class HomeViewModel {
             HomeTaskSection(segment: .overdue, tasks: sortedByDueDate(overdue)),
             HomeTaskSection(segment: .today, tasks: sortedByDueDate(today)),
             HomeTaskSection(segment: .upcoming, tasks: sortedByDueDate(upcoming)),
-        ].filter { !$0.tasks.isEmpty }
+        ].filter { $0.segment == .today || !$0.tasks.isEmpty }
     }
 
     /// Incomplete tasks with no due date, newest created first.

@@ -244,9 +244,9 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [task], area: work, now: now)
 
-        #expect(vm.datedSections.count == 1)
-        #expect(vm.datedSections.first?.segment == .upcoming)
-        #expect(vm.datedSections.first?.tasks.map(\.safeTitle) == ["Tomorrow"])
+        #expect(vm.datedSections.map(\.segment) == [.today, .upcoming])
+        #expect(vm.datedSections.first { $0.segment == .today }?.tasks.isEmpty == true)
+        #expect(vm.datedSections.first { $0.segment == .upcoming }?.tasks.map(\.safeTitle) == ["Tomorrow"])
     }
 
     /// Buckets read top-to-bottom by due date: the most overdue leads, the soonest future leads.
@@ -268,7 +268,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [d, c, b, a], area: work, now: now)
 
-        #expect(vm.datedSections.map { $0.tasks.map(\.safeTitle) } == [["Very overdue", "Slightly overdue"], ["Soon", "Later"]])
+        #expect(vm.datedSections.map { $0.tasks.map(\.safeTitle) } == [["Very overdue", "Slightly overdue"], [], ["Soon", "Later"]])
     }
 
     /// Undated work never enters the schedule — it is reachable only through the CTA pool.
@@ -288,19 +288,21 @@ struct HomeViewModelTests {
         #expect(vm.datedSections.flatMap { $0.tasks.map(\.safeTitle) } == ["Dated"])
     }
 
-    /// A bucket with nothing in it produces no header at all.
-    @Test func dropsEmptyBuckets() throws {
+    /// Today anchors the schedule: it stays even with no dated work, so the Planned half never
+    /// reads as blank. Overdue and upcoming still drop when they carry nothing.
+    @Test func alwaysShowsTodayEvenWhenEmpty() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let today = insertTask("Today only", into: inbox, createdAt: now, dueDate: now, in: context)
+        let undated = insertTask("No date", into: inbox, createdAt: now, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [today], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [undated], area: work, now: now)
 
         #expect(vm.datedSections.map(\.segment) == [.today])
+        #expect(vm.datedSections.first?.tasks.isEmpty == true)
     }
 
     // MARK: - Scope
