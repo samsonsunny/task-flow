@@ -121,7 +121,7 @@ struct HomeView: View {
 
     private var listContent: some View {
         VStack(spacing: 0) {
-            filterBar
+            scopeSwitcher
             taskList
         }
     }
@@ -139,68 +139,43 @@ struct HomeView: View {
         )
     }
 
-    /// The one-filter-at-a-time chip row above the task list. "Recents" is the default state —
-    /// every incomplete task in the area, newest first. The date chips resolve to the same
-    /// buckets as the pushed time views, so membership and counts never disagree.
-    private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(HomeFilter.allCases) { filter in
-                    filterChip(filter)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+    /// The Planned / Unplanned switch. It replaces the former CTA-and-pushed-page: the undated
+    /// backlog is one tap away in the same list rather than a separate screen. The Unplanned
+    /// label carries its count so the backlog stays visible while the Planned half is showing.
+    private var scopeSwitcher: some View {
+        Picker("Scope", selection: scopeBinding) {
+            Text(HomeScope.planned.title).tag(HomeScope.planned)
+            Text(unplannedSegmentLabel).tag(HomeScope.unplanned)
         }
-        .accessibilityIdentifier("home-filter-bar")
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .accessibilityIdentifier("home-scope-switcher")
     }
 
-    private func filterChip(_ filter: HomeFilter) -> some View {
-        let isSelected = viewModel?.filter == filter
-        return Button {
-            withAnimation(.easeInOut(duration: 0.18)) {
-                viewModel?.selectFilter(filter)
-            }
-        } label: {
-            Text(filter.title)
-                .font(.subheadline.weight(isSelected ? .semibold : .medium))
-                .foregroundStyle(isSelected ? AppTheme.colors.textOnPrimaryAction : AppTheme.colors.textPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(Capsule().fill(isSelected ? AppTheme.colors.primaryAction : AppTheme.colors.fillSubtle))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home-filter-\(filter.rawValue)")
-        .accessibilityLabel(filter.title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .sensoryFeedback(.selection, trigger: isSelected)
+    private var scopeBinding: Binding<HomeScope> {
+        Binding(
+            get: { viewModel?.scope ?? .planned },
+            set: { viewModel?.selectScope($0) }
+        )
     }
 
+    private var unplannedSegmentLabel: String {
+        let count = viewModel?.undatedTasks.count ?? 0
+        return count > 0 ? "Unplanned \(count)" : HomeScope.unplanned.title
+    }
+
+    /// One list, two halves. Planned shows the due-date buckets (overdue, then today, then
+    /// future); Unplanned shows the same area's undated work, newest first. Both reuse the same
+    /// rows and mutations — only the source pool changes.
     private var taskList: some View {
         List {
-            if viewModel?.tasks.isEmpty == true, let segment = viewModel?.filter.reminderSegment {
-                // Only the date chips get an empty state: a blank Recents list is the app's
-                // established "no tasks in this area yet" cue, so it is left as-is.
-                emptyState(segment: segment)
-            } else {
-                // One flat list of the selected area's tasks under the active filter. Nothing
-                // is grouped: the list name rides on each row's secondary line next to the
-                // date, so the chosen ordering is the only one the user has to read.
-                ForEach(viewModel?.tasks ?? []) { task in
-                    TaskRowView(
-                        task: task,
-                        // Only incomplete tasks reach this list, so the row always draws as
-                        // pending. Passed explicitly so that stays true if the filter ever changes.
-                        isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
-                        onDelete: { viewModel?.delete(task) },
-                        onTap: { editingTask = task },
-                        showsDueDate: true,
-                        showsListName: true
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
+            switch viewModel?.scope ?? .planned {
+            case .planned:
+                plannedContent
+            case .unplanned:
+                unplannedContent
             }
         }
         .listStyle(.plain)
@@ -212,13 +187,64 @@ struct HomeView: View {
         }
     }
 
-    private func emptyState(segment: ReminderSegment) -> some View {
+    @ViewBuilder
+    private var plannedContent: some View {
+        if let viewModel, viewModel.datedSections.isEmpty {
+            emptyState(
+                title: "Nothing scheduled",
+                message: "Tasks with a due date will appear here."
+            )
+        } else {
+            // Due-date buckets, overdue first, then today, then future work. Empty buckets are
+            // dropped by the ViewModel; the list name rides on each row's secondary line.
+            ForEach(viewModel?.datedSections ?? []) { section in
+                Section {
+                    ForEach(section.tasks) { task in
+                        taskRow(task, showsDueDate: true)
+                    }
+                } header: {
+                    sectionHeader(section)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var unplannedContent: some View {
+        if let viewModel, viewModel.undatedTasks.isEmpty {
+            emptyState(
+                title: "Nothing unscheduled",
+                message: "Tasks you add without a due date will collect here."
+            )
+        } else {
+            ForEach(viewModel?.undatedTasks ?? []) { task in
+                taskRow(task, showsDueDate: false)
+            }
+        }
+    }
+
+    private func taskRow(_ task: TaskItem, showsDueDate: Bool) -> some View {
+        TaskRowView(
+            task: task,
+            // Only incomplete tasks reach this list, so the row always draws as pending.
+            isCompletedVisualState: task.isCompleted ?? false,
+            onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
+            onDelete: { viewModel?.delete(task) },
+            onTap: { editingTask = task },
+            showsDueDate: showsDueDate,
+            showsListName: true
+        )
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private func emptyState(title: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(segment.emptyTitle)
+            Text(title)
                 .font(.headline)
                 .foregroundStyle(AppTheme.colors.textSecondary)
 
-            Text(segment.emptyMessage)
+            Text(message)
                 .font(.caption)
                 .foregroundStyle(AppTheme.colors.textTertiary)
         }
@@ -227,6 +253,26 @@ struct HomeView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
+    }
+
+    private func sectionHeader(_ section: HomeTaskSection) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: section.iconName)
+                .font(.caption)
+                .foregroundStyle(AppTheme.colors.textSecondary)
+
+            Text(section.title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.colors.textSecondary)
+
+            Text("\(section.tasks.count)")
+                .font(.caption)
+                .foregroundStyle(AppTheme.colors.textTertiary)
+
+            Spacer()
+        }
+        .textCase(nil)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Destinations
@@ -256,6 +302,15 @@ struct HomeView: View {
 
     // MARK: - Capture
 
+    /// The default due date a quick capture lands with, driven by the active half of Home.
+    /// Planned schedules new work for today so it shows up immediately; Unplanned leaves it
+    /// dateless so it collects with the rest of the backlog. An explicit `pendingCaptureDate`
+    /// (a tapped day header, or a deep link) always wins over either default.
+    private var captureDueDateOverride: Date? {
+        if let pending = appState.pendingCaptureDate { return pending }
+        return viewModel?.scope == .planned ? Date() : nil
+    }
+
     private var captureBar: some View {
         CaptureBar(
             viewModel: captureViewModel ?? CaptureBarViewModel(modelContext: modelContext),
@@ -268,7 +323,7 @@ struct HomeView: View {
                     notes: notes,
                     target: .area(areaID),
                     selectedAreaID: areaID,
-                    overrideDate: appState.pendingCaptureDate
+                    overrideDate: captureDueDateOverride
                 )
                 appState.pendingCaptureDate = nil
                 captureViewModel?.isFocusingCapture = false

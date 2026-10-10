@@ -1,33 +1,32 @@
 import SwiftUI
 import SwiftData
 
-/// The one-filter-at-a-time chip row above Home's list. "Recents" is the unfiltered surface —
-/// every incomplete task in the area, newest first — and the date chips slice the same pool with
-/// the same buckets the pushed time views use, so a Home filter and the pushed Today/Overdue
-/// screen can never disagree about membership.
-enum HomeFilter: String, CaseIterable, Identifiable, Hashable {
-    case recents
-    case today
-    case tomorrow
-    case overdue
+/// One due-date bucket on Home. Reuses `ReminderSegment` so Home's section headers share the
+/// same title, tint, and icon as the pushed time screens. `.tomorrow` never appears here: the
+/// dated list folds tomorrow into `.upcoming` so overdue leads, then today, then everything else.
+struct HomeTaskSection: Identifiable {
+    let segment: ReminderSegment
+    let tasks: [TaskItem]
+
+    var id: ReminderSegment { segment }
+    var title: String { segment.title }
+    var tint: Color { segment.tintColor }
+    var iconName: String { segment.iconName }
+}
+
+/// The two halves of Home, switched by a segmented control instead of a pushed page.
+/// `.planned` is the due-date schedule (overdue / today / upcoming); `.unplanned` collects the
+/// incomplete tasks that carry no due date.
+enum HomeScope: String, CaseIterable, Identifiable, Hashable {
+    case planned
+    case unplanned
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .recents: return "Recents"
-        case .today: return "Today"
-        case .tomorrow: return "Tomorrow"
-        case .overdue: return "Overdue"
-        }
-    }
-
-    var reminderSegment: ReminderSegment? {
-        switch self {
-        case .recents: return nil
-        case .today: return .today
-        case .tomorrow: return .tomorrow
-        case .overdue: return .overdue
+        case .planned: return "Planned"
+        case .unplanned: return "Unplanned"
         }
     }
 }
@@ -44,16 +43,18 @@ final class HomeViewModel {
     /// The area currently being browsed and captured into.
     private(set) var area: ReminderListGroup?
 
-    /// Every task in the selected area that survives the active filter, as one flat list.
-    /// "Recents" orders them most recently created first; the date filters order by due date.
-    /// Lists are not a grouping level here — the list name rides along on each row's secondary
-    /// line instead. Completed work is filtered out: it stays in its list and in the Completed
-    /// screen, but it must not push live work down the screen.
-    private(set) var tasks: [TaskItem] = []
+    /// The selected area's incomplete *dated* tasks, split into overdue / today / upcoming and
+    /// sorted by due date within each bucket. Empty buckets are dropped. Lists are not a
+    /// grouping level here — the list name rides along on each row's secondary line instead.
+    private(set) var datedSections: [HomeTaskSection] = []
 
-    /// The active filter. Session-scoped like the selected area: Home opens on "Recents" and
-    /// the chip row holds whatever the user last picked until the app relaunches.
-    private(set) var filter: HomeFilter = .recents
+    /// The selected area's incomplete tasks that carry no due date — the Unplanned half of
+    /// Home. Newest created first.
+    private(set) var undatedTasks: [TaskItem] = []
+
+    /// Which half of Home is showing. Session-scoped like the selected area: Home opens on
+    /// Planned and holds whatever the user last picked until the app relaunches.
+    private(set) var scope: HomeScope = .planned
 
     var now: Date = Date()
 
@@ -85,7 +86,8 @@ final class HomeViewModel {
 
     private func rebuild(areaID: ReminderListGroup.ID?) {
         guard let areaID, allGroups.contains(where: { $0.persistentModelID == areaID }) else {
-            tasks = []
+            datedSections = []
+            undatedTasks = []
             return
         }
 
@@ -100,27 +102,74 @@ final class HomeViewModel {
             return areaListIDs.contains(listID)
         }
 
-        // The date chips reuse `ReminderSegmentLogic` so a filtered Home and the pushed time
-        // view of the same bucket agree on every task. "Recents" keeps the full area pool,
-        // newest first — a task is reachable only through the lists of the selected area, so
-        // anything filed elsewhere is simply not this screen's business.
-        guard let segment = filter.reminderSegment else {
-            tasks = inArea.sorted { lhs, rhs in
+        // A task is reachable only through the lists of the selected area, so anything filed
+        // elsewhere is simply not this screen's business. Dated work is bucketed by urgency;
+        // undated work lives behind the call to action instead of cluttering the schedule.
+        datedSections = Self.sections(from: inArea, now: now)
+        undatedTasks = Self.undated(from: inArea)
+    }
+
+    // MARK: - Sectioning
+
+    /// Splits dated tasks into overdue / today / upcoming buckets, dropping empty ones.
+    /// `.upcoming` here means "anything after today" — the pushed Upcoming screen starts two
+    /// days out, but Home is the full schedule, so tomorrow belongs in the future bucket.
+    static func sections(
+        from tasks: [TaskItem],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [HomeTaskSection] {
+        let todayStart = calendar.startOfDay(for: now)
+        var overdue: [TaskItem] = []
+        var today: [TaskItem] = []
+        var upcoming: [TaskItem] = []
+
+        for task in tasks {
+            guard let dueDate = task.dueDate else { continue }
+            let dueStart = calendar.startOfDay(for: dueDate)
+            let isOverdue = task.hasTime == true ? dueDate < now : dueStart < todayStart
+            if isOverdue {
+                overdue.append(task)
+            } else if dueStart == todayStart {
+                today.append(task)
+            } else {
+                upcoming.append(task)
+            }
+        }
+
+        // Overdue leads with the oldest deadline, then today, then the soonest future work.
+        // Every bucket reads top-to-bottom by due date; ties break on the stable `taskId` so
+        // equal dates never reshuffle between updates.
+        return [
+            HomeTaskSection(segment: .overdue, tasks: sortedByDueDate(overdue)),
+            HomeTaskSection(segment: .today, tasks: sortedByDueDate(today)),
+            HomeTaskSection(segment: .upcoming, tasks: sortedByDueDate(upcoming)),
+        ].filter { !$0.tasks.isEmpty }
+    }
+
+    /// Incomplete tasks with no due date, newest created first.
+    static func undated(from tasks: [TaskItem]) -> [TaskItem] {
+        tasks
+            .filter { $0.dueDate == nil }
+            .sorted { lhs, rhs in
                 let lhsDate = lhs.createdAt ?? .distantPast
                 let rhsDate = rhs.createdAt ?? .distantPast
                 if lhsDate != rhsDate { return lhsDate > rhsDate }
-                // Tiebreak on the stable `taskId` so equal timestamps (bulk sync, seeded fixtures)
-                // keep one fixed order. `persistentModelID.hashValue` would not: Swift's hashing is
-                // seeded per process, so those rows would reshuffle on every relaunch.
+                // Tiebreak on the stable `taskId` so equal timestamps (bulk sync, seeded
+                // fixtures) keep one fixed order. `persistentModelID.hashValue` would not:
+                // Swift's hashing is seeded per process, so those rows would reshuffle on
+                // every relaunch.
                 return (lhs.taskId ?? "") < (rhs.taskId ?? "")
             }
-            return
-        }
+    }
 
-        tasks = ReminderSegmentLogic.sortedTasks(
-            ReminderSegmentLogic.filteredTasks(inArea, for: segment, now: now),
-            for: segment
-        )
+    private static func sortedByDueDate(_ tasks: [TaskItem]) -> [TaskItem] {
+        tasks.sorted { lhs, rhs in
+            let lhsDate = lhs.dueDate ?? .distantFuture
+            let rhsDate = rhs.dueDate ?? .distantFuture
+            if lhsDate != rhsDate { return lhsDate < rhsDate }
+            return (lhs.taskId ?? "") < (rhs.taskId ?? "")
+        }
     }
 
     // MARK: - Mutations
@@ -187,11 +236,10 @@ final class HomeViewModel {
         rebuild(areaID: group.persistentModelID)
     }
 
-    /// Applies a filter chip without touching the area. The selection survives area switches
-    /// and re-pulled `@Query` snapshots because `update()` re-runs `rebuild` against it.
-    func selectFilter(_ filter: HomeFilter) {
-        guard self.filter != filter else { return }
-        self.filter = filter
-        rebuild(areaID: area?.persistentModelID)
+    /// Switches between the Planned and Unplanned halves. Both pools are always derived, so
+    /// this only flips which one the view reads — no recompute needed.
+    func selectScope(_ scope: HomeScope) {
+        guard self.scope != scope else { return }
+        self.scope = scope
     }
 }

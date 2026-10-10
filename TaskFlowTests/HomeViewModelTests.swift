@@ -82,7 +82,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work, personal], lists: [workInbox, personalInbox], tasks: [workTask], area: work)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Work thing"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Work thing"])
     }
 
     /// A task in a list of the other area is not reachable by switching away — it must not
@@ -100,7 +100,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work, personal], lists: [workInbox, personalInbox], tasks: [workTask, personalTask], area: personal)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Personal thing"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Personal thing"])
     }
 
     // MARK: - Ordering
@@ -118,7 +118,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [oldest, middle, newest], area: work)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Newest", "Middle", "Oldest"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Newest", "Middle", "Oldest"])
     }
 
     /// Two tasks created in the same instant must not swap places between updates.
@@ -133,12 +133,12 @@ struct HomeViewModelTests {
 
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [first, second], area: work)
-        let initial = vm.tasks.map(\.taskId)
+        let initial = vm.undatedTasks.map(\.taskId)
 
         // Re-derive from the reversed input: a stable tiebreak must not depend on input order.
         update(vm, groups: [work], lists: [inbox], tasks: [second, first], area: work)
 
-        #expect(vm.tasks.map(\.taskId) == initial)
+        #expect(vm.undatedTasks.map(\.taskId) == initial)
     }
 
     // MARK: - Completed work
@@ -154,7 +154,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [pending], area: work)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Still to do"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Still to do"])
     }
 
     /// Completing from Home must remove the row straight away. `@Model` instances compare
@@ -169,12 +169,12 @@ struct HomeViewModelTests {
 
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [task], area: work)
-        #expect(vm.tasks.count == 1)
+        #expect(vm.undatedTasks.count == 1)
 
         vm.toggleCompletion(for: task)
 
         #expect(task.isCompleted == true)
-        #expect(vm.tasks.isEmpty, "Completed task stayed on Home until some other refresh")
+        #expect(vm.undatedTasks.isEmpty, "Completed task stayed on Home until some other refresh")
     }
 
     @Test func reopeningATaskBringsItBack() throws {
@@ -186,11 +186,11 @@ struct HomeViewModelTests {
 
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [task], area: work)
-        #expect(vm.tasks.isEmpty)
+        #expect(vm.undatedTasks.isEmpty)
 
         vm.toggleCompletion(for: task)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Do the thing"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Do the thing"])
     }
 
     @Test func deletingATaskRemovesItFromTheList() throws {
@@ -205,142 +205,127 @@ struct HomeViewModelTests {
 
         vm.delete(task)
 
-        #expect(vm.tasks.isEmpty)
+        #expect(vm.undatedTasks.isEmpty)
     }
 
-    // MARK: - Filters
+    // MARK: - Due-date sectioning
 
-    /// "Recents" is the unfiltered surface: every incomplete task in the area, newest first.
-    @Test func recentsShowsTheWholeAreaPool() throws {
+    /// Overdue leads, then today, then future work — each task lands in exactly one bucket.
+    @Test func splitsDatedWorkIntoOverdueTodayAndUpcoming() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let dueToday = insertTask("Due today", into: inbox, createdAt: now, dueDate: now, in: context)
-        let dueNextWeek = insertTask("Due next week", into: inbox, createdAt: now.addingTimeInterval(60), dueDate: now.addingTimeInterval(7 * 86_400), in: context)
+        let overdueDate = Calendar.current.date(byAdding: .day, value: -2, to: now)!
+        let futureDate = Calendar.current.date(byAdding: .day, value: 3, to: now)!
+        let overdue = insertTask("Overdue", into: inbox, createdAt: now, dueDate: overdueDate, in: context)
+        let today = insertTask("Today", into: inbox, createdAt: now, dueDate: now, in: context)
+        let future = insertTask("Future", into: inbox, createdAt: now, dueDate: futureDate, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [dueToday, dueNextWeek], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [overdue, today, future], area: work, now: now)
 
-        #expect(vm.filter == .recents)
-        #expect(vm.tasks.map(\.safeTitle) == ["Due next week", "Due today"])
+        #expect(vm.datedSections.map(\.segment) == [.overdue, .today, .upcoming])
+        #expect(vm.datedSections.map { $0.tasks.map(\.safeTitle) } == [["Overdue"], ["Today"], ["Future"]])
     }
 
-    @Test func todayFilterShowsOnlyTasksDueToday() throws {
+    /// A task due tomorrow is future work — Home is the whole schedule, so it must not be
+    /// dropped the way the pushed Upcoming screen (which starts two days out) would.
+    @Test func upcomingIncludesTomorrow() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now)!
-        let overdue = Calendar.current.date(byAdding: .day, value: -1, to: now)!
-        let dueToday = insertTask("Due today", into: inbox, createdAt: now, dueDate: now, in: context)
-        insertTask("Due tomorrow", into: inbox, createdAt: now, dueDate: tomorrow, in: context)
-        insertTask("Overdue", into: inbox, createdAt: now, dueDate: overdue, in: context)
+        let task = insertTask("Tomorrow", into: inbox, createdAt: now, dueDate: tomorrow, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [dueToday], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [task], area: work, now: now)
 
-        vm.selectFilter(.today)
-        #expect(vm.filter == .today)
-        #expect(vm.tasks.map(\.safeTitle) == ["Due today"])
+        #expect(vm.datedSections.count == 1)
+        #expect(vm.datedSections.first?.segment == .upcoming)
+        #expect(vm.datedSections.first?.tasks.map(\.safeTitle) == ["Tomorrow"])
     }
 
-    @Test func tomorrowFilterShowsOnlyTasksDueTomorrow() throws {
+    /// Buckets read top-to-bottom by due date: the most overdue leads, the soonest future leads.
+    @Test func ordersEachBucketByDueDate() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now)!
-        let dueTomorrow = insertTask("Due tomorrow", into: inbox, createdAt: now, dueDate: tomorrow, in: context)
-        insertTask("Due today", into: inbox, createdAt: now, dueDate: now, in: context)
-        try? context.save()
-
-        let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [dueTomorrow], area: work, now: now)
-
-        vm.selectFilter(.tomorrow)
-        #expect(vm.tasks.map(\.safeTitle) == ["Due tomorrow"])
-    }
-
-    @Test func overdueFilterShowsOnlyOverdueTasks() throws {
-        let context = try makeContext()
-        let work = insertArea("Work", order: "a", into: context)
-        let inbox = insertList("Inbox", into: work, order: "m", in: context)
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let overdue = Calendar.current.date(byAdding: .day, value: -2, to: now)!
         let veryOverdue = Calendar.current.date(byAdding: .day, value: -5, to: now)!
-        insertTask("Most overdue", into: inbox, createdAt: now, dueDate: veryOverdue, in: context)
-        let overdueTask = insertTask("Overdue", into: inbox, createdAt: now, dueDate: overdue, in: context)
-        insertTask("Due today", into: inbox, createdAt: now, dueDate: now, in: context)
+        let slightlyOverdue = Calendar.current.date(byAdding: .day, value: -1, to: now)!
+        let soon = Calendar.current.date(byAdding: .day, value: 2, to: now)!
+        let later = Calendar.current.date(byAdding: .day, value: 6, to: now)!
+        let a = insertTask("Very overdue", into: inbox, createdAt: now, dueDate: veryOverdue, in: context)
+        let b = insertTask("Slightly overdue", into: inbox, createdAt: now, dueDate: slightlyOverdue, in: context)
+        let c = insertTask("Soon", into: inbox, createdAt: now, dueDate: soon, in: context)
+        let d = insertTask("Later", into: inbox, createdAt: now, dueDate: later, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [overdueTask], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [d, c, b, a], area: work, now: now)
 
-        vm.selectFilter(.overdue)
-        #expect(vm.tasks.map(\.safeTitle) == ["Overdue"])
+        #expect(vm.datedSections.map { $0.tasks.map(\.safeTitle) } == [["Very overdue", "Slightly overdue"], ["Soon", "Later"]])
     }
 
-    /// A dated chip must respect the same incomplete-only rule as Recents.
-    @Test func dateFiltersStillHideCompletedTasks() throws {
+    /// Undated work never enters the schedule — it is reachable only through the CTA pool.
+    @Test func keepsUndatedWorkOutOfTheSchedule() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let overdue = Calendar.current.date(byAdding: .day, value: -1, to: now)!
-        insertTask("Done", into: inbox, createdAt: now, dueDate: overdue, completed: true, in: context)
+        let undated = insertTask("No date", into: inbox, createdAt: now, in: context)
+        let dated = insertTask("Dated", into: inbox, createdAt: now.addingTimeInterval(60), dueDate: now, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [undated, dated], area: work, now: now)
 
-        vm.selectFilter(.overdue)
-        #expect(vm.tasks.isEmpty)
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["No date"])
+        #expect(vm.datedSections.flatMap { $0.tasks.map(\.safeTitle) } == ["Dated"])
     }
 
-    /// The selection is session-scoped: it must survive an area switch and a re-pulled query.
-    @Test func filterSurvivesAreaSwitchAndReupdate() throws {
-        let context = try makeContext()
-        let work = insertArea("Work", order: "a", into: context)
-        let personal = insertArea("Personal", order: "b", into: context)
-        let workInbox = insertList("Inbox", into: work, order: "m", in: context)
-        let personalInbox = insertList("Inbox", into: personal, order: "m", in: context)
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now)!
-        let workToday = insertTask("Work today", into: workInbox, createdAt: now, dueDate: now, in: context)
-        let personalTomorrow = insertTask("Personal tomorrow", into: personalInbox, createdAt: now, dueDate: tomorrow, in: context)
-        try? context.save()
-
-        let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work, personal], lists: [workInbox, personalInbox], tasks: [workToday, personalTomorrow], area: work, now: now)
-        vm.selectFilter(.tomorrow)
-        #expect(vm.tasks.isEmpty)
-
-        update(vm, groups: [work, personal], lists: [workInbox, personalInbox], tasks: [workToday, personalTomorrow], area: personal, now: now)
-        #expect(vm.filter == .tomorrow)
-        #expect(vm.tasks.map(\.safeTitle) == ["Personal tomorrow"])
-    }
-
-    /// A dated chip keeps its pool ordered by due date, not recency, so the most urgent row is
-    /// at the top.
-    @Test func todayFilterOrdersByDueDate() throws {
+    /// A bucket with nothing in it produces no header at all.
+    @Test func dropsEmptyBuckets() throws {
         let context = try makeContext()
         let work = insertArea("Work", order: "a", into: context)
         let inbox = insertList("Inbox", into: work, order: "m", in: context)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        // "Later" was created more recently, so a recency sort would put it first. The dated
-        // chip must instead lead with the earlier due time.
-        let earlier = insertTask("Earlier", into: inbox, createdAt: now, dueDate: now, hasTime: true, in: context)
-        let later = insertTask("Later", into: inbox, createdAt: now.addingTimeInterval(90), dueDate: now.addingTimeInterval(3 * 3_600), hasTime: true, in: context)
+        let today = insertTask("Today only", into: inbox, createdAt: now, dueDate: now, in: context)
         try? context.save()
 
         let vm = HomeViewModel(modelContext: context)
-        update(vm, groups: [work], lists: [inbox], tasks: [earlier, later], area: work, now: now)
+        update(vm, groups: [work], lists: [inbox], tasks: [today], area: work, now: now)
 
-        vm.selectFilter(.today)
-        #expect(vm.tasks.map(\.safeTitle) == ["Earlier", "Later"])
+        #expect(vm.datedSections.map(\.segment) == [.today])
+    }
+
+    // MARK: - Scope
+
+    /// Home opens on the Planned half; both pools are always derived so switching is free.
+    @Test func defaultsToPlannedScopeAndSwitchesFree() throws {
+        let context = try makeContext()
+        let work = insertArea("Work", order: "a", into: context)
+        let inbox = insertList("Inbox", into: work, order: "m", in: context)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let dated = insertTask("Dated", into: inbox, createdAt: now, dueDate: now, in: context)
+        let undated = insertTask("Undated", into: inbox, createdAt: now.addingTimeInterval(60), in: context)
+        try? context.save()
+
+        let vm = HomeViewModel(modelContext: context)
+        update(vm, groups: [work], lists: [inbox], tasks: [dated, undated], area: work, now: now)
+
+        #expect(vm.scope == .planned)
+        #expect(vm.datedSections.flatMap { $0.tasks.map(\.safeTitle) } == ["Dated"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Undated"])
+
+        vm.selectScope(.unplanned)
+        #expect(vm.scope == .unplanned)
+        #expect(vm.datedSections.flatMap { $0.tasks.map(\.safeTitle) } == ["Dated"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Undated"])
     }
 
     // MARK: - Degenerate input
@@ -354,7 +339,7 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work, personal], lists: [], tasks: [], area: work)
 
-        #expect(vm.tasks.isEmpty)
+        #expect(vm.undatedTasks.isEmpty)
     }
 
     /// A task with no list at all cannot belong to an area, so it is never shown.
@@ -370,6 +355,6 @@ struct HomeViewModelTests {
         let vm = HomeViewModel(modelContext: context)
         update(vm, groups: [work], lists: [inbox], tasks: [filed, orphan], area: work)
 
-        #expect(vm.tasks.map(\.safeTitle) == ["Filed"])
+        #expect(vm.undatedTasks.map(\.safeTitle) == ["Filed"])
     }
 }
