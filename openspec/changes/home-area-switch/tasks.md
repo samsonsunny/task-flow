@@ -1,3 +1,5 @@
+> **Status: NAVIGATION TASKS SUPERSEDED (2026-10-23).** Keep only area-locking/merge work if still needed. Do NOT implement a single-`NavigationStack` Home root or area switcher; root navigation is the fixed four-tab `Today / Work / Personal / More`. See `openspec/specs/app-mental-model/spec.md`.
+
 ## 1. Schema and model
 
 - [ ] 1.1 Add `isLocked: Bool = false` to `ReminderListGroup` in `TaskFlowSchemaV10` in `TaskFlow/Models/TaskItem.swift`; do NOT add a `migrationPlan:` to `ModelContainer` (AGENTS.md, lightweight-migration rule)

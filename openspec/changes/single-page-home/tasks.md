@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement these tasks.** Canonical navigation is the fixed four-tab `Today / Work / Personal / More` root. See `openspec/specs/app-mental-model/spec.md`.
+
 ## 1. Single shared NavigationStack
 
 - [ ] 1.1 Rewrite `MainTabView.swift`: remove `TabView` + `AppTab` enum; add top segmented control (`Picker` + `.segmented`, tags Organize/Today/Tomorrow/Upcoming)

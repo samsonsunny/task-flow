@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how task order is established and changed: drag-to-reorder in Today/Tomorrow (persisted per-day, independent of list order), drag-to-reorder within custom lists (fractional string sort order), and the Move to Top/Bottom context-menu shortcuts.
+Define how task order is established and changed: drag-to-reorder in Today (persisted per-day, independent of list order), drag-to-reorder within custom lists (fractional string sort order), and the Move to Top/Bottom context-menu shortcuts.
 
 Consolidates (2026-08): `daily-reorder`, `custom-list-reorder`, `task-actions`.
 
@@ -22,14 +22,6 @@ The user SHALL be able to reorder root tasks in the Today view by long-pressing 
 2. When the user drags A above another root task
 3. Then A.1 and A.2 remain nested under A
 
-### Requirement: Drag-to-reorder in Tomorrow view
-The user SHALL be able to reorder root tasks in the Tomorrow view by long-pressing and dragging. The order SHALL persist across app restarts using UserDefaults.
-
-#### Scenario: Drag reorders root tasks in Tomorrow
-1. Given the Tomorrow view shows root tasks [D, E]
-2. When the user drags E above D
-3. Then the Tomorrow view shows [E, D]
-
 ### Requirement: Overdue section independent ordering
 The Overdue section in the Today view SHALL have its own independent ordering, separate from Today's main tasks.
 
@@ -47,7 +39,7 @@ Tasks without a stored order SHALL appear at the end of the list in their defaul
 3. Then D appears after C (at the bottom)
 
 ### Requirement: List view order unaffected
-Reordering in Today/Tomorrow views SHALL NOT affect the task's `sortOrder` property used in List views.
+Reordering in Today SHALL NOT affect the task's `sortOrder` property used in List views.
 
 #### Scenario: List view preserves original order
 1. Given task "Buy Milk" has `sortOrder` "m" in the "Shopping" list
@@ -57,7 +49,7 @@ Reordering in Today/Tomorrow views SHALL NOT affect the task's `sortOrder` prope
 ### Requirement: Tasks are reorderable via drag in custom lists
 The system SHALL allow users to reorder tasks within any custom task list by dragging rows. The reordered position SHALL persist across app restarts.
 
-Smart segments (Today, Tomorrow, Upcoming, Later, Overdue) SHALL NOT support drag-and-drop reordering — their task order SHALL remain algorithmically determined by `dueDate` then `createdAt` descending.
+Smart segments (Today, Overdue) SHALL NOT support drag-and-drop reordering — their task order SHALL remain algorithmically determined by `dueDate` then `createdAt` descending.
 
 #### Scenario: Drag reorders a single task in a custom list
 - **WHEN** the user long-presses and drags a task row to a new position within the same custom list
@@ -71,7 +63,7 @@ Smart segments (Today, Tomorrow, Upcoming, Later, Overdue) SHALL NOT support dra
 - **AND** unselected tasks SHALL remain in their relative positions
 
 #### Scenario: Smart segments show no reorder affordance
-- **WHEN** the user views tasks in Today, Tomorrow, Upcoming, Later, or Overdue segments
+- **WHEN** the user views tasks in Today or Overdue
 - **THEN** the task rows SHALL NOT have drag handles or respond to drag gestures
 
 ### Requirement: Task sort order uses fractional string encoding
@@ -153,7 +145,7 @@ The "Top" and "Bottom" actions SHALL NOT appear when the task is the only one in
 3. Then "Top" and "Bottom" do not appear in the context menu
 
 ### Requirement: List view scope for Top/Bottom actions
-The "Top" and "Bottom" actions SHALL only appear in list views (DetailView), not in daily views (Today/Tomorrow).
+The "Top" and "Bottom" actions SHALL only appear in list views (DetailView), not in Today.
 
 #### Scenario: Actions hidden in Today view
 1. Given the user is in the Today view

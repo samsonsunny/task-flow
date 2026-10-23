@@ -1,3 +1,5 @@
+> **Status: PARTIALLY ADOPTED; NAVIGATION SUPERSEDED (2026-10-23).** The area-locking, exactly-two-domains, and extra-area merging parts informed the current reconciler. Do NOT implement the single-`NavigationStack` Home root, the Work/Personal switch, or area-scoped time views. Root navigation is the fixed four-tab `Today / Work / Personal / More`. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 The current sidebar page ("My Lists") is list *organisation* wearing a capture bar's clothes. It renders a list-of-lists, and a root-level `safeAreaInset` capture bar floats beneath it with no target indicator. A user sees a "+" for new list, then a second "+" in a field that says "Add a task…" — and reads the bar as list creation. Meanwhile the two areas that actually define the product, **Work** and **Personal**, are buried in `DisclosureGroup`s in a sidebar, and the capture target silently resolves to the *first* area's Inbox (`resolveCaptureBucket`), so a Personal user capturing from Today drops the task into Work with no signal.

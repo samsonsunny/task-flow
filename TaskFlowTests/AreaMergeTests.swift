@@ -3,8 +3,8 @@ import Foundation
 import SwiftData
 @testable import TaskFlow
 
-/// Covers the area invariant: Work and Personal exist and stay locked, every area owns an
-/// Inbox bucket, and user-created projects survive reconciliation untouched.
+/// Covers the domain invariant: Work and Personal exist and stay locked, every domain owns
+/// an Inbox bucket, and any extra group is folded into Work without losing lists or tasks.
 @MainActor
 struct AreaMergeTests {
     private let container: ModelContainer
@@ -47,9 +47,13 @@ struct AreaMergeTests {
 
         let result = groups()
         #expect(result.count == 2)
-        #expect(result.allSatisfy { $0.isLocked })
+        for group in result {
+            #expect(group.isLocked)
+        }
         #expect(result.map(\.name) == ["Work", "Personal"])
-        #expect(result.allSatisfy { $0.inboxBucket != nil })
+        for group in result {
+            #expect(group.inboxBucket != nil)
+        }
     }
 
     /// Areas are adopted by name, not created alongside existing ones — otherwise a user
@@ -60,7 +64,6 @@ struct AreaMergeTests {
 
         let result = groups()
         #expect(result.count == 2)
-        #expect(result.allSatisfy { $0.isLocked })
         #expect(result.map(\.name) == ["Work", "Personal"])
     }
 
@@ -87,9 +90,9 @@ struct AreaMergeTests {
         #expect(result[1].inboxBucket?.group?.persistentModelID == result[1].persistentModelID)
     }
 
-    // MARK: - User-created projects
+    // MARK: - Extra groups
 
-    @Test func extraAreasRemainAsProjects() {
+    @Test func extraGroupsFoldIntoWorkPreservingListsAndTasks() {
         let all = seeded(["Work", "Personal", "Side Hustle", "Volunteering"])
         let work = all[0]
         let workBucket = makeBucket(for: work, in: context)
@@ -106,19 +109,18 @@ struct AreaMergeTests {
 
         _ = reconcileLockedAreas(in: context)
 
-        #expect(groups().map(\.name) == ["Work", "Personal", "Side Hustle", "Volunteering"])
+        let result = groups()
+        #expect(result.map(\.name) == ["Work", "Personal"])
+        #expect(result.allSatisfy { $0.isLocked })
 
-        // The project's task stays in the project's own bucket.
-        #expect(task.reminderList?.persistentModelID == sideBucket.persistentModelID)
-        #expect(sideList.group?.persistentModelID == sideHustle.persistentModelID)
-        #expect(workBucket.persistentModelID != sideBucket.persistentModelID)
-
-        // Every area still owns exactly one Inbox bucket.
-        #expect(lists().filter { $0.isBucket }.count == groups().count)
-        #expect(groups().allSatisfy { $0.inboxBucket != nil })
+        // The bucket task moves to Work's Inbox; ordinary lists become Work lists.
+        #expect(task.reminderList?.persistentModelID == workBucket.persistentModelID)
+        #expect(sideList.group?.persistentModelID == work.persistentModelID)
+        #expect(lists().filter { $0.isBucket }.count == 2)
+        #expect(listContainsTask(workBucket, task: task))
     }
 
-    @Test func reconcilePreservesProjectTasksAndLists() {
+    @Test func foldingPreservesEveryTaskProperty() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideHustle = all[2]
         let sideBucket = makeBucket(for: sideHustle, in: context)
@@ -142,10 +144,10 @@ struct AreaMergeTests {
         #expect(after?.dueDate == due)
         #expect(after?.isCompleted == true)
         #expect(after?.sortOrder == 7)
-        #expect(after?.reminderList?.group?.name == "Side Hustle")
+        #expect(after?.reminderList?.group?.name == "Work")
     }
 
-    @Test func reconcileIsIdempotentWithProjects() {
+    @Test func foldingIsIdempotent() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideBucket = makeBucket(for: all[2], in: context)
         let task = TaskItem(taskTitle: "Task")
@@ -165,15 +167,18 @@ struct AreaMergeTests {
         #expect(task.reminderList?.persistentModelID == firstList)
     }
 
-    @Test func reconcileCreatesMissingBucketForProject() {
+    @Test func extraGroupWithoutBucketStillFoldsItsLists() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideHustle = all[2]
+        let custom = ReminderList(name: "Clients", group: sideHustle)
+        context.insert(custom)
         try? context.save()
 
         _ = reconcileLockedAreas(in: context)
 
-        #expect(sideHustle.inboxBucket != nil)
-        #expect(sideHustle.inboxBucket?.group?.persistentModelID == sideHustle.persistentModelID)
+        #expect(groups().map(\.name) == ["Work", "Personal"])
+        #expect(custom.group?.name == "Work")
+        #expect(custom.group?.inboxBucket != nil)
     }
 
     // MARK: - Strays
@@ -237,5 +242,9 @@ struct AreaMergeTests {
         _ = reconcileLockedAreas(in: context)
         let bucket = resolveAreaBucket(for: nil, in: context)
         #expect(bucket.group?.name == "Work")
+    }
+
+    private func listContainsTask(_ list: ReminderList, task: TaskItem) -> Bool {
+        list.remindersArray.contains { $0.persistentModelID == task.persistentModelID }
     }
 }

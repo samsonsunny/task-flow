@@ -9,7 +9,7 @@ Wednesday Calendar is a small, focused productivity app. The blog should sound l
 - **Confident but not arrogant** — We have opinions about task management, but we don't trash competitors
 - **Clear and minimal** — No fluff, no jargon, no corporate speak. Mirror the app's design
 - **Practical** — Every article should leave the reader with something they can apply today
-- **Philosophical where it counts** — The two-axis model is a genuinely different way to think about tasks. Don't be afraid to explore ideas
+- **Philosophical where it counts** — The two-domain model is a genuinely different way to think about tasks. Don't be afraid to explore ideas
 
 ## Tone Spectrum
 
@@ -32,11 +32,11 @@ Explains a core idea behind TaskFlow's design.
 - **Structure**: Hook → problem → solution → how it works in TaskFlow → practical takeaway
 - **Tone**: Third-person, confident, references to established ideas (GTD, Deep Work, Atomic Habits)
 - **Product**: The philosophy comes first; TaskFlow is how you apply it
-- **Example topics**: Two-axis model, attention vs home, why "Later" isn't procrastination
+- **Example topics**: Two permanent domains, why projects stay inside Work/Personal, how cross-domain Today works
 
 ```
-Title: "The Two-Axis Model: Why Separating Attention from Home Changes Everything"
-Subtitle: "Most task managers flatten everything into one list. Here's why that's wrong."
+Title: "The Two-Domain Model: Why Work and Personal Beat One Giant List"
+Subtitle: "Most task managers flatten everything into one pile. Here's why that's wrong."
 ```
 
 ### 2. Practical Guide / How-To

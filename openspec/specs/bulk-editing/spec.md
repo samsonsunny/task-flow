@@ -17,18 +17,13 @@ The system SHALL provide a "Select Items" option as the first item in the ellips
 - **THEN** "Select Items" SHALL appear as the first menu item
 - **AND** "Settings" SHALL appear below it
 
-#### Scenario: Select Items appears in ellipsis menu on Tomorrow screen
-- **WHEN** the user is on the Tomorrow screen
+#### Scenario: Select Items appears in ellipsis menu on Work screen
+- **WHEN** the user is on the Work screen
 - **AND** the ellipsis menu is opened
 - **THEN** "Select Items" SHALL appear as the first menu item
 
-#### Scenario: Select Items appears in ellipsis menu on Upcoming screen
-- **WHEN** the user is on the Upcoming screen
-- **AND** the ellipsis menu is opened
-- **THEN** "Select Items" SHALL appear as the first menu item
-
-#### Scenario: Select Items appears in ellipsis menu on Later (Lists) screen
-- **WHEN** the user is on the Later screen
+#### Scenario: Select Items appears in ellipsis menu on Personal screen
+- **WHEN** the user is on the Personal screen
 - **AND** the ellipsis menu is opened
 - **THEN** "Select Items" SHALL appear as the first menu item
 
@@ -190,11 +185,11 @@ The quick capture row and inline capture functionality SHALL be disabled during 
 - **AND** the FAB SHALL not trigger quick capture
 
 ### Requirement: Date action in bottom toolbar
-The bottom toolbar SHALL include a Date action (calendar icon) that opens a submenu with rescheduling options: Today, Tomorrow, Next Week, Later, and Pick Date.
+The bottom toolbar SHALL include a Date action (calendar icon) that opens a submenu with rescheduling options: Today, Tomorrow, This Weekend, Next Week, Pick a Date…, and None.
 
 #### Scenario: Date submenu shows rescheduling options
 - **WHEN** the user taps the Date button in the bottom toolbar
-- **THEN** a submenu SHALL appear with options: Today, Tomorrow, Next Week, Later, Pick Date
+- **THEN** a submenu SHALL appear with options: Today, Tomorrow, This Weekend, Next Week, Pick a Date…, None
 
 #### Scenario: Reschedule applies to all selected tasks
 - **WHEN** the user selects "Today" from the Date submenu
@@ -203,7 +198,7 @@ The bottom toolbar SHALL include a Date action (calendar icon) that opens a subm
 - **AND** the selection mode SHALL remain active
 
 #### Scenario: Pick Date opens date picker
-- **WHEN** the user selects "Pick Date..." from the Date submenu
+- **WHEN** the user selects "Pick a Date…" from the Date submenu
 - **THEN** the TaskScheduleDatePickerSheet SHALL open
 - **AND** the selected date SHALL apply to all selected tasks
 

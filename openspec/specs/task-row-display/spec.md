@@ -33,34 +33,23 @@ The system SHALL display a single metadata line below the notes (or below the ti
 - **WHEN** a task has a `dueDate` with non-midnight hour/minute components
 - **THEN** the formatted time (e.g. "3:45 PM") appears as the first element in the metadata line
 
-#### Scenario: Date appears when task has a date and context does not convey it
+#### Scenario: Date appears when the context does not convey it
 - **WHEN** a task has a `dueDate` with a date component
-- **AND** the viewing context is not Today, Tomorrow, or Upcoming
+- **AND** the viewing context is Work, Personal, or a list
 - **THEN** the formatted date (e.g. "Wed, Jun 23") appears in the metadata line
 
-#### Scenario: Date omitted in Today segment
+#### Scenario: Date shown in Today
 - **WHEN** a task has a due date
-- **AND** the user is viewing the Today segment
-- **THEN** the date is NOT shown in the metadata line
-
-#### Scenario: Date omitted in Tomorrow segment
-- **WHEN** a task has a due date
-- **AND** the user is viewing the Tomorrow segment
-- **THEN** the date is NOT shown in the metadata line
-
-#### Scenario: Date omitted in Upcoming segment
-- **WHEN** a task has a due date
-- **AND** the user is viewing the Upcoming segment
-- **THEN** the date is NOT shown in the metadata line
-
-#### Scenario: Date shown in Overdue segment
-- **WHEN** a task has a due date
-- **AND** the user is viewing the Overdue segment
+- **AND** the user is viewing Today
 - **THEN** the date IS shown in the metadata line
 
-#### Scenario: List name appears in segment views
+#### Scenario: Date is omitted only when the surface already conveys it
+- **WHEN** a task is shown in a surface whose title already states the exact day
+- **THEN** the date MAY be omitted from the metadata line
+
+#### Scenario: List name appears in cross-domain views
 - **WHEN** a task belongs to a named list
-- **AND** the user is viewing a segment view (Today, Tomorrow, Upcoming, Later, Overdue)
+- **AND** the user is viewing Today, Overdue, Work, or Personal
 - **THEN** the list name appears in the metadata line
 
 #### Scenario: List name omitted in ListDetailView
@@ -106,13 +95,28 @@ The metadata line SHALL include a subtask count for parent tasks, formatted as a
 - **THEN** the metadata line SHALL display the number of direct subtasks (e.g., "3 ›")
 - **AND** the count SHALL appear after any time/date/list elements
 
-### Requirement: Segment views suppress nesting indicators
-When a subtask appears in a segment view (Today, Upcoming, Later, Overdue), it SHALL NOT display indentation or collapse/expand controls. Subtasks SHALL appear as flat rows indistinguishable from top-level tasks.
+### Requirement: Attention and domain views suppress nesting indicators
+When a subtask appears in Today, Overdue, Work, or Personal, it SHALL NOT display indentation or collapse/expand controls. Subtasks SHALL appear as flat rows indistinguishable from top-level tasks.
 
 #### Scenario: Subtask in Today appears flat
-- **WHEN** a subtask with a due date appears in Today view
+- **WHEN** a subtask with a due date appears in Today
 - **THEN** it SHALL render as a normal `TaskRowView` with no indentation
 - **AND** no collapse/expand chevron SHALL be shown
+
+### Requirement: Deadline submenu
+
+The task context menu SHALL expose due-date actions in a single `Deadline` submenu: `None` (always listed, no leading icon), a divider, then Today, Tomorrow, This Weekend, Next Week, and Custom. Each preset SHALL carry a leading calendar icon with its target day-of-month. The submenu SHALL be state-aware: `None` is checked when the task has no date, the matching preset when the due date equals its target day, and Custom for any other date. No due-date option SHALL be hidden.
+
+#### Scenario: Active option is checked
+
+- **WHEN** the user opens the Deadline submenu on a task due today
+- **THEN** Today SHALL show the active checkmark
+
+#### Scenario: None clears the due date
+
+- **WHEN** the user selects None
+- **THEN** the task's due date SHALL be cleared
+- **AND** the task SHALL remain in its Work/Personal list and leave Today when no longer due
 
 ### Requirement: Task row adapts indentation based on depth
 When displayed in `ListDetailView`, a task row SHALL have leading indentation proportional to its depth in the task hierarchy.

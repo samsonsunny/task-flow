@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement these tasks.** Canonical navigation is the fixed four-tab `Today / Work / Personal / More` root. See `openspec/specs/app-mental-model/spec.md`.
+
 ## 1. Extract shared reorder utility
 
 - [ ] 1.1 Create `SortOrderReordering` enum with a static `reorder(_:fromOffsets:toOffset:)` method in `Utilities/` (mirroring `SortOrderMidpoint.swift` placement)

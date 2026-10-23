@@ -114,7 +114,7 @@ final class ListsTabViewModel {
     }
 
     /// Lists of an area in display order: the area's bucket pinned first, then the rest
-    /// by `sortOrder`. Used for Home's section ordering and for drag-reorder.
+    /// by `sortOrder`. Used for domain section ordering and for drag-reorder.
     func orderedLists(in group: ReminderListGroup) -> [ReminderList] {
         listsInGroup(group).sorted { lhs, rhs in
             let lhsIsBucket = isBucket(lhs)

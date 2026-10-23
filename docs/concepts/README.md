@@ -33,17 +33,17 @@ View (@Query, UI state)  →  update()  →  ViewModel (@Observable)
 
 | Doc | Feature area | ViewModels covered |
 |---|---|---|
-| [task-segments.md](task-segments.md) | Attention axis — Today/Tomorrow/Upcoming timeline + Completed | `TimelineViewModel`, `CompletedViewModel` |
-| [lists-and-groups.md](lists-and-groups.md) | Home axis — Later tab lists/groups + list detail | `ListViewModel`, `DetailViewModel` |
+| [task-segments.md](task-segments.md) | Cross-domain Today + Recently Completed | `TodayViewModel`, `CompletedViewModel` |
+| [lists-and-groups.md](lists-and-groups.md) | Two fixed domains, lists/projects inside them, domain-scoped management + list detail | `ListsTabViewModel`, `DetailViewModel`, `MoreViewModel` |
 | [editor-and-scheduling.md](editor-and-scheduling.md) | Task editor, draft pipeline, schedule picker | `EditorViewModel`, `DatePickerViewModel` |
 
-The two-axis model these build on is defined in `openspec/specs/app-mental-model/spec.md`.
+The canonical two-domain model these build on is defined in `openspec/specs/app-mental-model/spec.md`. Read it before changing navigation or organization.
 
 ## Provenance
 
 Consolidated in August 2026 from six completed MVVM-refactor PRDs (24 stories, all done):
 
-- `mvvm-reminder-segment.json` → task-segments
+- `mvvm-reminder-segment.json` → task-segments (now Today only)
 - `mvvm-completed-view.json` → task-segments
 - `mvvm-lists-tab.json` → lists-and-groups
 - `mvvm-list-detail.json` → lists-and-groups

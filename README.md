@@ -1,7 +1,7 @@
 # TaskFlow
 
 
-TaskFlow is a SwiftUI task manager for iOS focused on fast task capture and a clean, minimal list experience. Data is stored locally with SwiftData.
+TaskFlow is a SwiftUI task manager for iOS focused on fast task capture and a clean, minimal list experience. Data is stored with SwiftData and synced through a private CloudKit database.
 
 ## Product Overview
 
@@ -9,17 +9,15 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 ## Key Features
 
-- Bottom tab navigation: `Today`, `Tomorrow`, `Upcoming`
-- Tab-aware filtering for active tasks (today-only, tomorrow-only, and everything else in upcoming)
-- Upcoming grouped into planning horizons: `This Week`, `Next Week`, `Later`, `Unscheduled`
-- Overdue tasks excluded from `Upcoming`
-- Global `+` action to reveal/hide quick capture bar
-- Fast continuous capture with keyboard-first submit flow
-- Auto due-date assignment based on active tab (`Today`/`Tomorrow`/`Upcoming`)
-- `Upcoming` sorting: dated sections by due date (then created time), `Unscheduled` by created time
-- Upcoming row rescheduling actions: `Today`, `Tomorrow`, `Schedule`
-- No explicit empty-state message in tabs
-- Local storage via SwiftData
+- Fixed four-tab navigation: `Today`, `Work`, `Personal`, `More`
+- Exactly two permanent domains: Work and Personal
+- Projects/lists as optional organization inside a domain
+- Cross-domain Today view with collapsible Overdue and due-today tasks
+- Domain task surfaces with list and board display modes
+- Per-domain Inbox bucket for tasks created without a project
+- Fast task capture and editing with scheduling, subtasks, and priorities
+- Recently Completed archive under More
+- Local storage via SwiftData with iCloud sync
 
 ## Platforms
 
@@ -27,15 +25,16 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 ## Data & Sync
 
-TaskFlow uses SwiftData as the local persistence layer. There is no sync enabled at this time.
+TaskFlow uses SwiftData with a private CloudKit database for sync across devices signed in to the same Apple ID. See `AGENTS.md` for CloudKit schema constraints.
 
 ## Project Structure
 
-- `TaskFlow/App`: App entry point and top-level views
-- `TaskFlow/Models`: SwiftData models for tasks
-- `TaskFlow/Views`: Screens and reusable UI components
+- `TaskFlow/App`: App entry point and root views
+- `TaskFlow/Features`: Feature folders (View + ViewModel co-located)
+- `TaskFlow/Models`: SwiftData models and area reconciliation
+- `TaskFlow/Views/Components`: Shared UI components
 - `TaskFlow/DesignSystem`: App styling, typography, and tokens
-- `TaskFlow/Extensions`: Utilities and shared helpers
+- `TaskFlow/Utilities`: Notifications, ordering, date, and badge helpers
 
 ## Color System
 
@@ -52,7 +51,6 @@ TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors
 2. Select an iOS target.
 3. Build and run.
 
-If you want to add sync later, you can reintroduce CloudKit and entitlements.
 
 ## Branching Strategy
 

@@ -1,6 +1,6 @@
 ## Purpose
 
-Define the tab bar badge counts derived from due dates, including overdue and completed handling.
+Define the app icon badge count derived from due dates, including overdue and completed handling.
 
 ## Requirements
 

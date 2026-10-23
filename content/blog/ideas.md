@@ -11,13 +11,13 @@
 
 ## Backlog
 
-- The two-axis model: why separating "attention" from "home" changes how you organize tasks
+- The two-domain model: why separating Work and Personal changes how you organize tasks
 - Quick capture as a habit: the compound effect of frictionless entry
-- Why "Later" isn't procrastination — organizing tasks without dates
+- Why every project belongs inside a domain (and never becomes its own tab)
 - ~~Subtask inheritance: letting due dates flow down naturally~~ — contradicts shipped rules (subtasks qualify by their own date; no roll-up). Reframed below.
 - Every task owns its own date: why subtasks don't inherit or roll up due dates
 - How we decide what Wednesday Calendar won't do: rules, limitations, and saying no (spec-transparency angle for the Dev.to developer audience)
-- Overdue ≠ urgent: how time-tab filtering reshapes priorities
+- Overdue ≠ urgent: how a cross-domain Today view reshapes priorities
 - The swipe that saved my day: rescheduling as a gesture
 - Notes on task rows: why expandable notes beat separate detail screens
 - Inbox zero for tasks: the capture-and-clarify workflow

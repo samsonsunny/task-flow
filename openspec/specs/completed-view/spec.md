@@ -1,67 +1,68 @@
+# completed-view
+
 ## Purpose
 
-Define how the Completed view lists, filters, and presents finished tasks, including grouping by completion date and bulk clearing.
+Define the Recently Completed view, reached from More, including completion-date grouping and un-complete behavior.
 
 ## Requirements
 
-### Requirement: Sidebar contains Completed smart filter
+### Requirement: Completed lives under More
 
-The sidebar SHALL display a "Completed" smart filter in the smart filters section, below "Later". Tapping "Completed" SHALL navigate to the `CompletedView` detail.
+The Recently Completed view SHALL be reached from More → Recently Completed. It SHALL NOT appear as a root tab and SHALL NOT be a sidebar smart filter.
 
-The sidebar SHALL NOT show a task count badge for the Completed filter.
+#### Scenario: Open from More
 
-"Completed" SHALL NOT appear as a tab in `FilterDetailView`/`SmartFilterTabbedView`.
+- **WHEN** the user taps Recently Completed in More
+- **THEN** `CompletedView` SHALL be pushed within More's navigation stack
 
-#### Scenario: Completed appears in sidebar
-- **WHEN** the user views the sidebar
-- **THEN** a "Completed" navigation link SHALL be visible below "Later"
-- **AND** it SHALL use a `checkmark.circle.fill` (or equivalent) icon
-- **AND** it SHALL NOT display a count badge
+#### Scenario: Not in the tab bar
 
-#### Scenario: Completed is not in tab bar
-- **WHEN** the user views any smart filter via the TabView
-- **THEN** the tab bar SHALL NOT include a "Completed" tab
+- **WHEN** the user views the root tab bar
+- **THEN** there SHALL be no Completed tab
 
-### Requirement: Completed view shows recently completed tasks
+### Requirement: Completed view shows the last 30 days
 
-The `CompletedView` SHALL display tasks where `isCompleted == true` and `completionDate` falls within the last 30 days. Tasks SHALL be grouped into sections by completion date: "Today", "Yesterday", "This Week", "Earlier".
+`CompletedView` SHALL display tasks where `isCompleted == true` and `completionDate` is within the last 30 days, grouped by completion date: "Today", "Yesterday", "This Week", "Earlier".
 
-Each task row SHALL display:
-- The task title with a strikethrough and muted/dimmed styling
-- The task's due date or destination segment (e.g., "Overdue", "Today", "Later") to indicate where it will reappear upon un-complete
-- A leading checkmark icon indicating completion state
+Each row SHALL show the task title with completion styling and the task's list name as context.
 
-#### Scenario: Completed tasks are listed with sections
-- **WHEN** the user navigates to Completed
-- **THEN** tasks completed today SHALL appear under a "Today" section
-- **AND** tasks completed yesterday SHALL appear under a "Yesterday" section
-- **AND** tasks completed within the last 7 days but not today or yesterday SHALL appear under a "This Week" section
-- **AND** tasks completed within the last 30 days but not within the last 7 days SHALL appear under an "Earlier" section
+#### Scenario: Completed tasks are grouped
 
-#### Scenario: Completed view is empty
-- **WHEN** the user navigates to Completed
-- **AND** there are no tasks completed within the last 30 days
-- **THEN** the view SHALL display an appropriate empty state message
+- **WHEN** the user opens Recently Completed
+- **THEN** tasks completed today SHALL appear under Today
+- **AND** tasks completed yesterday SHALL appear under Yesterday
+- **AND** tasks completed in the last 7 days SHALL appear under This Week
+- **AND** older tasks within 30 days SHALL appear under Earlier
 
-#### Scenario: Task shows destination context
-- **WHEN** the user views a completed task row
-- **THEN** the row SHALL indicate where the task will reappear if un-completed (based on its `dueDate`)
+#### Scenario: Empty state
+
+- **WHEN** no tasks were completed in the last 30 days
+- **THEN** the view SHALL show an empty state
+
+#### Scenario: Row shows list context
+
+- **WHEN** a completed task is shown
+- **THEN** its row SHALL include the list it belongs to
 
 ### Requirement: Swipe to un-complete
 
-Each task row in the `CompletedView` SHALL support a swipe gesture to un-complete the task. Un-completing SHALL set `isCompleted = false` and clear `completionDate`. The task SHALL then reappear in its appropriate smart filter (Today, Tomorrow, Upcoming, or Later) based on its `dueDate`.
+Swiping a completed row SHALL set `isCompleted = false` and clear `completionDate`. The task SHALL return to its owning list and to Today if it is due today or overdue. Un-completing SHALL reschedule notifications when appropriate.
 
-The view SHALL NOT include quick-capture, FAB, swipe-to-schedule, or swipe-to-move actions.
+Un-completed tasks with no due date SHALL remain in their Work/Personal list and SHALL NOT appear in a separate Later view.
 
-#### Scenario: Swipe un-completes a task
-- **WHEN** the user swipes a completed task row
-- **THEN** the task's `isCompleted` SHALL be set to `false`
-- **AND** the task's `completionDate` SHALL be cleared
-- **AND** the task SHALL disappear from the Completed view
-- **AND** the task SHALL reappear in its appropriate smart filter
+#### Scenario: Un-complete a task due today
 
-#### Scenario: Task returns to correct segment
-- **WHEN** a task with `dueDate` set to today is un-completed
-- **THEN** it SHALL appear in the Today view
-- **WHEN** a task with no `dueDate` is un-completed
-- **THEN** it SHALL appear in the Later view
+- **WHEN** the user swipes a task that was due today
+- **THEN** it SHALL disappear from Recently Completed
+- **AND** it SHALL appear in Today
+
+#### Scenario: Un-complete an undated task
+
+- **WHEN** the user un-completes a task with no due date
+- **THEN** it SHALL remain in its Work or Personal list
+- **AND** it SHALL NOT appear in Today until given a due date
+
+#### Scenario: No capture or move actions
+
+- **WHEN** the user views Recently Completed
+- **THEN** there SHALL be no quick-capture, FAB, or list-move actions

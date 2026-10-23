@@ -292,14 +292,14 @@ struct TaskRowView: View, Equatable {
         guard showsGroupName else { return nil }
         if let group = task.reminderList?.group {
             let trimmed = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed == "Personal" || trimmed == "Home" { return "Home" }
+            if trimmed == "Personal" || trimmed == "Home" { return "Personal" }
             if trimmed == "Work" { return "Work" }
             if !trimmed.isEmpty && trimmed != "Inbox" { return trimmed }
         }
         if let listName = task.reminderList?.name {
             let trimmed = listName.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed == "Work" { return "Work" }
-            if trimmed == "Personal" || trimmed == "Home" { return "Home" }
+            if trimmed == "Personal" || trimmed == "Home" { return "Personal" }
         }
         return nil
     }

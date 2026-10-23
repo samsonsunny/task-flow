@@ -7,9 +7,6 @@ struct MoreView: View {
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
 
     @State private var viewModel: MoreViewModel?
-    @State private var isCreatingProject = false
-    @State private var renamingProject: ReminderListGroup?
-    @State private var deletingProject: ReminderListGroup?
 
     @AppStorage(DailyReminderKeys.enabled) private var isEnabled = false
     @AppStorage(DailyReminderKeys.hour) private var hour = 7
@@ -25,43 +22,19 @@ struct MoreView: View {
         NavigationStack {
             Form {
                 Section {
-                    ForEach(groups) { group in
+                    ForEach(viewModel?.domains ?? []) { domain in
                         NavigationLink {
-                            ListsView(groupID: group.persistentModelID)
+                            ListsView(groupID: domain.persistentModelID)
                                 .navigationBarTitleDisplayMode(.inline)
                         } label: {
                             Label(
-                                areaDisplayName(group.name),
-                                systemImage: projectIcon(for: group)
+                                areaDisplayName(domain.name),
+                                systemImage: domainIcon(for: domain)
                             )
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if viewModel?.canModify(group) ?? false {
-                                Button {
-                                    deletingProject = group
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .tint(AppTheme.colors.error)
-
-                                Button {
-                                    renamingProject = group
-                                } label: {
-                                    Label("Rename", systemImage: "pencil")
-                                }
-                                .tint(AppTheme.colors.tint)
-                            }
-                        }
-                    }
-
-                    Button {
-                        Haptics.impact(.light)
-                        isCreatingProject = true
-                    } label: {
-                        Label("New Project", systemImage: "plus")
                     }
                 } header: {
-                    Text("Projects")
+                    Text("Domains")
                 }
 
                 Section {
@@ -156,50 +129,12 @@ struct MoreView: View {
         }
         .onAppear(perform: bootstrap)
         .onChange(of: groups) { _, _ in refresh() }
-        .sheet(isPresented: $isCreatingProject) {
-            ProjectNameSheet { name in
-                let created = viewModel?.createProject(named: name) != nil
-                refresh()
-                return created
-            }
-        }
-        .sheet(item: $renamingProject) { project in
-            ProjectNameSheet(
-                title: "Rename Project",
-                confirmTitle: "Rename",
-                footerText: "Choose a new name for this project.",
-                initialName: project.name
-            ) { name in
-                let renamed = viewModel?.renameProject(project, to: name) ?? false
-                refresh()
-                return renamed
-            }
-        }
-        .overlay {
-            if let deletingProject {
-                ConfirmationOverlay(
-                    title: "Delete \(deletingProject.name)?",
-                    message: "Its lists and all their tasks will be deleted. This cannot be undone.",
-                    confirmTitle: "Delete",
-                    onConfirm: { commitDeleteProject() },
-                    onCancel: { self.deletingProject = nil }
-                )
-            }
-        }
-        .animation(.easeInOut(duration: 0.18), value: deletingProject != nil)
     }
 
-    private func commitDeleteProject() {
-        guard let deletingProject else { return }
-        viewModel?.deleteProject(deletingProject)
-        self.deletingProject = nil
-        refresh()
-    }
-
-    private func projectIcon(for group: ReminderListGroup) -> String {
+    private func domainIcon(for group: ReminderListGroup) -> String {
         switch group.name {
         case AreaNames.work: return "briefcase"
-        case AreaNames.personal: return "house"
+        case AreaNames.personal: return "person.crop.circle"
         default: return "folder"
         }
     }

@@ -77,8 +77,9 @@ struct ListsView: View {
     }
 
     private var displayedGroups: [ReminderListGroup] {
-        guard let groupID else { return groups }
-        return groups.filter { $0.persistentModelID == groupID }
+        let domains = groups.filter { $0.isLocked }
+        guard let groupID else { return domains }
+        return domains.filter { $0.persistentModelID == groupID }
     }
 
     private var navigationTitle: String {

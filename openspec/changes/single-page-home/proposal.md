@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement.** The canonical navigation is the fixed four-tab `Today / Work / Personal / More` root with Work and Personal as the only domains. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 The current 4-tab `TabView` is a dead-end architecture. It splits the app into four isolated containers — four `NavigationStack`s, four different capture patterns (per-screen FAB, inline date-aware quick-capture rows), and no shared command surface. Every new feature must be squeezed into one of four slots.

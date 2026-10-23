@@ -8,11 +8,11 @@ final class AppState {
     private(set) var hasAutoFocusedOnce = false
     private(set) var pendingCaptureFocus = false
 
-    /// The area currently being browsed and captured into. Session-scoped: never persisted,
-    /// so every launch starts on Work. Held here rather than in `HomeView` so the capture bar
-    /// on a pushed time screen reads the same value instead of falling back to a default.
+    /// The domain currently being browsed and captured into. Session-scoped: never persisted,
+    /// so every launch starts on Work. Only Work and Personal are exposed; extra groups are
+    /// invalid legacy data and must not become a third selectable area.
     private(set) var selectedAreaID: ReminderListGroup.ID?
-    /// Work first, then Personal, so the pills render in a stable order.
+    /// Work first, then Personal.
     private(set) var areas: [ReminderListGroup] = []
 
     /// Resolves against the live group objects, so a merge that deleted the previously
@@ -23,7 +23,7 @@ final class AppState {
     }
 
     func updateAreas(_ groups: [ReminderListGroup]) {
-        let ordered = Self.orderAreas(groups)
+        let ordered = Self.orderAreas(groups.filter { $0.isLocked })
         let ids = Set(ordered.map(\.persistentModelID))
         areas = ordered
         guard let selectedAreaID, ids.contains(selectedAreaID) else {
@@ -45,14 +45,7 @@ final class AppState {
     private static func orderAreas(_ groups: [ReminderListGroup]) -> [ReminderListGroup] {
         let work = groups.first { $0.name == "Work" }
         let personal = groups.first { $0.name == "Personal" && $0.persistentModelID != work?.persistentModelID }
-        var ordered: [ReminderListGroup] = []
-        if let work { ordered.append(work) }
-        if let personal { ordered.append(personal) }
-        for group in groups.sorted(by: { ($0.sortOrder ?? "", $0.createdAt) < ($1.sortOrder ?? "", $1.createdAt) })
-        where ordered.allSatisfy({ $0.persistentModelID != group.persistentModelID }) {
-            ordered.append(group)
-        }
-        return ordered
+        return [work, personal].compactMap { $0 }
     }
 
     private static let _currentDate: Date = {

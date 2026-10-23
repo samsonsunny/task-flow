@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement.** The canonical navigation is the fixed four-tab `Today / Work / Personal / More` root with Work and Personal as the only domains. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 The single segmented control puts **"Inbox"** (a *place*) on the same visual level as **Today / Tomorrow / Upcoming** (time *horizons*). Mixing the two axes flattens the app's mental model (when vs. where), so the user never feels like any segment is where tasks are *supposed* to go — and takes no action. The capture bar compounds this: it floats below the lists overview too, where there is no single task surface to add to, so the bar reads as disconnected from the list the user is actually looking at.

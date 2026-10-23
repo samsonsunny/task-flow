@@ -2,97 +2,151 @@
 
 ## Purpose
 
-Define the tab bar structure, its four tabs, and how tab selection drives the detail column and navigation state.
+Define the fixed root navigation: a four-tab bottom `TabView` for Today, Work, Personal, and More. The tab bar is a product invariant, not a place for user data.
 
 ## Requirements
 
-### Requirement: Root navigation is a 4-tab bottom TabView
+### Requirement: Root navigation is a fixed 4-tab TabView
 
-The app SHALL use a `TabView` with a bottom tab bar as its root navigation container. The tab bar SHALL display exactly four tabs: Today, Tomorrow, Upcoming, and Later. Each tab SHALL wrap its content in an independent `NavigationStack`.
+The app SHALL use a `TabView` with a bottom tab bar as its root navigation container. The tab bar SHALL display exactly four tabs, in this order:
 
-#### Scenario: App launches to Today tab
+| Tab | Purpose | Content |
+|---|---|---|
+| Today | Cross-domain attention | Overdue + tasks due today from both domains |
+| Work | Work domain | Every task filed in Work |
+| Personal | Personal domain | Every task filed in Personal |
+| More | Management | Lists/projects per domain, Recently Completed, settings |
+
+Each tab SHALL wrap its content in an independent `NavigationStack`.
+
+#### Scenario: App launches to Today
+
 - **WHEN** the app launches
-- **THEN** the user sees the Today tab selected in the bottom tab bar
-- **AND** the Today tab's content is displayed
+- **THEN** Today SHALL be selected
+- **AND** the Today task list SHALL be displayed
 
 #### Scenario: Tapping tabs switches content
-- **WHEN** the user taps the Tomorrow tab
-- **THEN** the Tomorrow tab's content is displayed
-- **AND** the Today tab's state (scroll position, quick-capture field) is preserved
 
-#### Scenario: Each tab has its own NavigationStack
-- **WHEN** the user navigates to a list detail in the Later tab
-- **AND** switches to the Today tab
-- **THEN** the Today tab shows its root content, not the list detail
+- **WHEN** the user taps Personal
+- **THEN** Personal's content SHALL be displayed
+- **AND** Today's navigation and scroll state SHALL be preserved
 
-### Requirement: Today tab shows overdue tasks inline
+#### Scenario: Each tab has its own navigation stack
 
-The Today tab SHALL display a collapsible "Overdue" section at the top of its task list when tasks are past their due date and not completed. The section SHALL be visible by default. Tapping the section header SHALL toggle its collapsed state. Tapping an overdue task row SHALL open the task editor sheet.
+- **WHEN** the user opens a list detail from More
+- **AND** switches to Work
+- **THEN** Work SHALL show its root content
+- **AND** More SHALL still be on the list detail when the user returns
 
-#### Scenario: Overdue section appears when tasks are overdue
-- **WHEN** the user is on the Today tab
-- **AND** there are incomplete tasks with due dates before today
-- **THEN** an "Overdue" section appears at the top of the list
-- **AND** each overdue task is shown with its due date
+### Requirement: No dynamic or user-created tabs
 
-#### Scenario: Overdue section is collapsible
-- **WHEN** the user taps the Overdue section header
-- **THEN** the section collapses and overdue tasks are hidden
-- **AND** tapping the header again expands the section
+The tab bar SHALL remain exactly four tabs in every size class and on every device. It SHALL NOT append tabs for projects, lists, or user-created groups, and SHALL NOT remove tabs to make room for them.
 
-#### Scenario: No overdue section when none overdue
-- **WHEN** the user is on the Today tab
-- **AND** no incomplete tasks have due dates before today
-- **THEN** the Overdue section is not displayed
+The following SHALL NOT exist as root tabs: `Later`, `Tomorrow`, `Upcoming`, per-project tabs, per-domain duplicates of Work/Personal, and any user-created domain.
 
-### Requirement: Later tab shows groups and lists
+#### Scenario: Creating projects leaves the tab bar unchanged
 
-The Later tab SHALL display user-created `ReminderList` objects optionally organized into `ReminderListGroup` sections, with the default "Inbox" list pinned at the top. Each row SHALL show the list name and a count of uncompleted tasks in that list. Tapping a list SHALL push `ListDetailView` for that list onto the Later tab's `NavigationStack`.
+- **WHEN** the user creates or restores any number of projects/lists
+- **THEN** the tab bar SHALL still contain only Today, Work, Personal, and More
 
-The Later tab SHALL have a button to create a new list.
+#### Scenario: Compact width does not change navigation
 
-Groups SHALL be displayed as expandable/collapsible sections. Ungrouped lists SHALL appear in a dedicated section below groups.
+- **WHEN** the app runs on iPhone or in compact width
+- **THEN** the same four tabs SHALL be shown
+- **AND** no project SHALL be promoted into the tab bar
 
-#### Scenario: Later tab shows groups and lists with task counts
-- **WHEN** the user navigates to the Later tab
-- **THEN** groups are shown as expandable sections with their contained lists
-- **AND** ungrouped lists appear in a separate section
-- **AND** the default "Inbox" list is pinned first
-- **AND** each list shows an uncompleted task count badge
+### Requirement: Today tab is cross-domain
 
-#### Scenario: Tapping a list pushes ListDetailView
-- **WHEN** the user taps a list row in the Later tab
-- **THEN** `ListDetailView` for the selected list is pushed onto the Later tab's NavigationStack
+The Today tab SHALL show incomplete tasks that are overdue or due today from both Work and Personal. It SHALL display a collapsible "Overdue" section at the top when overdue tasks exist, followed by today's tasks. Rows SHALL identify the owning domain/list when the view is unfiltered.
 
-#### Scenario: Creating a new list from Later tab
-- **WHEN** the user taps the create button in the Later tab
-- **THEN** an alert appears with a text field for the list name
-- **AND** entering a name and tapping "Create" inserts a new `ReminderList`
+Today MAY offer an optional domain filter; the default SHALL be all domains. Today SHALL NOT split into separate time tabs.
 
-#### Scenario: Quick-capture in list detail assigns to that list
-- **WHEN** the user is viewing a specific list in `ListDetailView` (pushed from Later tab)
-- **AND** creates a task via quick-capture
-- **THEN** the task is assigned to that list
+#### Scenario: Overdue section appears
 
-### Requirement: NavigationSplitView and sidebar removed
+- **WHEN** an incomplete task from either domain is overdue
+- **THEN** Today SHALL show an Overdue section above today's tasks
+- **AND** tapping the section header SHALL collapse or expand it
 
-The app SHALL NOT use `NavigationSplitView` as its root navigation. The inline sidebar `List` with smart sections (`SidebarSmartSections`) and list rows (`SidebarListsView`) SHALL be removed from `ContentView`. The `AppNav` enum SHALL be removed.
+#### Scenario: No overdue section
 
-The `SidebarView.swift` file (currently unused) SHALL be removed from the project.
+- **WHEN** no incomplete tasks are overdue
+- **THEN** Today SHALL NOT show an Overdue section
 
-#### Scenario: No NavigationSplitView exists
+#### Scenario: Today capture
+
+- **WHEN** the user taps the floating + on Today
+- **THEN** the editor SHALL open with due date set to today
+- **AND** the default target SHALL be Work's Inbox bucket
+- **AND** the user MAY choose a different domain/list in the editor
+
+### Requirement: Work and Personal tabs show their domain
+
+The Work and Personal tabs SHALL show every task filed in that domain, across all of the domain's projects/lists, independent of due date. Each tab SHALL:
+
+- be titled `Work` or `Personal`
+- show list/domain context on rows
+- support list and board display modes
+- allow filtering completed tasks
+- create new tasks in that domain's Inbox bucket by default
+
+The Work/Personal tabs SHALL NOT show only one project at a time. Selecting a project is a drill-down within the domain's management surface, not a root tab.
+
+#### Scenario: Domain tab shows all its tasks
+
+- **WHEN** the user opens Personal
+- **THEN** tasks from every Personal list SHALL appear
+- **AND** Work tasks SHALL NOT appear
+
+#### Scenario: Domain capture lands in that domain
+
+- **WHEN** the user taps + while viewing Work
+- **THEN** the editor SHALL open with Work's Inbox selected by default
+- **AND** the task SHALL NOT land in Personal
+
+#### Scenario: Board column changes the list, not the domain
+
+- **WHEN** the user drags a task from one board column to another in Work
+- **THEN** the task's project/list SHALL change
+- **AND** the task SHALL remain in Work
+
+### Requirement: More holds management and secondary surfaces
+
+The More tab SHALL be the only home for management and low-frequency surfaces:
+
+- Work and Personal list/project management, grouped under their domain
+- creating, renaming, deleting, and reordering lists inside a domain
+- Recently Completed
+- notifications, appearance, iCloud status, feedback, and app information
+
+More SHALL NOT offer creation, renaming, deletion, or reordering of Work/Personal themselves. There SHALL be no "New Project" flow that creates a new `ReminderListGroup`.
+
+#### Scenario: Managing lists in a domain
+
+- **WHEN** the user opens More → Personal
+- **THEN** the Personal lists SHALL be shown
+- **AND** the user SHALL be able to add or manage lists within Personal
+- **AND** no action SHALL create another domain
+
+#### Scenario: Recently Completed
+
+- **WHEN** the user opens More → Recently Completed
+- **THEN** the Completed view SHALL be pushed within More's navigation stack
+
+### Requirement: Consistent task surface
+
+Tasks SHALL render with the same row component and editing flow in Today, Work, Personal, and list detail. A task's behavior SHALL NOT change because it was reached through a different domain/list path.
+
+#### Scenario: Same row behavior everywhere
+
+- **WHEN** the user views the same task from Today and from its Personal list
+- **THEN** completion, editing, scheduling, and deletion SHALL behave identically
+
+### Requirement: No sidebar or split-view root
+
+The app SHALL NOT use `NavigationSplitView`, an inline sidebar, or a sidebar-backed smart-filter list as its root navigation. The root SHALL remain the four-tab `TabView`.
+
+#### Scenario: No sidebar surface
+
 - **WHEN** the app runs
-- **THEN** the view hierarchy SHALL NOT contain `NavigationSplitView`
-- **AND** the root view SHALL be a `TabView`
-
-#### Scenario: SidebarView.swift is removed
-- **WHEN** the project builds
-- **THEN** the file `Views/Components/SidebarView.swift` SHALL NOT exist
-
-### Requirement: Quick-capture in time tabs assigns to Inbox
-
-When the user creates a task via the quick-capture field in any time-based tab's `ReminderSegmentDetailView`, the task SHALL be assigned to the default "Inbox" list.
-
-#### Scenario: Quick-capture in time tabs assigns to Inbox
-- **WHEN** the user quick-captures a task from the Today tab
-- **THEN** the task is created with `reminderList` set to the default "Inbox" list
+- **THEN** the view hierarchy SHALL NOT contain a root `NavigationSplitView` or sidebar
+- **AND** the root SHALL be the four-tab `TabView`

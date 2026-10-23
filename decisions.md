@@ -609,3 +609,19 @@
 - `TaskRowView.swift` now uses attributed text with link detection.
 - Mixed text titles keep full visible text while URL parts are tappable.
 - Non-URL titles continue to render as plain title text.
+
+## Decision: Two Permanent Domains, No Project Tabs
+
+**Date:** 2026-10-23
+
+**Decision:** The app has exactly two permanent domains, Work and Personal. Projects/lists are optional organization inside a domain and never become root tabs. Root navigation is fixed at Today, Work, Personal, and More. `ReminderListGroup` remains the domain model for CloudKit compatibility, and `ReminderList` remains a project/list inside one domain. No user-created domains, no per-project tabs, and no persisted domain/project discriminator will be added.
+
+**Rationale:** Allowing projects to become top-level tabs turns user data into navigation, makes the tab bar unbounded and inconsistent across devices, and competes with the two domains that define the product. Folding every extra group into Work keeps the store simple, preserves all tasks, and needs no schema change. The unreleased dynamic-tab/project-creation work is a divergence from this model and should be removed; the pre-existing reconciler behavior that merged extra groups into Work is the target.
+
+**Impact:**
+- Remove dynamic `AppTab.project` tabs and the 5/6-tab limits from `MainTabView`; always show exactly four tabs.
+- Remove `New Project`/domain creation, rename, and delete from More; keep list management inside Work and Personal only.
+- Restore reconciler behavior that folds non-Work/Personal groups into Work, repointing foreign bucket tasks to Work Inbox and preserving lists and tasks.
+- Use `Personal` as the customer-facing name; retire the `Home` display alias.
+- No CloudKit schema change or build-number bump is required for the two-domain rules themselves.
+- Canonical behavior is documented in `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.

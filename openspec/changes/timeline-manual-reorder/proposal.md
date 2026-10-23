@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement.** The canonical navigation is the fixed four-tab `Today / Work / Personal / More` root with Work and Personal as the only domains. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 Users can manually reorder tasks within custom list detail views, but not in timeline views (Today/Tomorrow/Upcoming). This is inconsistent — the user's sense of priority should be actionable regardless of which tab they're in. Adding manual reorder to timeline views would let users prioritize across lists and due dates in one place.

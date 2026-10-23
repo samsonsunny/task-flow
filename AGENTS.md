@@ -24,31 +24,34 @@ Features are split into domain-based folders under `Features/`. Each screen co-l
 
 ```
 TaskFlow/Features/
-├── Tasks/                           (Today/Tomorrow/Upcoming tabs)
-│   ├── TodayView.swift
-│   ├── TomorrowView.swift
-│   ├── UpcomingView.swift
-│   ├── TimelineView.swift
-│   ├── TimelineViewModel.swift
-│   ├── TimelineSections.swift
-│   └── TimeSegments.swift
-├── Lists/                           (Later tab + list detail)
+├── Today/                           (cross-domain Today + overdue)
+│   ├── TodayTaskListView.swift
+│   └── TodayViewModel.swift
+├── Areas/                           (Work and Personal task surfaces)
+│   ├── AreaTasksView.swift
+│   ├── AreaTasksViewModel.swift
+│   └── AreaBoardView.swift
+├── Lists/                           (domain-scoped list management + list detail)
 │   ├── ListView.swift
 │   ├── ListViewModel.swift
+│   ├── ListCreationSheet.swift
 │   ├── DetailView.swift
 │   └── DetailViewModel.swift
 ├── Editor/                          (create/edit reminder, schedule picker)
 │   ├── EditorView.swift
 │   ├── EditorViewModel.swift
 │   ├── Draft.swift
+│   ├── ListPickerView.swift
 │   ├── DatePickerSheet.swift
 │   └── DatePickerViewModel.swift
 ├── Completed/
 │   ├── CompletedView.swift
 │   └── CompletedViewModel.swift
-├── Settings/
-│   └── SettingsView.swift
-├── FloatingAddButton.swift
+├── Settings/                        (More tab)
+│   ├── MoreView.swift
+│   └── MoreViewModel.swift
+├── Home/                            (legacy; not root navigation)
+├── Tasks/                           (legacy Timeline views; not root navigation)
 └── MainTabView.swift
 ```
 
@@ -58,11 +61,26 @@ See `openspec/standards/mvvm-conventions.md` for the detailed pattern reference,
 
 ### Product mental model
 
-Read `openspec/specs/app-mental-model/spec.md` before making architectural or navigation decisions. It defines the two-axis model (attention vs home) that all features build on.
+Read `openspec/specs/app-mental-model/spec.md` before making architectural or navigation decisions. It is binding.
+
+**Product invariants — do not deviate:**
+
+1. **Exactly two domains: Work and Personal.** They are represented by `ReminderListGroup` (legacy type name), seeded and locked by `AreaReconciler`. Never create a third domain or let users create/rename/delete domains.
+2. **Root tabs are fixed: Today, Work, Personal, More.** Never add tabs for projects, lists, user groups, or legacy `Later`/`Tomorrow`/`Upcoming` surfaces. The tab bar is the same on every device and size class.
+3. **Projects/lists are optional organization inside a domain.** Every `ReminderList` belongs to exactly one domain. Projects never become top-level tabs. A list's domain is fixed at creation.
+4. **Today is cross-domain.** It shows overdue + due-today tasks from both Work and Personal. Future/undated tasks stay in their domain.
+5. **Each domain owns one protected Inbox bucket.** New tasks without a project land there. Bucket identity is derived from domain membership + canonical `Inbox` name; never add a persisted pointer (CloudKit schema is sealed).
+6. **No new model fields for the domain/project distinction.** `ReminderListGroup` = domain, `ReminderList` = project/list. Extra groups are folded into Work on launch with lists and tasks preserved.
+7. **Product copy says "Personal", not "Home".** "Home" is a retired display alias; stored values remain `Work`/`Personal`.
+8. **No sidebar or `NavigationSplitView` root.** Root navigation is the four-tab `TabView`.
+
+If code and these docs disagree, treat the docs as the target and fix the code — do not reintroduce project tabs or user-created domains.
 
 ### Existing specs
 
 Feature specs are in `openspec/specs/`. Active changes with implementation tasks are in `openspec/changes/`.
+
+Before implementing an active change, validate it against `openspec/specs/app-mental-model/spec.md`. Proposals or tasks that assume `Later` / `Tomorrow` / `Upcoming` tabs, a sidebar, `NavigationSplitView`, per-area time views, or user-created groups are stale. Do not implement those navigation parts; update the change to the fixed `Today / Work / Personal / More` model first.
 
 ### SwiftData schema migrations
 
@@ -101,7 +119,7 @@ The repo includes a content pipeline alongside the iOS app. See `openspec/change
 
 - App Store URL (use for any download CTA): `https://apps.apple.com/us/app/wednesday/id1455779789`
 - Code, folder names (`TaskFlow/`), and internal docs keep the "TaskFlow" name. Only customer-facing copy is renamed.
-- Tab names ("Today", "Tomorrow", "Upcoming", "Later") are customer-facing and match the App Store listing — keep them as-is in articles.
+- Tab names ("Today", "Work", "Personal", "More") are customer-facing and match the App Store listing — keep them as-is in articles. Never call a domain "Home" in customer-facing copy.
 
 ### Dev.to publishing script
 

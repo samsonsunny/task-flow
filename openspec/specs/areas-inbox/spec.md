@@ -1,98 +1,125 @@
-# areas-inbox Specification
+# areas-inbox
 
 ## Purpose
-TBD - created by archiving change areas-inbox-remove-global. Update Purpose after archive.
+
+Define the per-domain Inbox buckets, the Work/Personal seeding invariant, and the launch reconciler that enforces exactly two domains without losing user data.
+
 ## Requirements
-### Requirement: Every group owns an Inbox bucket identified by pointer
 
-Each `ReminderListGroup` SHALL own exactly one Inbox bucket — a `ReminderList` named "Inbox" that resides inside that group and is referenced by a pointer (`group.defaultList`), never by name. The bucket SHALL be created when a group is created and SHALL be a real, visible list within the group's section. The bucket SHALL display an inbox tray icon and SHALL be pinned as the first list within its group.
+### Requirement: Each domain owns exactly one Inbox bucket
 
-#### Scenario: Group has an Inbox bucket on creation
+Work and Personal SHALL each own exactly one Inbox bucket: a real, visible `ReminderList` named `Inbox` that belongs to that domain. There SHALL be no global Inbox and no second bucket inside a domain.
 
-- **WHEN** a `ReminderListGroup` is created through any flow
-- **THEN** a `ReminderList` named "Inbox" SHALL be created as a member of that group
-- **AND** the group's `defaultList` pointer SHALL reference that list
-- **AND** the bucket SHALL be the first list shown in the group section
+Bucket identity SHALL be derived from the owning domain and the canonical `Inbox` name, not from a persisted pointer. No `defaultList`, `defaultForGroup`, or equivalent CloudKit-mirrored field SHALL be added.
 
-#### Scenario: Bucket identity is by pointer, not name
+#### Scenario: Each domain has one bucket
 
-- **WHEN** a user has multiple groups, each with an Inbox bucket
-- **THEN** each group SHALL reference its own bucket via `defaultList`
-- **AND** no code SHALL locate a bucket by comparing `name == "Inbox"`
+- **WHEN** the app launches
+- **THEN** Work SHALL have exactly one list named `Inbox`
+- **AND** Personal SHALL have exactly one list named `Inbox`
+- **AND** each bucket SHALL belong to its domain
 
-#### Scenario: Detached Inbox list is reconciled
+#### Scenario: Identity is not persisted by pointer
 
-- **WHEN** an `Inbox` list exists with `group == nil` (legacy global Inbox or sync divergence)
-- **THEN** the reconciler SHALL reparent it into the first group as that group's bucket
-- **AND** set the first group's `defaultList` to it
+- **WHEN** code resolves a domain's bucket
+- **THEN** it SHALL use domain membership plus the canonical name
+- **AND** it SHALL NOT require a new stored relationship
 
-### Requirement: Inbox bucket is protected in v1
+### Requirement: Inbox bucket is protected
 
-The Inbox bucket of a group SHALL be protected in this change: it SHALL NOT be renamable, deletable, or movable to another group or to an ungrouped state. Context menus and edit flows for the bucket SHALL NOT offer rename, delete, or move-to-group actions.
+Work's and Personal's Inbox buckets SHALL be protected: no rename, delete, or move action SHALL be offered, and dragging SHALL NOT move them. They SHALL remain pinned first in their domain's list section.
 
-#### Scenario: Cannot rename a bucket
+#### Scenario: Cannot rename a locked bucket
 
-- **WHEN** the user opens the context menu on a group's Inbox bucket
-- **THEN** no "Rename" option SHALL be offered
+- **WHEN** the user swipes Work Inbox
+- **THEN** no rename action SHALL be offered
 
-#### Scenario: Cannot delete a bucket
+#### Scenario: Cannot delete a locked bucket
 
-- **WHEN** the user opens the context menu on a group's Inbox bucket
-- **THEN** no "Delete" option SHALL be offered
+- **WHEN** the user swipes Personal Inbox
+- **THEN** no delete action SHALL be offered
 
-#### Scenario: Cannot move a bucket out of its group
+### Requirement: Capture defaults to the active domain's bucket
 
-- **WHEN** the user opens the context menu on a group's Inbox bucket
-- **THEN** no "Move to Group" option SHALL be offered
-- **AND** the bucket SHALL remain a member of its owning group
+When a task is created without an explicit project/list, it SHALL land in the active domain's Inbox bucket. On surfaces with no domain context, the default SHALL be Work Inbox.
 
-### Requirement: Migration reparents the global Inbox into the first group
+#### Scenario: Work capture
 
-On the first launch after the update, the existing global "Inbox" list SHALL be reparented into the first group as that group's Inbox bucket. The list object itself SHALL be reused — its `group` is set to the first group and the first group's `defaultList` is set to it. No `TaskItem` SHALL be modified, moved, or deleted; every task (completed or not) SHALL remain in its list with all dates, flags, and sort order preserved.
+- **WHEN** the user creates a task from Work without selecting a project
+- **THEN** `reminderList` SHALL be Work Inbox
 
-#### Scenario: Groups exist — global Inbox becomes first group's bucket
+#### Scenario: Personal capture
 
-- **WHEN** the app launches after the update with existing groups and a global "Inbox" list
-- **THEN** the global Inbox list SHALL have its `group` set to the first group (lowest `sortOrder`, then earliest `createdAt`)
-- **AND** the first group's `defaultList` SHALL point to it
-- **AND** all tasks originally in the global Inbox SHALL remain in the same list, unmodified
+- **WHEN** the user creates a task from Personal without selecting a project
+- **THEN** `reminderList` SHALL be Personal Inbox
 
-#### Scenario: Empty store — default Work and Personal areas are seeded
+#### Scenario: No active domain
 
-- **WHEN** the app launches after the update and no groups exist in the store
-- **THEN** the system SHALL create "Work" and "Personal" groups, each with an Inbox bucket
-- **AND** the reparented global Inbox SHALL become the Work group's bucket
-- **AND** Personal SHALL have its own empty Inbox bucket
+- **WHEN** the user captures from Today or another surface with no domain/list context
+- **THEN** `reminderList` SHALL default to Work Inbox
 
-#### Scenario: Legacy ungrouped lists reparent into the first group
+### Requirement: Launch reconciler enforces the two-domain invariant
 
-- **WHEN** the app launches after the update and lists with `group == nil` exist
-- **THEN** those lists SHALL be reparented into the first group
-- **AND** their tasks SHALL remain in place with no per-task modification
+On every launch, before views read area state, the reconciler SHALL:
 
-#### Scenario: Migration runs once and is idempotent
+1. Adopt or seed exactly one Work and one Personal domain.
+2. Normalize their stored names to `Work` and `Personal`.
+3. Fold every extra `ReminderListGroup` into Work.
+4. Ensure Work and Personal each own an Inbox bucket.
+5. Assign every ungrouped list to Work.
+6. Assign every list-less task to Work Inbox.
+7. Save the whole pass once.
 
-- **WHEN** the migration completes successfully and the app is relaunched
-- **THEN** the migration SHALL NOT re-run
-- **AND** if re-run against the migrated store, it SHALL be a no-op
+The pass SHALL be idempotent: a second run against a conforming store SHALL change nothing.
 
-#### Scenario: No task data is ever deleted
+#### Scenario: Empty store is seeded
 
-- **WHEN** the migration executes
-- **THEN** no `TaskItem` SHALL be deleted, moved across lists, or have any property modified
+- **WHEN** the app launches with no domains
+- **THEN** Work and Personal SHALL be created
+- **AND** each SHALL receive an Inbox bucket
 
-### Requirement: Reconciler sweeps area-less tasks to the first group's bucket
+#### Scenario: Extra domain is folded without data loss
 
-On each launch, the area reconciler SHALL ensure every group has an Inbox bucket and no task is stranded without a list. Any `TaskItem` with `reminderList == nil` (e.g., referencing a deleted list) SHALL be assigned to the first group's Inbox bucket.
+- **WHEN** a third `ReminderListGroup` exists
+- **THEN** its non-bucket lists SHALL be reparented to Work
+- **AND** its bucket's tasks SHALL be repointed to Work Inbox
+- **AND** its now-empty bucket and group record SHALL be deleted
+- **AND** no `TaskItem` SHALL be deleted
 
-#### Scenario: Nil-list tasks land in first group's bucket
+#### Scenario: Orphan list is adopted
 
-- **WHEN** a `TaskItem` exists with `reminderList == nil`
-- **THEN** the reconciler SHALL set its `reminderList` to the first group's Inbox bucket
-- **AND** the task SHALL NOT be created in a fresh side-effect list
+- **WHEN** a list has `group == nil`
+- **THEN** it SHALL be assigned to Work
+- **AND** its tasks SHALL remain in it
 
-#### Scenario: Missing bucket is recreated
+#### Scenario: Orphan task is adopted
 
-- **WHEN** a group exists without a `defaultList` (sync divergence, partial failure)
-- **THEN** the reconciler SHALL create an Inbox bucket for that group and set the pointer
+- **WHEN** a task has `reminderList == nil`
+- **THEN** it SHALL be assigned to Work Inbox
+- **AND** no new side-effect list SHALL be created
 
+#### Scenario: Missing bucket is repaired
+
+- **WHEN** Work or Personal has no `Inbox` list
+- **THEN** the reconciler SHALL create one inside that domain
+
+#### Scenario: Pass is idempotent
+
+- **WHEN** the reconciler runs twice against a conforming store
+- **THEN** the second pass SHALL make no changes
+
+### Requirement: Migration preserves every task
+
+The one-time legacy migration and recurring reconciler SHALL NOT delete tasks or reset task content. Moving a legacy global Inbox or a foreign domain's bucket SHALL only change `TaskItem.reminderList`; dates, completion, flags, notes, subtasks, and sort order SHALL be preserved.
+
+#### Scenario: Global Inbox is folded into Work
+
+- **WHEN** a legacy ungrouped `Inbox` list exists
+- **THEN** its tasks SHALL move to Work Inbox
+- **AND** the duplicate list SHALL be removed
+- **AND** the task objects SHALL otherwise be unchanged
+
+#### Scenario: No task content changes during reconciliation
+
+- **WHEN** the reconciler reparents lists or tasks
+- **THEN** it SHALL NOT modify task titles, notes, dates, completion, flags, priority, subtasks, or tags

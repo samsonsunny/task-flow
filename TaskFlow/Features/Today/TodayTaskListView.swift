@@ -161,12 +161,12 @@ struct TodayTaskListView: View {
         if let group = task.reminderList?.group {
             let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
             if name == "Work" { return "Work" }
-            if name == "Personal" || name == "Home" { return "Home" }
+            if name == "Personal" || name == "Home" { return "Personal" }
         }
         if let listName = task.reminderList?.name {
             let name = listName.trimmingCharacters(in: .whitespacesAndNewlines)
             if name == "Work" { return "Work" }
-            if name == "Personal" || name == "Home" { return "Home" }
+            if name == "Personal" || name == "Home" { return "Personal" }
         }
         return nil
     }

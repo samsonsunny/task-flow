@@ -25,7 +25,7 @@ enum AreaDisplayMode: String, CaseIterable, Identifiable {
     }
 }
 
-/// One area's tasks: the Work and Home tabs.
+/// One domain's tasks: the Work and Personal tabs.
 ///
 /// The list is flat and creation-ordered, so it answers "everything I filed here" rather than
 /// "what is due". Board mode shows the same tasks as columns, one per list, so a drag between
@@ -225,7 +225,7 @@ struct AreaTasksView: View {
         .environment(AppState())
 }
 
-#Preview("Home") {
+#Preview("Personal") {
     let container = TaskPreviewData.container()
     TaskPreviewData.seedBothAreasFixture(into: container)
     return AreaTasksView(areaName: AreaNames.personal)

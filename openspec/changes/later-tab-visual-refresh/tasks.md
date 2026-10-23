@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement these tasks.** Canonical navigation is the fixed four-tab `Today / Work / Personal / More` root. See `openspec/specs/app-mental-model/spec.md`.
+
 ## 1. Row Styling — Font, Spacing, Separators
 
 - [x] 1.1 Change list row title font from `.system(size: 16)` to `.system(size: 17, weight: .regular)` in `listRow()` helper

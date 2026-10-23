@@ -1,121 +1,77 @@
+# inline-list-group-creation
+
 ## Purpose
 
-Define the inline "Create New Group" flow that creates a group (with its Inbox bucket) and moves the source list into it.
+Define list creation inside a fixed domain. The former user-created "group" flow is retired: Work and Personal are permanent, and users add projects/lists only within one of them.
 
 ## Requirements
 
-### Requirement: Inline creation rows replace FAB in Later tab
+### Requirement: List creation is scoped to a domain
 
-The FAB overlay SHALL be removed from `ListsTabView`. Two inline creation rows SHALL be added: "+ New List" at the bottom of the Lists section and "+ New Group" at the bottom of the Groups section. Each section header SHALL also include a `+` button as a secondary creation CTA.
+Every list-creation entry point SHALL be opened from a specific domain and SHALL create the list inside that domain. There SHALL be no domain picker, no "None"/ungrouped option, and no fallback to a different domain.
 
-The Lists and Groups section headers SHALL be visible even when no lists or groups exist.
+#### Scenario: Create a list in Work
 
-#### Scenario: FAB removed, inline row visible
-- **WHEN** a user opens the Later tab
-- **THEN** no floating add button is present, AND a "+ New List" row is visible at the bottom of the Lists section
+- **WHEN** the user taps "New List" while managing Work
+- **THEN** a sheet SHALL appear with a focused name field
+- **AND** creating it SHALL assign the list to Work
 
-#### Scenario: Inline row visible in empty Lists section
-- **WHEN** a user opens the Later tab with no ungrouped lists
-- **THEN** the Lists section header is still visible with a `+` button, AND the "+ New List" inline row is the only row in the section
+#### Scenario: Create a list in Personal
 
-#### Scenario: Inline row visible in empty Groups section
-- **WHEN** a user opens the Later tab with no groups
-- **THEN** the Groups section header is still visible with a `+` button, AND the "+ New Group" inline row is the only row in the section
+- **WHEN** the user taps "New List" while managing Personal
+- **THEN** creating it SHALL assign the list to Personal
 
-#### Scenario: Section header plus button
-- **WHEN** a user views the Lists or Groups section header
-- **THEN** a `+` button is visible on the trailing edge of the header
+#### Scenario: No domain context
 
-### Requirement: Sheet-based list creation with optional group assignment
+- **WHEN** a creation entry point has no domain context
+- **THEN** the app SHALL require the user to enter a domain's list surface first
+- **AND** SHALL NOT create an ungrouped list
 
-Tapping "+ New List" (inline row or header `+`) SHALL open a sheet with:
-- A text field for the list name (auto-focused)
-- A Menu picker for "Group (optional)" showing existing groups with "None" as default
-- A Cancel button (leading) and Create button (trailing) in the navigation bar
+### Requirement: List creation sheet
 
-Create SHALL be disabled when the name field is empty. The sheet SHALL be cancellable at any point with no side effects.
+The sheet SHALL contain:
 
-#### Scenario: Open list creation sheet
-- **WHEN** a user taps the "+ New List" inline row
-- **THEN** a sheet appears with a name text field (focused), a group picker set to "None", Cancel button, and Create button (disabled until name entered)
+- a text field for the list name, auto-focused
+- Cancel and Create actions in the navigation bar
+- Create disabled while the trimmed name is empty
 
-#### Scenario: Create list without group
-- **WHEN** a user enters a name and taps Create with group set to "None"
-- **THEN** the list is created without a group assignment, AND the sheet dismisses
+#### Scenario: Create with a valid name
 
-#### Scenario: Create list with group assignment
-- **WHEN** a user enters a name, selects a group from the picker, and taps Create
-- **THEN** the list is created and assigned to the selected group, AND the sheet dismisses
+- **WHEN** the user enters a non-empty name and taps Create
+- **THEN** the list SHALL be inserted in the active domain
+- **AND** the sheet SHALL dismiss
 
-#### Scenario: Cancel list creation
-- **WHEN** a user taps Cancel in the list creation sheet
-- **THEN** no list is created, AND the sheet dismisses
+#### Scenario: Empty name is rejected
 
-### Requirement: Sheet-based group creation with optional list assignment
+- **WHEN** the name field is empty or whitespace
+- **THEN** Create SHALL be disabled
+- **AND** no list SHALL be created
 
-Tapping "+ New Group" (inline row or header `+`) SHALL open a sheet with:
-- A text field for the group name (auto-focused)
-- A Menu picker for "Add List (optional)" showing ungrouped lists with "None" as default
-- A Cancel button (leading) and Create button (trailing) in the navigation bar
+#### Scenario: Cancel
 
-Create SHALL be disabled when the name field is empty.
+- **WHEN** the user taps Cancel
+- **THEN** no list SHALL be created
+- **AND** the sheet SHALL dismiss
 
-#### Scenario: Open group creation sheet
-- **WHEN** a user taps the "+ New Group" inline row
-- **THEN** a sheet appears with a name text field (focused), a list picker set to "None", Cancel button, and Create button (disabled until name entered)
+### Requirement: No user-created domains
 
-#### Scenario: Create empty group
-- **WHEN** a user enters a name and taps Create with list set to "None"
-- **THEN** an empty group is created, AND the sheet dismisses
+There SHALL be no UI to create a new `ReminderListGroup`, no "New Group" inline row, and no "New Project" action that creates a group. The only valid domains are Work and Personal.
 
-#### Scenario: Create group with list assignment
-- **WHEN** a user enters a name, selects an ungrouped list from the picker, and taps Create
-- **THEN** the group is created with the selected list assigned, AND the sheet dismisses
+#### Scenario: No create-domain affordance
 
-#### Scenario: No ungrouped lists hides picker
-- **WHEN** a user opens group creation and no ungrouped lists exist
-- **THEN** the "Add List (optional)" picker is hidden entirely
+- **WHEN** the user opens any management surface
+- **THEN** no action SHALL create a third domain
 
-### Requirement: On-the-fly creation via mini-sheet
+#### Scenario: No group picker
 
-The association picker (group picker in list creation, list picker in group creation) SHALL include "New Group…" / "New List…" as the last option. Tapping it SHALL present a mini-sheet with a single text field and Create/Done button. On completion, the mini-sheet SHALL dismiss and the main sheet's picker SHALL auto-select the newly created entity.
+- **WHEN** the user creates a list
+- **THEN** the sheet SHALL NOT show a group/domain picker
 
-#### Scenario: Create group on-the-fly during list creation
-- **WHEN** a user is creating a list and taps "New Group…" in the group picker
-- **THEN** a mini-sheet appears with a group name text field and Done button
-- **AFTER** the user enters a name and taps Done
-- **THEN** the group is created, the mini-sheet dismisses, AND the group picker in the main sheet shows the new group selected
+### Requirement: Keyboard-safe actions
 
-#### Scenario: Create list on-the-fly during group creation
-- **WHEN** a user is creating a group and taps "New List…" in the list picker
-- **THEN** a mini-sheet appears with a list name text field and Done button
-- **AFTER** the user enters a name and taps Done
-- **THEN** the list is created, the mini-sheet dismisses, AND the list picker in the main sheet shows the new list selected
+Cancel and Create SHALL remain in the navigation bar while the keyboard is visible.
 
-#### Scenario: Cancel mini-sheet
-- **WHEN** a user opens a mini-sheet and taps Cancel
-- **THEN** the mini-sheet dismisses, no entity is created, AND the main sheet's picker remains unchanged (default "None")
+#### Scenario: Keyboard does not cover actions
 
-### Requirement: Association picker reflects available items
-
-The group picker in the list creation sheet SHALL only show existing groups. The list picker in the group creation sheet SHALL only show ungrouped lists. When no items exist, the picker SHALL show only "None" and "New…".
-
-#### Scenario: No groups available in list creation
-- **WHEN** a user opens list creation with no groups in the app
-- **THEN** the group picker shows "None" as the only option with "New Group…" below the separator
-
-#### Scenario: No ungrouped lists available in group creation
-- **WHEN** a user opens group creation with no ungrouped lists
-- **THEN** the "Add List (optional)" picker is hidden
-
-### Requirement: Keyboard-safe toolbar
-
-All sheet actions (Cancel, Create, Done) SHALL be placed in the navigation bar toolbar, NOT at the bottom of the sheet. This ensures actions are accessible when the keyboard is active.
-
-#### Scenario: Keyboard does not cover action buttons
-- **WHEN** a user opens any creation sheet and the keyboard appears
-- **THEN** the Cancel and Create/Done buttons remain visible in the navigation bar
-
-#### Scenario: Create enabled on non-empty name
-- **WHEN** a user types at least one character in the name field
-- **THEN** the Create button becomes enabled
+- **WHEN** the keyboard is shown in the creation sheet
+- **THEN** Cancel and Create SHALL remain visible

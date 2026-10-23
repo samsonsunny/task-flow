@@ -1,56 +1,93 @@
+# list-picker
+
 ## Purpose
 
-Define the list picker surface used when assigning or moving a task to a list, including group disambiguation.
+Define the list picker used when assigning or moving a task to a project/list, with lists grouped by their Work or Personal domain.
 
 ## Requirements
 
-### Requirement: List picker displays all lists organized by groups
-The system SHALL present a full-screen list picker showing all available lists grouped by their `ReminderListGroup`, with the default list (Inbox) shown first, followed by grouped lists, then ungrouped lists. Lists within each group SHALL be sorted by their `sortOrder`.
+### Requirement: List picker displays all lists grouped by domain
 
-#### Scenario: User opens list picker
+The system SHALL present a full-screen list picker showing all available lists grouped under their domain: Work and Personal. Each domain's Inbox SHALL appear first in its section, followed by that domain's custom lists in sort order. There SHALL be no ungrouped section.
+
+#### Scenario: User opens the list picker
+
 - **WHEN** the user taps the list row in the editor
-- **THEN** the system navigates to a full-screen picker showing all lists organized by groups
+- **THEN** the picker SHALL show Work and Personal sections
+- **AND** each section SHALL list its Inbox first
 
-#### Scenario: Lists are grouped correctly
-- **WHEN** the list picker is displayed
-- **THEN** the default list (Inbox) appears first, followed by lists grouped under their group headers, then ungrouped lists — matching the order in the Lists tab
+#### Scenario: Lists match domain order
+
+- **WHEN** the picker is displayed
+- **THEN** Work lists SHALL appear under Work
+- **AND** Personal lists SHALL appear under Personal
+- **AND** no list SHALL appear outside a domain
 
 ### Requirement: List picker supports search filtering
-The system SHALL provide a search bar at the top of the list picker that filters lists by name across all groups.
+
+The system SHALL provide a search bar that filters lists by name across both domains.
 
 #### Scenario: User searches for a list
+
 - **WHEN** the user types in the search bar
-- **THEN** the list results are filtered to show only lists whose names contain the search text, with group headers preserved for matching results
+- **THEN** only lists whose names contain the text SHALL be shown
+- **AND** matching results SHALL keep their domain headers
 
-#### Scenario: Search with no results
-- **WHEN** the user enters search text that matches no list names
-- **THEN** the picker shows an empty state indicating no matching lists
+#### Scenario: Search has no results
 
-### Requirement: Current list is pre-selected with visual indicator
-The system SHALL display a checkmark next to the currently assigned list in the picker.
+- **WHEN** the search matches no list names
+- **THEN** the picker SHALL show an empty state
+
+### Requirement: Current list is pre-selected with a visual indicator
+
+The list currently assigned to the task SHALL display a checkmark.
 
 #### Scenario: Checkmark shows current list
-- **WHEN** the user opens the list picker
-- **THEN** the list currently assigned to the task (from `draft.listName`) has a checkmark indicator
+
+- **WHEN** the user opens the picker for an existing task
+- **THEN** the task's current list SHALL show a checkmark
 
 ### Requirement: Selecting a list updates the editor draft
-The system SHALL update `draft.listName` when the user taps a list in the picker, then navigate back to the editor.
 
-#### Scenario: User selects a different list
-- **WHEN** the user taps a list in the picker that is not the current list
-- **THEN** the picker dismisses, the editor's list row shows the newly selected list name, and `draft.listName` is updated
+Tapping a list SHALL update the editor's selected list and dismiss the picker.
 
-#### Scenario: User selects the same list
-- **WHEN** the user taps the list that is already selected
-- **THEN** the picker dismisses with no change to the draft
+#### Scenario: Select a different list
 
-### Requirement: List picker defaults based on entry context
-The system SHALL pre-select the list based on where the editor was opened from.
+- **WHEN** the user taps a list other than the current one
+- **THEN** the draft's list SHALL update
+- **AND** the editor SHALL show the new list name
+
+#### Scenario: Select the same list
+
+- **WHEN** the user taps the current list
+- **THEN** the picker SHALL dismiss with no change
+
+### Requirement: Picker defaults from entry context
+
+The picker SHALL pre-select a target based on where the editor was opened:
+
+- from a specific list → that list
+- from Work → Work Inbox
+- from Personal → Personal Inbox
+- from Today or another context without a domain/list → Work Inbox
+- from a board column → that column's list
 
 #### Scenario: Opening from a list detail view
-- **WHEN** the user opens the editor from a specific list's detail view
-- **THEN** the list picker defaults to that list
 
-#### Scenario: Opening from a time-based tab
-- **WHEN** the user opens the editor from Today, Tomorrow, or Upcoming
-- **THEN** the list picker defaults to the Inbox (default list)
+- **WHEN** the editor opens from a specific list
+- **THEN** that list SHALL be selected
+
+#### Scenario: Opening from Work
+
+- **WHEN** the editor opens from Work
+- **THEN** Work Inbox SHALL be selected
+
+#### Scenario: Opening from Personal
+
+- **WHEN** the editor opens from Personal
+- **THEN** Personal Inbox SHALL be selected
+
+#### Scenario: Opening from Today
+
+- **WHEN** the editor opens from Today without another context
+- **THEN** Work Inbox SHALL be selected

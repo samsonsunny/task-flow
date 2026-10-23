@@ -1,69 +1,62 @@
+# overdue-view
+
 ## Purpose
 
-Define how the Overdue segment surfaces and orders tasks whose due dates are in the past.
+Define how overdue tasks surface inside the cross-domain Today tab.
 
 ## Requirements
 
-### Requirement: Sidebar displays Overdue filter
+### Requirement: Today shows an Overdue section
 
-The sidebar SHALL display an "Overdue" smart filter at the top of the smart filters section, above "Today". The Overdue entry SHALL be conditionally visible — it SHALL appear only when there is at least one incomplete task whose due date/time has passed.
+The Today tab SHALL show a collapsible "Overdue" section above today's tasks when at least one incomplete task from Work or Personal is past due. There SHALL NOT be a sidebar smart filter or a separate Overdue tab.
 
-For date-only tasks, the due date is compared by day: `startOfDay(dueDate) < startOfDay(now)`.
-For tasks with a time component, the exact date/time is compared: `dueDate < now`.
+For date-only tasks, overdue means `startOfDay(dueDate) < startOfDay(now)`. For tasks with a time, overdue means `dueDate < now`.
 
-The Overdue entry SHALL display a count badge with the number of overdue tasks. The icon and count badge SHOULD use a red/warning tint color to convey urgency.
+#### Scenario: Overdue section appears
 
-#### Scenario: Overdue appears when tasks are overdue
-- **WHEN** the user has at least one incomplete task whose due date/time has passed
-- **THEN** the sidebar SHALL display an "Overdue" entry above "Today"
-- **AND** the entry SHALL show a count badge with the number of overdue tasks
+- **WHEN** at least one incomplete task is overdue
+- **THEN** Today SHALL show an Overdue section above the Today section
+- **AND** the header SHALL display the overdue count
 
-#### Scenario: Overdue hides when no overdue tasks
-- **WHEN** the user has no incomplete tasks whose due date/time has passed
-- **THEN** the sidebar SHALL NOT display the "Overdue" entry
+#### Scenario: Overdue section hides
+
+- **WHEN** no incomplete tasks are overdue
+- **THEN** Today SHALL NOT show an Overdue section
 
 #### Scenario: Overdue updates reactively
+
 - **WHEN** the user completes the last overdue task
-- **THEN** the "Overdue" entry SHALL disappear from the sidebar
-- **WHEN** a new task's due date/time passes (becomes overdue)
-- **THEN** the "Overdue" entry SHALL appear in the sidebar
+- **THEN** the Overdue section SHALL disappear
+- **WHEN** a task becomes overdue
+- **THEN** the Overdue section SHALL appear
 
-### Requirement: Overdue view shows past-due tasks
+### Requirement: Overdue ordering and controls
 
-The Overdue view SHALL display all incomplete tasks where the due date/time has passed. Tasks with a time component are compared by exact time (`dueDate < now`); date-only tasks are compared by day (`startOfDay(dueDate) < startOfDay(now)`). Tasks SHALL be sorted by due date (most overdue first). Each task row SHALL include the standard actionable controls (completion toggle, swipe to Today/Tomorrow/Later, swipe to delete, quick-capture, FAB).
+Overdue tasks SHALL be sorted most overdue first. Each row SHALL use the standard task row with completion toggle, edit, reschedule, and delete actions. Rescheduling SHALL remove the task from Overdue.
 
-The Overdue view SHALL reuse the same layout as other `ReminderSegmentDetailView` segments — flat list with quick-capture row and floating add button.
+#### Scenario: Most overdue first
 
-#### Scenario: Overdue tasks are listed
-- **WHEN** the user taps "Overdue" in the sidebar
-- **THEN** all incomplete tasks whose due date/time has passed SHALL be displayed
-- **AND** tasks SHALL be sorted with the most overdue first
-- **AND** the quick-capture row and FAB SHALL be available
+- **WHEN** multiple tasks are overdue
+- **THEN** the earliest due date SHALL appear first
 
 #### Scenario: Rescheduling removes from Overdue
-- **WHEN** the user swipes an overdue task to "Today" or "Tomorrow"
-- **THEN** the task's `dueDate` SHALL be updated to today/tomorrow
-- **AND** the task SHALL disappear from Overdue and appear in the respective filter
+
+- **WHEN** the user reschedules an overdue task to today or tomorrow
+- **THEN** it SHALL leave the Overdue section
+- **AND** it SHALL appear under the appropriate date
 
 #### Scenario: Completing removes from Overdue
+
 - **WHEN** the user completes an overdue task
-- **THEN** the task SHALL disappear from Overdue
-- **AND** the task SHALL appear in the Completed view
+- **THEN** it SHALL leave Today
+- **AND** it SHALL appear in Recently Completed
 
-### Requirement: Overdue section in Today view defaults to collapsed
-The inline overdue section in the Today segment view SHALL default to collapsed (hidden task rows). The overdue header with task count SHALL always be visible. Tapping the header SHALL expand to show overdue task rows.
+### Requirement: Overdue section is collapsible
 
-#### Scenario: Overdue section hidden on view load
-- **WHEN** the Today view loads and there are overdue tasks
-- **THEN** the overdue header SHALL display the count of overdue tasks
-- **AND** the overdue task rows SHALL NOT be visible
+The Overdue header SHALL remain visible while collapsed. Tapping it SHALL toggle the overdue rows, and the chevron SHALL reflect the state.
 
-#### Scenario: User expands overdue section
-- **WHEN** user taps the overdue section header
-- **THEN** the overdue task rows SHALL appear with animation
-- **AND** the chevron SHALL rotate to indicate expanded state
+#### Scenario: Collapse and expand
 
-#### Scenario: User collapses overdue section
-- **WHEN** user taps the overdue section header while expanded
-- **THEN** the overdue task rows SHALL be hidden with animation
-- **AND** the chevron SHALL rotate to indicate collapsed state
+- **WHEN** the user taps the Overdue header
+- **THEN** its task rows SHALL toggle visibility
+- **AND** the chevron SHALL update

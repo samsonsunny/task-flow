@@ -148,7 +148,7 @@ final class TodayViewModel {
     }
 
     private func rebuildFilterOptions() {
-        let options = [TodayFilterOption.all] + groups.map { group in
+        let options = [TodayFilterOption.all] + groups.filter { $0.isLocked }.map { group in
             TodayFilterOption(
                 filter: .area(group.persistentModelID),
                 title: areaDisplayName(group.name),

@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement.** The canonical navigation is the fixed four-tab `Today / Work / Personal / More` root with Work and Personal as the only domains. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 The Later tab's root view (list-of-lists) was built independently from the shared `ReminderSegmentDetailView` component used by Today/Tomorrow/Upcoming. It uses 16pt font (vs 17pt app standard), tighter vertical spacing, visible list separators, and treats Inbox as just another list row — making it feel visually disconnected from the rest of the app.

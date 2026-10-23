@@ -130,17 +130,18 @@ Drag-and-drop within `ListDetailView` SHALL support reparenting a task. Dropping
 - **THEN** the subtask SHALL be reordered among its siblings
 - **AND** the sort order SHALL be updated via the existing `midpoint` algorithm
 
-### Requirement: Segment views show subtasks flat
-Reminder segment views (Today, Tomorrow, Upcoming, Later, Overdue) SHALL show subtasks independently as flat rows. Subtasks with their own due dates SHALL appear in the appropriate segment. Subtasks without due dates SHALL NOT appear in segment views.
+### Requirement: Attention views show subtasks flat
+Today, Overdue, Work, and Personal SHALL show subtasks independently as flat rows. Subtasks with their own due dates SHALL appear in the appropriate attention view. Subtasks without due dates SHALL NOT appear in Today or Overdue, but SHALL remain visible in their Work/Personal list.
 
 #### Scenario: Subtask with due date appears in Today
 - **WHEN** a subtask has a due date of today
-- **THEN** it SHALL appear in the Today segment as a flat row
+- **THEN** it SHALL appear in Today as a flat row
 - **AND** it SHALL NOT display indentation or collapse controls
 
 #### Scenario: Subtask without due date does not appear
 - **WHEN** a subtask has no due date
-- **THEN** it SHALL NOT appear in any segment view (Today, Upcoming, Later, Overdue)
+- **THEN** it SHALL NOT appear in Today or Overdue
+- **AND** it SHALL remain visible in its Work/Personal list
 - **AND** the list view remains the only place to see it
 
 ### Requirement: Subtask creation via editor

@@ -1,3 +1,5 @@
+> **Status: SUPERSEDED (2026-10-23). Do not implement.** The canonical navigation is the fixed four-tab `Today / Work / Personal / More` root with Work and Personal as the only domains. See `openspec/specs/app-mental-model/spec.md` and `openspec/specs/tab-bar-navigation/spec.md`.
+
 ## Why
 
 The Lists overview ("My Lists") is a capture dead-end. Because capture-bar ownership is per-destination (`CaptureHost`), and `lists-sidebar-split`'s Decision 3 deliberately hid the bar from the overview, a user browsing lists must first navigate into a day or a list before they can capture anything. Capture should be possible from any surface without pre-navigating.

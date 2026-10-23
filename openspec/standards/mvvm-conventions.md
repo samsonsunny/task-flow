@@ -6,31 +6,34 @@ Features are split into domain-based folders under `Features/`. Each screen co-l
 
 ```
 TaskFlow/Features/
-├── Tasks/                           (Today/Tomorrow/Upcoming tabs)
-│   ├── TodayView.swift
-│   ├── TomorrowView.swift
-│   ├── UpcomingView.swift
-│   ├── TimelineView.swift
-│   ├── TimelineViewModel.swift
-│   ├── TimelineSections.swift
-│   └── TimeSegments.swift
-├── Lists/                           (Lists tab + list detail)
+├── Today/                           (cross-domain Today + overdue)
+│   ├── TodayTaskListView.swift
+│   └── TodayViewModel.swift
+├── Areas/                           (Work and Personal task surfaces)
+│   ├── AreaTasksView.swift
+│   ├── AreaTasksViewModel.swift
+│   └── AreaBoardView.swift
+├── Lists/                           (domain-scoped list management + list detail)
 │   ├── ListView.swift
 │   ├── ListViewModel.swift
+│   ├── ListCreationSheet.swift
 │   ├── DetailView.swift
 │   └── DetailViewModel.swift
 ├── Editor/                          (create/edit reminder, schedule picker)
 │   ├── EditorView.swift
 │   ├── EditorViewModel.swift
 │   ├── Draft.swift
+│   ├── ListPickerView.swift
 │   ├── DatePickerSheet.swift
 │   └── DatePickerViewModel.swift
 ├── Completed/
 │   ├── CompletedView.swift
 │   └── CompletedViewModel.swift
-├── Settings/
-│   └── SettingsView.swift
-├── FloatingAddButton.swift
+├── Settings/                        (More tab)
+│   ├── MoreView.swift
+│   └── MoreViewModel.swift
+├── Home/                            (legacy; not root navigation)
+├── Tasks/                           (legacy timeline views; not root navigation)
 └── MainTabView.swift
 ```
 

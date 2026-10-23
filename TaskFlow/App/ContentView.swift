@@ -6,7 +6,7 @@ struct ContentView: View {
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system.rawValue
 
     /// Reconciliation must finish before any `@Query` in the tree reads area state —
-    /// otherwise Home can render a third synced area, or an `AppState` reference to a group
+    /// otherwise a domain surface can render a third synced area, or an `AppState` reference to a group
     /// the merge is about to delete. Gating the root on the pass makes the ordering a
     /// property of the structure rather than a hope about `onAppear` timing.
     @State private var isReconciled = false
@@ -22,8 +22,10 @@ struct ContentView: View {
         .preferredColorScheme(AppAppearance(rawValue: appearance)?.colorScheme)
         .task {
             migrateGlobalInboxToFirstGroup(in: modelContext)
-            reconcileLockedAreas(in: modelContext)
+            _ = reconcileLockedAreas(in: modelContext)
+            try? modelContext.save()
             backfillSortOrdersIfNeeded(in: modelContext)
+            try? modelContext.save()
             isReconciled = true
         }
     }
