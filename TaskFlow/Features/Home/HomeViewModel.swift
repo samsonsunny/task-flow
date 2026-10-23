@@ -186,6 +186,9 @@ final class HomeViewModel {
 
     func toggleCompletion(for task: TaskItem) {
         let next = !(task.isCompleted ?? false)
+        if next {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
         task.isCompleted = next
         task.completionDate = next ? now : nil
         if next, let taskId = task.taskId {

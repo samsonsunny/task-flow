@@ -28,7 +28,6 @@ struct ListDetailView: View {
     @Query(sort: \ReminderList.createdAt) private var allLists: [ReminderList]
 
     @State private var viewModel: ListDetailViewModel?
-    @State private var captureViewModel: CaptureBarViewModel?
     @State private var scheduleConfig: ScheduleConfig?
     @State private var bulkScheduleConfig: BulkScheduleConfig?
     @State private var newReminderConfig: NewReminderConfig?
@@ -58,26 +57,6 @@ struct ListDetailView: View {
     var body: some View {
         ScrollViewReader { proxy in
             detailList(proxy: proxy)
-        }
-        // Each pushed screen owns its capture bar. The old split view supplied one
-        // globally via `safeAreaInset`, so removing it silently left list detail with no
-        // way to capture.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            CaptureBar(
-                viewModel: captureViewModel ?? CaptureBarViewModel(modelContext: modelContext),
-                onCommit: { text, notes in
-                    captureViewModel?.commit(
-                        text: text,
-                        notes: notes,
-                        target: .list(listID),
-                        selectedAreaID: appState.selectedAreaID
-                    )
-                    captureViewModel?.isFocusingCapture = false
-                    reloadTasks()
-                },
-                autofocusRequest: captureViewModel?.isFocusingCapture ?? false
-            )
-            .frame(maxWidth: .infinity)
         }
     }
 
@@ -143,9 +122,6 @@ struct ListDetailView: View {
             }
             .onAppear {
                 viewModel = ListDetailViewModel(modelContext: modelContext, listID: listID)
-                if captureViewModel == nil {
-                    captureViewModel = CaptureBarViewModel(modelContext: modelContext)
-                }
                 reloadTasks()
             }
             .onChange(of: allTasks) { _, newTasks in
@@ -175,10 +151,21 @@ struct ListDetailView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                if !isSelecting && showScrollToBottom {
-                    scrollToBottomButton(proxy: proxy)
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 12 + AppTheme.captureBarClearance)
+                if !isSelecting {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        if showScrollToBottom {
+                            scrollToBottomButton(proxy: proxy)
+                                .padding(.trailing, 16)
+                        }
+
+                        FloatingAddButton {
+                            newReminderConfig = NewReminderConfig(
+                                initialDate: nil,
+                                initialListID: listID,
+                                initialTitle: ""
+                            )
+                        }
+                    }
                 }
             }
     }
@@ -285,7 +272,7 @@ struct ListDetailView: View {
             onComplete: { bulkToggleCompletion() },
             onDone: { exitSelectionMode() }
         )
-        .padding(.bottom, AppTheme.captureBarClearance)
+        .padding(.bottom, 8)
         .transition(.move(edge: .bottom))
         .animation(.easeInOut(duration: 0.25), value: isSelecting)
     }
@@ -344,9 +331,6 @@ struct ListDetailView: View {
             task: task,
             isCompletedVisualState: task.isCompleted == true,
             onToggleCompletion: {
-                if task.isCompleted == false {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                }
                 viewModel?.toggleCompletion(for: task)
             },
             onDueDateAction: { action in
@@ -419,11 +403,6 @@ struct ListDetailView: View {
     }
 
     private func bulkToggleCompletion() {
-        let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == listID }
-        for id in selectedTasks {
-            if let task = listTasks.first(where: { $0.persistentModelID == id }) {
-                viewModel?.toggleCompletion(for: task)
-            }
-        }
+        viewModel?.bulkToggleCompletion(selectedTasks)
     }
 }

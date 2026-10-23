@@ -124,6 +124,9 @@ final class ReminderEditorViewModel {
 
     func toggleSubtaskCompletion(_ subtask: TaskItem) {
         let next = !(subtask.isCompleted ?? false)
+        if next {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
         subtask.isCompleted = next
         subtask.completionDate = next ? Date() : nil
         if next, let taskId = subtask.taskId {

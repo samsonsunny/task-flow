@@ -25,7 +25,7 @@ struct ListCreationSheet: View {
                     LabeledContent("Creates a list in", value: areaName)
                         .foregroundStyle(.secondary)
                 } footer: {
-                    Text("This list will appear under \(areaName) on Home.")
+                    Text("This list will appear in \(areaName).")
                 }
             }
             .navigationTitle("New List")
@@ -37,6 +37,7 @@ struct ListCreationSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
                         onCreate(name)
+                        Haptics.success()
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

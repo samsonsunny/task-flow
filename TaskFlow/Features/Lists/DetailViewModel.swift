@@ -72,6 +72,7 @@ final class ListDetailViewModel {
     func toggleCompletion(for task: TaskItem) {
         let next = !(task.isCompleted ?? false)
         if next {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             if let id = task.taskId {
                 justCompleted.insert(id)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak task] in
@@ -432,8 +433,26 @@ final class ListDetailViewModel {
 
     func bulkToggleCompletion(_ taskIDs: Set<PersistentIdentifier>) {
         let tasksToToggle = tasks.filter { taskIDs.contains($0.persistentModelID) }
+        if tasksToToggle.contains(where: { $0.isCompleted != true }) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
         for task in tasksToToggle {
             let next = !(task.isCompleted ?? false)
+            if next {
+                if let id = task.taskId {
+                    justCompleted.insert(id)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self, weak task] in
+                        guard let self, let task, task.isCompleted == true else { return }
+                        _ = withAnimation {
+                            self.justCompleted.remove(id)
+                            self.recompute()
+                            BadgeService.update(modelContext: self.modelContext)
+                        }
+                    }
+                }
+            } else if let id = task.taskId {
+                justCompleted.remove(id)
+            }
             task.isCompleted = next
             task.completionDate = next ? Date() : nil
             if next, let taskId = task.taskId {

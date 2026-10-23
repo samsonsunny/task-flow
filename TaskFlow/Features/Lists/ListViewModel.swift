@@ -61,8 +61,23 @@ final class ListsTabViewModel {
         return list
     }
 
+    /// Work and Personal keep their Inbox protected. A user-created project may rename its
+    /// bucket; the list stays the bucket because `ReminderListGroup.inboxBucket` falls back
+    /// to the oldest list when no list is named "Inbox".
+    private func canModifyBucket(_ list: ReminderList) -> Bool {
+        !isBucket(list) || list.group?.isLocked == false
+    }
+
+    /// A project's bucket can only be deleted while another list remains to inherit the
+    /// bucket role. Locked areas and a project's last list stay protected.
+    private func canDelete(_ list: ReminderList) -> Bool {
+        guard canModifyBucket(list) else { return false }
+        guard isBucket(list) else { return true }
+        return (list.group?.listsArray.count ?? 0) > 1
+    }
+
     func renameList(_ list: ReminderList, to newName: String) {
-        guard !isBucket(list) else { return }
+        guard canModifyBucket(list) else { return }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         list.name = trimmed
@@ -70,7 +85,9 @@ final class ListsTabViewModel {
     }
 
     func deleteList(_ list: ReminderList, moveTasksTo targetList: ReminderList) {
-        guard !isBucket(list) else { return }
+        guard canDelete(list),
+              list.persistentModelID != targetList.persistentModelID
+        else { return }
         let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
         for task in listTasks {
             task.reminderList = targetList
@@ -80,7 +97,7 @@ final class ListsTabViewModel {
     }
 
     func deleteListAndTasks(_ list: ReminderList) {
-        guard !isBucket(list) else { return }
+        guard canDelete(list) else { return }
         let listTasks = allTasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
         for task in listTasks {
             if let taskId = task.taskId {

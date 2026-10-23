@@ -35,6 +35,8 @@ struct TaskRowView: View, Equatable {
     var onTap: (() -> Void)? = nil
     var showsDueDate: Bool = false
     var showsListName: Bool = true
+    var showsGroupName: Bool = false
+    var groupNameOverride: String? = nil
     var subtaskSummary: SubtaskSummary = .empty
     var isSelecting: Bool = false
     var isSelected: Bool = false
@@ -78,7 +80,7 @@ struct TaskRowView: View, Equatable {
                     } label: {
                         Label("Postpone", systemImage: "arrow.right")
                     }
-                    .tint(AppTheme.colors.primaryAction)
+                    .tint(AppTheme.colors.tint)
                 }
             }
             .contextMenu {
@@ -159,6 +161,7 @@ struct TaskRowView: View, Equatable {
         HStack(alignment: .center, spacing: 16) {
             if isSelecting {
                 Button {
+                    Haptics.selection()
                     onSelectToggle?()
                 } label: {
                     SelectionCircle(isSelected: isSelected)
@@ -178,8 +181,10 @@ struct TaskRowView: View, Equatable {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if isSelecting {
+                        Haptics.selection()
                         onSelectToggle?()
                     } else {
+                        Haptics.impact(.light)
                         onTap?()
                     }
                 }
@@ -188,6 +193,7 @@ struct TaskRowView: View, Equatable {
 
             if subtaskSummary.total > 0, let onToggleExpand {
                 Button {
+                    Haptics.impact(.light)
                     onToggleExpand()
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -279,6 +285,25 @@ struct TaskRowView: View, Equatable {
         return Self.dueDateFormatter.string(from: dueDate)
     }
 
+    private var groupDisplayName: String? {
+        if let groupNameOverride {
+            return groupNameOverride
+        }
+        guard showsGroupName else { return nil }
+        if let group = task.reminderList?.group {
+            let trimmed = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed == "Personal" || trimmed == "Home" { return "Home" }
+            if trimmed == "Work" { return "Work" }
+            if !trimmed.isEmpty && trimmed != "Inbox" { return trimmed }
+        }
+        if let listName = task.reminderList?.name {
+            let trimmed = listName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed == "Work" { return "Work" }
+            if trimmed == "Personal" || trimmed == "Home" { return "Home" }
+        }
+        return nil
+    }
+
     private var metadataText: String? {
         var components: [String] = []
 
@@ -292,6 +317,10 @@ struct TaskRowView: View, Equatable {
 
         if showsDueDate, let dateText {
             components.append(dateText)
+        }
+
+        if let groupDisplayName {
+            components.append(groupDisplayName)
         }
 
         if showsListName {

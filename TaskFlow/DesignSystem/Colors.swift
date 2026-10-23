@@ -7,6 +7,8 @@ struct AppColors {
     static let appBackground: Color = Color(.systemGroupedBackground)
     static let secondaryBackground: Color = Color(.secondarySystemGroupedBackground)
 
+    static let tint: Color = .accentColor
+
     static let primaryAction: Color = .primary
     static let primaryActionPressed: Color = Color(.systemFill)
     static let surface: Color = Color(.systemBackground)
@@ -23,6 +25,7 @@ struct AppColors {
     static let textDisabled: Color = Color(.placeholderText)
 
     static let textOnPrimaryAction: Color = Color(.systemBackground)
+    static let textOnTint: Color = .white
 
     // Borders / Dividers
     static let border: Color = Color(.separator)

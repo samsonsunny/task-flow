@@ -922,15 +922,18 @@ enum TaskFlowSchemaV10: VersionedSchema {
 
         /// The area's Inbox bucket — derived, never persisted.
         ///
-        /// A bucket is simply the owning area's list named "Inbox". This is a computed
-        /// property rather than a stored pointer because the CloudKit production schema for
-        /// this record is already sealed: adding `defaultForGroup` to it makes every
-        /// mirroring export abort with "Cannot create or modify field in production
-        /// schema", silently stranding local changes off-device. `AreaReconciler` runs on
-        /// every launch and guarantees exactly one "Inbox" per locked area, so the name is
-        /// an unambiguous key and no persisted claim is needed.
+        /// A bucket is the owning area's list named "Inbox". This is a computed property
+        /// rather than a stored pointer because the CloudKit production schema for this
+        /// record is already sealed: adding `defaultForGroup` to it makes every mirroring
+        /// export abort with "Cannot create or modify field in production schema",
+        /// silently stranding local changes off-device.
+        ///
+        /// Work and Personal keep a name-based bucket. A user-created project may rename
+        /// its bucket, in which case the oldest list inherits the role (see
+        /// `ReminderListGroup.inboxBucket`).
         var isBucket: Bool {
-            group != nil && name == AreaNames.inbox
+            guard let group else { return false }
+            return group.inboxBucket?.persistentModelID == persistentModelID
         }
     }
 
@@ -978,8 +981,19 @@ enum TaskFlowSchemaV10: VersionedSchema {
         }
 
         /// The area's Inbox bucket — derived, never persisted (see `ReminderList.isBucket`).
+        ///
+        /// Named "Inbox" for the canonical shape. A user-created project may rename or delete
+        /// its bucket; in that case the oldest remaining list inherits the role so the area
+        /// always has a default target and the reconciler does not recreate a second Inbox.
+        /// Locked areas (Work/Personal) keep the name-based bucket and stay protected.
         var inboxBucket: ReminderList? {
-            listsArray.first { $0.isBucket }
+            if let named = listsArray.first(where: { $0.name == AreaNames.inbox }) {
+                return named
+            }
+            guard !isLocked else { return nil }
+            return listsArray.min {
+                ($0.createdAt, $0.name) < ($1.createdAt, $1.name)
+            }
         }
     }
 }

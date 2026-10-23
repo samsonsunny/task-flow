@@ -3,6 +3,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system.rawValue
 
     /// Reconciliation must finish before any `@Query` in the tree reads area state —
     /// otherwise Home can render a third synced area, or an `AppState` reference to a group
@@ -18,6 +19,7 @@ struct ContentView: View {
                 Color.clear
             }
         }
+        .preferredColorScheme(AppAppearance(rawValue: appearance)?.colorScheme)
         .task {
             migrateGlobalInboxToFirstGroup(in: modelContext)
             reconcileLockedAreas(in: modelContext)

@@ -6,7 +6,9 @@ extension PersistentIdentifier {
     /// Uses Codable serialization — unlike `hashValue` or `String(describing:)`,
     /// this is deterministic and tied to the underlying storage.
     var stableKey: String {
-        let data = try! JSONEncoder().encode(self)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try! encoder.encode(self)
         return data.base64EncodedString()
     }
 

@@ -558,6 +558,9 @@ final class ReminderSegmentViewModel {
 
     func bulkToggleCompletion(_ taskIDs: Set<PersistentIdentifier>) {
         let tasksToToggle = allTasks.filter { taskIDs.contains($0.persistentModelID) }
+        if tasksToToggle.contains(where: { $0.isCompleted != true }) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
         for task in tasksToToggle {
             let next = !(task.isCompleted ?? false)
             task.isCompleted = next

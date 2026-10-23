@@ -3,8 +3,8 @@ import Foundation
 import SwiftData
 @testable import TaskFlow
 
-/// Covers the locked-area invariant: exactly two locked areas, and the extra-area merge
-/// never loses, duplicates, or creates a task.
+/// Covers the area invariant: Work and Personal exist and stay locked, every area owns an
+/// Inbox bucket, and user-created projects survive reconciliation untouched.
 @MainActor
 struct AreaMergeTests {
     private let container: ModelContainer
@@ -87,9 +87,9 @@ struct AreaMergeTests {
         #expect(result[1].inboxBucket?.group?.persistentModelID == result[1].persistentModelID)
     }
 
-    // MARK: - Extra-area merge
+    // MARK: - User-created projects
 
-    @Test func extraAreaIsFoldedIntoWork() {
+    @Test func extraAreasRemainAsProjects() {
         let all = seeded(["Work", "Personal", "Side Hustle", "Volunteering"])
         let work = all[0]
         let workBucket = makeBucket(for: work, in: context)
@@ -104,32 +104,21 @@ struct AreaMergeTests {
         context.insert(sideList)
         try? context.save()
 
-        let taskID = task.persistentModelID
+        _ = reconcileLockedAreas(in: context)
 
-        let state = reconcileLockedAreas(in: context)
+        #expect(groups().map(\.name) == ["Work", "Personal", "Side Hustle", "Volunteering"])
 
-        #expect(state?.didMerge == true)
-        #expect(state?.mergedAreaCount == 2)
-        #expect(groups().map(\.name) == ["Work", "Personal"])
+        // The project's task stays in the project's own bucket.
+        #expect(task.reminderList?.persistentModelID == sideBucket.persistentModelID)
+        #expect(sideList.group?.persistentModelID == sideHustle.persistentModelID)
+        #expect(workBucket.persistentModelID != sideBucket.persistentModelID)
 
-        // The foreign bucket's task moves to Work's bucket by pointer; it is not recreated.
-        #expect(task.persistentModelID == taskID)
-        #expect(task.reminderList?.persistentModelID == workBucket.persistentModelID)
-
-        // The emptied foreign bucket is gone, so there are exactly two Inboxes left.
-        #expect(lists().filter { $0.name == "Inbox" }.count == 2)
-        #expect(lists().contains { $0.persistentModelID == sideBucket.persistentModelID } == false)
-
-        // Surviving lists are reparented into Work and are normal lists, not buckets.
-        // Work keeps exactly one bucket, so the reparented list cannot have become one.
-        #expect(sideList.group?.persistentModelID == work.persistentModelID)
-        #expect(sideList.isBucket == false)
-        #expect(sideList.sortOrder != nil)
+        // Every area still owns exactly one Inbox bucket.
+        #expect(lists().filter { $0.isBucket }.count == groups().count)
+        #expect(groups().allSatisfy { $0.inboxBucket != nil })
     }
 
-    /// The merge is only safe if it preserves every task field. `reminderList` is the only
-    /// property that may change.
-    @Test func mergePreservesEveryTaskButItsList() {
+    @Test func reconcilePreservesProjectTasksAndLists() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideHustle = all[2]
         let sideBucket = makeBucket(for: sideHustle, in: context)
@@ -153,10 +142,10 @@ struct AreaMergeTests {
         #expect(after?.dueDate == due)
         #expect(after?.isCompleted == true)
         #expect(after?.sortOrder == 7)
-        #expect(after?.reminderList?.group?.name == "Work")
+        #expect(after?.reminderList?.group?.name == "Side Hustle")
     }
 
-    @Test func mergeIsIdempotent() {
+    @Test func reconcileIsIdempotentWithProjects() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideBucket = makeBucket(for: all[2], in: context)
         let task = TaskItem(taskTitle: "Task")
@@ -169,28 +158,22 @@ struct AreaMergeTests {
         let firstTaskCount = tasks().count
         let firstList = task.reminderList?.persistentModelID
 
-        let second = reconcileLockedAreas(in: context)
+        _ = reconcileLockedAreas(in: context)
 
-        #expect(second?.didMerge == false)
         #expect(groups().count == firstGroupCount)
         #expect(tasks().count == firstTaskCount)
         #expect(task.reminderList?.persistentModelID == firstList)
     }
 
-    @Test func mergeClearsStrayBucketPointers() {
+    @Test func reconcileCreatesMissingBucketForProject() {
         let all = seeded(["Work", "Personal", "Side Hustle"])
         let sideHustle = all[2]
-        let sideBucket = makeBucket(for: sideHustle, in: context)
         try? context.save()
-        let strayID = sideBucket.persistentModelID
 
         _ = reconcileLockedAreas(in: context)
 
-        // The foreign bucket is deleted rather than reparented, so no area is left owning
-        // two Inboxes and the merged-away area's bucket pointer cannot survive.
-        #expect(lists().contains { $0.persistentModelID == strayID } == false)
-        #expect(lists().filter { $0.isBucket }.count == groups().count)
-        #expect(groups().allSatisfy { $0.inboxBucket != nil })
+        #expect(sideHustle.inboxBucket != nil)
+        #expect(sideHustle.inboxBucket?.group?.persistentModelID == sideHustle.persistentModelID)
     }
 
     // MARK: - Strays

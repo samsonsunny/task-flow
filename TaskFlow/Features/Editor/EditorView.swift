@@ -404,6 +404,7 @@ struct ReminderEditorView: View {
     private func saveReminder() {
         guard viewModel?.draft.hasMeaningfulContent == true else { return }
         viewModel?.save()
+        Haptics.success()
         dismiss()
     }
 
@@ -463,6 +464,7 @@ struct ReminderEditorView: View {
     private func addSubtask(to parent: TaskItem) {
         let text = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        Haptics.impact(.light)
         viewModel?.addSubtask(title: text, to: parent)
         newSubtaskTitle = ""
     }

@@ -6,13 +6,19 @@ import SwiftData
 /// The locked-area flags and the bucket link are derived from these strings rather than
 /// persisted, because the CloudKit production schema for `ReminderListGroup` and
 /// `ReminderList` is sealed: a new column on either record makes every mirroring export
-/// abort. `reconcileLockedAreas(in:)` runs on every launch and normalizes the store to
-/// exactly two areas named `work`/`personal`, each owning one list named `inbox`, which
-/// makes the names a sound key.
+/// abort. `reconcileLockedAreas(in:)` runs on every launch and guarantees the two locked
+/// names exist, each owning one list named `inbox`; every other group is a user-created
+/// project and is preserved. The canonical names are therefore a sound key.
 enum AreaNames {
     static let work = "Work"
     static let personal = "Personal"
     static let inbox = "Inbox"
+}
+
+/// Customer-facing area label. The Personal area is presented as Home, while the stored
+/// name stays "Personal" so area resolution, reconciliation, and CloudKit data are untouched.
+func areaDisplayName(_ name: String) -> String {
+    name == AreaNames.personal ? "Home" : name
 }
 
 // MARK: - One-time migration: global Inbox → first group's bucket
@@ -130,55 +136,31 @@ func seedDefaultAreas(in context: ModelContext) -> [ReminderListGroup] {
 // MARK: - Locked-area state
 
 /// The outcome of one `reconcileLockedAreas(in:)` pass. Returned so tests can assert on
-/// what the merge actually did rather than only on the resulting shape.
+/// what the pass actually did rather than only on the resulting shape.
 struct LockedAreaState {
     var work: ReminderListGroup
     var personal: ReminderListGroup
-    var mergedAreaCount: Int = 0
-    var mergedListCount: Int = 0
-    var movedTaskCount: Int = 0
-
-    var didMerge: Bool { mergedAreaCount > 0 }
 }
 
 // MARK: - Recurring locked-area reconciler
 
-/// Enforces the store invariant: exactly two locked areas, Work and Personal, each owning
-/// an Inbox bucket, with every list and task living inside one of them.
+/// Ensures Work and Personal exist, each owning its own Inbox bucket, and that every area
+/// (including user-created projects) owns a bucket and every list/task is filed.
 ///
-/// Runs on every launch and is gated by no persisted flag, so an extra area synced down
-/// from a device still running an older build is merged on the next launch. The pass is
+/// Runs on every launch. Work and Personal are still normalized by name, but other groups
+/// are user-created projects and are preserved rather than merged away. The pass is
 /// idempotent — a second run against a conforming store changes nothing.
-///
-/// The merge never creates, deletes, or modifies a `TaskItem`; it only reassigns the
-/// `reminderList` pointer of tasks living in a foreign area's bucket.
 @MainActor
 @discardableResult
 func reconcileLockedAreas(in modelContext: ModelContext) -> LockedAreaState? {
-    var state = resolveLockedAreas(in: modelContext)
+    let state = resolveLockedAreas(in: modelContext)
     guard let work = state?.work, let personal = state?.personal else { return nil }
 
-    // Steps 3a–3c: merge every area that is neither Work nor Personal into Work.
-    let workID = work.persistentModelID
-    let personalID = personal.persistentModelID
-    let extras = orderedGroups(in: modelContext).filter {
-        $0.persistentModelID != workID && $0.persistentModelID != personalID
-    }
-
-    for extra in extras {
-        let outcome = mergeExtraArea(extra, into: work, in: modelContext)
-        state?.mergedAreaCount += 1
-        state?.mergedListCount += outcome.listCount
-        state?.movedTaskCount += outcome.taskCount
-    }
-
-    // Each locked area must own its own bucket. `inboxBucket` only returns a list that is
-    // already inside the area, so a missing or stolen bucket is the same condition.
-    if work.inboxBucket == nil {
-        makeBucket(for: work, in: modelContext)
-    }
-    if personal.inboxBucket == nil {
-        makeBucket(for: personal, in: modelContext)
+    // Every area — locked or user-created — must own its own Inbox bucket. `inboxBucket`
+    // only returns a list that is already inside the area, so a missing bucket is the same
+    // condition as a stolen one.
+    for group in orderedGroups(in: modelContext) where group.inboxBucket == nil {
+        makeBucket(for: group, in: modelContext)
     }
 
     // No list may be stranded without an area, and no task without a list. The one-time
@@ -209,9 +191,9 @@ func reconcileLockedAreas(in modelContext: ModelContext) -> LockedAreaState? {
         }
     }
 
-    // Rank the lists the merge reparented, then sweep any other unranked list. The
+    // Rank any list the orphan sweep reparented, then sweep any other unranked list. The
     // non-saving variant matters: this pass must commit as one save, not a backfill save
-    // followed by a merge save.
+    // followed by a second save.
     backfillListSortOrders(in: modelContext)
 
     // Step 5: one save for the whole pass; a failure leaves the store untouched.
@@ -257,46 +239,6 @@ private func resolveLockedAreas(in modelContext: ModelContext) -> LockedAreaStat
     personal.name = AreaNames.personal
 
     return LockedAreaState(work: work, personal: personal)
-}
-
-/// Steps 3a–3c: fold one non-locked area into Work.
-///
-/// The foreign bucket is *not* reparented — its tasks are repointed at Work's own bucket
-/// and the emptied bucket is deleted, so Work keeps exactly one bucket.
-@MainActor
-private func mergeExtraArea(
-    _ extra: ReminderListGroup,
-    into work: ReminderListGroup,
-    in modelContext: ModelContext
-) -> (listCount: Int, taskCount: Int) {
-    let workBucketID = work.inboxBucket?.persistentModelID
-    let foreignBucket = extra.inboxBucket
-    let survivingLists = extra.listsArray.filter {
-        $0.persistentModelID != foreignBucket?.persistentModelID
-    }
-
-    // Step 3a — move the foreign bucket's tasks into Work's bucket, then drop the bucket.
-    var taskCount = 0
-    if let foreignBucket,
-       foreignBucket.persistentModelID != workBucketID,
-       let workBucket = work.inboxBucket {
-        taskCount = foreignBucket.remindersArray.count
-        for task in foreignBucket.remindersArray {
-            task.reminderList = workBucket
-        }
-        modelContext.delete(foreignBucket)
-    }
-
-    // Step 3b — reparent the remaining lists into Work and clear their sort order so the
-    // backfill re-ranks them deterministically instead of interleaving with Personal's.
-    for list in survivingLists {
-        list.group = work
-        list.sortOrder = nil
-    }
-
-    // Step 3c — the area now holds no lists, so deleting it cannot orphan anything.
-    modelContext.delete(extra)
-    return (survivingLists.count, taskCount)
 }
 
 // MARK: - Capture resolution
