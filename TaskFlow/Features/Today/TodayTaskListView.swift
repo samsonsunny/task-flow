@@ -93,19 +93,44 @@ struct TodayTaskListView: View {
                 GeometryReader { geo in
                     let spacing: CGFloat = 8
                     let horizontalPadding: CGFloat = 20
+                    let chipHeight: CGFloat = 64
+                    let minChipWidth: CGFloat = 48
+                    let maxChipWidth: CGFloat = 52
                     let availableWidth = geo.size.width - (horizontalPadding * 2)
-                    let maxCount = min(7, dateStripDays.count)
-                    let chipWidth = max(48, (availableWidth - spacing * CGFloat(max(0, maxCount - 1))) / CGFloat(maxCount))
-                    HStack(spacing: spacing) {
-                        ForEach(Array(dateStripDays.prefix(maxCount)), id: \.self) { date in
-                            dateChip(for: date, width: chipWidth)
+                    var visibleCount = 0
+                    var currentWidth: CGFloat = 0
+                    for _ in dateStripDays {
+                        let nextWidth = currentWidth + minChipWidth + (visibleCount == 0 ? 0 : spacing)
+                        if nextWidth <= availableWidth {
+                            currentWidth += minChipWidth + (visibleCount == 0 ? 0 : spacing)
+                            visibleCount += 1
+                        } else {
+                            break
                         }
                     }
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.bottom, 16)
-                    .frame(width: geo.size.width, alignment: .leading)
+                    if visibleCount == 0 { visibleCount = 1 }
+                    let totalWidth = minChipWidth * CGFloat(visibleCount) + spacing * CGFloat(max(0, visibleCount - 1))
+                    let shouldScroll = totalWidth > availableWidth + 1
+                    if shouldScroll {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: spacing) {
+                                ForEach(dateStripDays, id: \.self) { date in
+                                    dateChip(for: date, width: minChipWidth, height: chipHeight)
+                                }
+                            }
+                            .padding(.horizontal, horizontalPadding)
+                        }
+                    } else {
+                        HStack(spacing: spacing) {
+                            ForEach(Array(dateStripDays.prefix(visibleCount)), id: \.self) { date in
+                                dateChip(for: date, width: min((availableWidth - spacing * CGFloat(max(0, visibleCount - 1))) / CGFloat(visibleCount), maxChipWidth), height: chipHeight)
+                            }
+                        }
+                        .padding(.horizontal, horizontalPadding)
+                        .frame(width: geo.size.width, alignment: .leading)
+                    }
                 }
-                .frame(height: 84)
+                .frame(height: 80)
 
                 content
             }
@@ -180,7 +205,7 @@ struct TodayTaskListView: View {
         }
     }
 
-    private func dateChip(for date: Date, width: CGFloat = 52) -> some View {
+    private func dateChip(for date: Date, width: CGFloat = 48, height: CGFloat = 64) -> some View {
         let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
         let isToday = calendar.isDateInToday(date)
         let dayFormatter = DateFormatter()
@@ -196,7 +221,7 @@ struct TodayTaskListView: View {
             }
             selectedDate = calendar.startOfDay(for: date)
         } label: {
-            VStack(spacing: 2) {
+            VStack(spacing: 1) {
                 Text(dayString)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
@@ -208,7 +233,7 @@ struct TodayTaskListView: View {
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
                     .lineLimit(1)
             }
-            .frame(width: width, height: 68)
+            .frame(width: width, height: height)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
