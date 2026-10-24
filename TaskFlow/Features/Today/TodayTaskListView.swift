@@ -21,12 +21,6 @@ struct TodayTaskListView: View {
 
     private var calendar: Calendar { Calendar.current }
 
-    private var monthYearString: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: selectedDate)
-    }
-
     private var dateStripDays: [Date] {
         let today = calendar.startOfDay(for: Date())
         var days: [Date] = []
@@ -46,100 +40,23 @@ struct TodayTaskListView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 24) {
-                    ForEach(TodaySegment.allCases, id: \.self) { segment in
-                        Button {
-                            if selectedSegment != segment {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            }
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedSegment = segment
-                            }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(segment.rawValue)
-                                    .font(.system(size: 34, weight: .semibold))
-                                    .foregroundStyle(selectedSegment == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
-                                Rectangle()
-                                    .fill(selectedSegment == segment ? AppTheme.colors.tint : Color.clear)
-                                    .frame(height: 3)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .fixedSize()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 20)
+                TodaySegmentPicker(selection: $selectedSegment)
 
-                Button {
+                MonthYearButton(date: selectedDate) {
                     isCalendarPresented = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(monthYearString)
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(AppTheme.colors.textPrimary)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(AppTheme.colors.textSecondary)
-                    }
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
 
-                GeometryReader { geo in
-                    let spacing: CGFloat = 8
-                    let horizontalPadding: CGFloat = 20
-                    let chipHeight: CGFloat = 64
-                    let minChipWidth: CGFloat = 48
-                    let maxChipWidth: CGFloat = 52
-                    let availableWidth = geo.size.width - (horizontalPadding * 2)
-                    var visibleCount = 0
-                    var currentWidth: CGFloat = 0
-                    for _ in dateStripDays {
-                        let nextWidth = currentWidth + minChipWidth + (visibleCount == 0 ? 0 : spacing)
-                        if nextWidth <= availableWidth {
-                            currentWidth += minChipWidth + (visibleCount == 0 ? 0 : spacing)
-                            visibleCount += 1
-                        } else {
-                            break
-                        }
-                    }
-                    if visibleCount == 0 { visibleCount = 1 }
-                    let totalWidth = minChipWidth * CGFloat(visibleCount) + spacing * CGFloat(max(0, visibleCount - 1))
-                    let shouldScroll = totalWidth > availableWidth + 1
-                    if shouldScroll {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: spacing) {
-                                ForEach(dateStripDays, id: \.self) { date in
-                                    dateChip(for: date, width: minChipWidth, height: chipHeight)
-                                }
-                            }
-                            .padding(.horizontal, horizontalPadding)
-                        }
-                    } else {
-                        HStack(spacing: spacing) {
-                            ForEach(Array(dateStripDays.prefix(visibleCount)), id: \.self) { date in
-                                dateChip(for: date, width: min((availableWidth - spacing * CGFloat(max(0, visibleCount - 1))) / CGFloat(visibleCount), maxChipWidth), height: chipHeight)
-                            }
-                        }
-                        .padding(.horizontal, horizontalPadding)
-                        .frame(width: geo.size.width, alignment: .leading)
-                    }
-                }
-                .frame(height: 80)
+                DateStripView(days: dateStripDays, selectedDate: $selectedDate)
+                    .frame(height: 80)
 
                 content
             }
             .overlay(alignment: .bottomTrailing) {
                 FloatingAddButton {
-        newTaskConfig = NewTaskSheetConfig(
-            initialDate: selectedDate,
-            initialListID: defaultListID
-        )
+                    newTaskConfig = NewTaskSheetConfig(
+                        initialDate: selectedDate,
+                        initialListID: defaultListID
+                    )
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -158,12 +75,12 @@ struct TodayTaskListView: View {
                 ReminderEditorView(task: task, embedInNavigationStack: false)
             }
         }
-    .onAppear {
-        bootstrap()
-        updateFilterForSegment()
-        viewModel?.selectDate(selectedDate)
-        refresh()
-    }
+        .onAppear {
+            bootstrap()
+            updateFilterForSegment()
+            viewModel?.selectDate(selectedDate)
+            refresh()
+        }
         .onChange(of: groups) { _, _ in
             refresh()
             updateFilterForSegment()
@@ -203,45 +120,6 @@ struct TodayTaskListView: View {
             }
             .presentationDetents([.medium, .large])
         }
-    }
-
-    private func dateChip(for date: Date, width: CGFloat = 48, height: CGFloat = 64) -> some View {
-        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
-        let isToday = calendar.isDateInToday(date)
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateFormat = "E"
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "d"
-        let dayString = isToday ? "Today" : dayFormatter.string(from: date)
-        let numString = dateFormatter.string(from: date)
-
-        return Button {
-            if selectedDate != calendar.startOfDay(for: date) {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-            selectedDate = calendar.startOfDay(for: date)
-        } label: {
-            VStack(spacing: 1) {
-                Text(dayString)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(numString)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
-                    .lineLimit(1)
-            }
-            .frame(width: width, height: height)
-            .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.colors.border.opacity(isSelected ? 0 : 0.3), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     /// New tasks land in the selected area's inbox.
@@ -288,26 +166,13 @@ struct TodayTaskListView: View {
                 description: Text(emptyDescription)
             )
         } else {
-            List {
-                ForEach(viewModel?.sections.flatMap { $0.tasks } ?? []) { task in
-                    TaskRowView(
-                        task: task,
-                        isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
-                        onDelete: { viewModel?.delete(task) },
-                        onTap: { editingTask = task },
-                        showsDueDate: true,
-                        showsListName: true,
-                        showsGroupName: false,
-                        groupNameOverride: nil
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
-            }
-            .listStyle(.plain)
-            .contentMargins(.bottom, 88, for: .scrollContent)
-            .refreshable { refresh() }
+            TodayTaskList(
+                tasks: sections.flatMap { $0.tasks },
+                onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+                onDelete: { viewModel?.delete($0) },
+                onTap: { editingTask = $0 },
+                onRefresh: refresh
+            )
         }
     }
 
@@ -353,6 +218,223 @@ struct TodayTaskListView: View {
             if name == "Personal" || name == "Home" { return "Personal" }
         }
         return nil
+    }
+}
+
+private struct TodaySegmentPicker: View {
+    @Binding var selection: TodayTaskListView.TodaySegment
+
+    var body: some View {
+        HStack(spacing: 24) {
+            ForEach(TodayTaskListView.TodaySegment.allCases, id: \.self) { segment in
+                Button {
+                    if selection != segment {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selection = segment
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(segment.rawValue)
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundStyle(selection == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+                        Rectangle()
+                            .fill(selection == segment ? AppTheme.colors.tint : Color.clear)
+                            .frame(height: 3)
+                    }
+                }
+                .buttonStyle(.plain)
+                .fixedSize()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 20)
+    }
+}
+
+private struct MonthYearButton: View {
+    let date: Date
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(monthYearString)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(AppTheme.colors.textPrimary)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+    }
+
+    private var monthYearString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: date)
+    }
+}
+
+private struct DateStripView: View {
+    let days: [Date]
+    @Binding var selectedDate: Date
+
+    private let calendar = Calendar.current
+
+    private static let spacing: CGFloat = 8
+    private static let horizontalPadding: CGFloat = 20
+    private static let chipHeight: CGFloat = 64
+    private static let minChipWidth: CGFloat = 48
+    private static let maxChipWidth: CGFloat = 52
+
+    var body: some View {
+        GeometryReader { geo in
+            let layout = layout(for: geo.size.width)
+            if layout.shouldScroll {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Self.spacing) {
+                        ForEach(days, id: \.self) { date in
+                            chip(for: date, width: Self.minChipWidth)
+                        }
+                    }
+                    .padding(.horizontal, Self.horizontalPadding)
+                }
+            } else {
+                HStack(spacing: Self.spacing) {
+                    ForEach(Array(days.prefix(layout.visibleCount)), id: \.self) { date in
+                        chip(for: date, width: layout.fittedWidth)
+                    }
+                }
+                .padding(.horizontal, Self.horizontalPadding)
+                .frame(width: geo.size.width, alignment: .leading)
+            }
+        }
+    }
+
+    private func layout(for totalWidth: CGFloat) -> (visibleCount: Int, fittedWidth: CGFloat, shouldScroll: Bool) {
+        let availableWidth = totalWidth - (Self.horizontalPadding * 2)
+        var visibleCount = 0
+        var currentWidth: CGFloat = 0
+        for _ in days {
+            let nextWidth = currentWidth + Self.minChipWidth + (visibleCount == 0 ? 0 : Self.spacing)
+            if nextWidth <= availableWidth {
+                currentWidth += Self.minChipWidth + (visibleCount == 0 ? 0 : Self.spacing)
+                visibleCount += 1
+            } else {
+                break
+            }
+        }
+        if visibleCount == 0 { visibleCount = 1 }
+        let contentWidth = Self.minChipWidth * CGFloat(visibleCount) + Self.spacing * CGFloat(max(0, visibleCount - 1))
+        let shouldScroll = contentWidth > availableWidth + 1
+        let fittedWidth = min(
+            (availableWidth - Self.spacing * CGFloat(max(0, visibleCount - 1))) / CGFloat(visibleCount),
+            Self.maxChipWidth
+        )
+        return (visibleCount, fittedWidth, shouldScroll)
+    }
+
+    private func chip(for date: Date, width: CGFloat) -> some View {
+        DateChip(
+            date: date,
+            width: width,
+            height: Self.chipHeight,
+            isSelected: calendar.isDate(date, inSameDayAs: selectedDate)
+        ) {
+            select(date)
+        }
+    }
+
+    private func select(_ date: Date) {
+        let startOfDay = calendar.startOfDay(for: date)
+        if selectedDate != startOfDay {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        selectedDate = startOfDay
+    }
+}
+
+private struct DateChip: View {
+    let date: Date
+    let width: CGFloat
+    let height: CGFloat
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    private let calendar = Calendar.current
+
+    var body: some View {
+        let isToday = calendar.isDateInToday(date)
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "E"
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "d"
+        let dayString = isToday ? "Today" : dayFormatter.string(from: date)
+        let numString = dateFormatter.string(from: date)
+
+        return Button(action: onSelect) {
+            VStack(spacing: 1) {
+                Text(dayString)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textSecondary)
+                    .textCase(.uppercase)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                HStack(spacing: 4) {
+                    Text(numString)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
+                        .lineLimit(1)
+                    if isToday && !isSelected {
+                        Circle()
+                            .fill(AppTheme.colors.tint)
+                            .frame(width: 4, height: 4)
+                    }
+                }
+            }
+            .frame(width: width, height: height)
+            .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct TodayTaskList: View {
+    let tasks: [TaskItem]
+    let onToggleCompletion: (TaskItem) -> Void
+    let onDelete: (TaskItem) -> Void
+    let onTap: (TaskItem) -> Void
+    let onRefresh: () -> Void
+
+    var body: some View {
+        List {
+            ForEach(tasks) { task in
+                TaskRowView(
+                    task: task,
+                    isCompletedVisualState: task.isCompleted ?? false,
+                    onToggleCompletion: { onToggleCompletion(task) },
+                    onDelete: { onDelete(task) },
+                    onTap: { onTap(task) },
+                    showsDueDate: true,
+                    showsListName: true,
+                    showsGroupName: false,
+                    groupNameOverride: nil
+                )
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        }
+        .listStyle(.plain)
+        .contentMargins(.bottom, 88, for: .scrollContent)
+        .refreshable { onRefresh() }
     }
 }
 
