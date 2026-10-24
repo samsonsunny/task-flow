@@ -90,15 +90,23 @@ struct TodayTaskListView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(dateStripDays, id: \.self) { date in
+                GeometryReader { geo in
+                    let chipWidth: CGFloat = 52
+                    let spacing: CGFloat = 8
+                    let totalPadding: CGFloat = 40
+                    let available = geo.size.width - totalPadding
+                    let maxCount = Int(floor((available + spacing) / (chipWidth + spacing)))
+                    let visibleCount = max(1, min(maxCount, dateStripDays.count))
+                    HStack(spacing: spacing) {
+                        ForEach(Array(dateStripDays.prefix(visibleCount)), id: \.self) { date in
                             dateChip(for: date)
                         }
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 16)
+                    .frame(width: geo.size.width, alignment: .leading)
                 }
+                .frame(height: 84)
 
                 content
             }
@@ -176,12 +184,11 @@ struct TodayTaskListView: View {
     private func dateChip(for date: Date) -> some View {
         let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
         let isToday = calendar.isDateInToday(date)
-        let isYesterday = calendar.isDateInYesterday(date)
         let dayFormatter = DateFormatter()
         dayFormatter.dateFormat = "E"
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "d"
-        let dayString = isYesterday ? "Yest" : (isToday ? "Today" : dayFormatter.string(from: date))
+        let dayString = isToday ? "Today" : dayFormatter.string(from: date)
         let numString = dateFormatter.string(from: date)
 
         return Button {
@@ -190,7 +197,7 @@ struct TodayTaskListView: View {
             }
             selectedDate = calendar.startOfDay(for: date)
         } label: {
-                    VStack(spacing: 2) {
+            VStack(spacing: 2) {
                 Text(dayString)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
@@ -200,18 +207,12 @@ struct TodayTaskListView: View {
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
             }
             .frame(width: 52, height: 68)
-            .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.surface)
+            .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(AppTheme.colors.border.opacity(isSelected ? 0 : 0.4), lineWidth: 1)
+                    .stroke(AppTheme.colors.border.opacity(isSelected ? 0 : 0.3), lineWidth: 1)
             )
-        }
-        .buttonStyle(.plain)
-    }
-            .frame(width: 56, height: 56)
-            .background(isSelected ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }
