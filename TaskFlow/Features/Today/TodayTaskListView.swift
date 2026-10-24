@@ -74,32 +74,30 @@ struct TodayTaskListView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 20)
 
-                Text(monthYearString)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(AppTheme.colors.textPrimary)
-                    .padding(.horizontal)
-                    .padding(.bottom, 6)
+                Button {
+                    isCalendarPresented = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(monthYearString)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(AppTheme.colors.textPrimary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(AppTheme.colors.textSecondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(dateStripDays, id: \.self) { date in
                             dateChip(for: date)
                         }
-                        Button {
-                            isCalendarPresented = true
-                        } label: {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(AppTheme.colors.textPrimary)
-                                .frame(width: 36, height: 44)
-                                .background(AppTheme.colors.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        .padding(.leading, 4)
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
                 }
 
                 content
@@ -183,20 +181,34 @@ struct TodayTaskListView: View {
         dayFormatter.dateFormat = "E"
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "d"
-        let dayString = isToday ? "Today" : (isYesterday ? "Yesterday" : dayFormatter.string(from: date))
+        let dayString = isYesterday ? "Yest" : (isToday ? "Today" : dayFormatter.string(from: date))
         let numString = dateFormatter.string(from: date)
 
         return Button {
+            if selectedDate != calendar.startOfDay(for: date) {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
             selectedDate = calendar.startOfDay(for: date)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(dayString)
-                    .font(.caption)
-                    .foregroundStyle(isSelected ? AppTheme.colors.appBackground : AppTheme.colors.textSecondary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isSelected ? AppTheme.colors.background : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
+                    .textCase(.uppercase)
                 Text(numString)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppTheme.colors.appBackground : AppTheme.colors.textPrimary)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(isSelected ? AppTheme.colors.background : AppTheme.colors.textPrimary)
             }
+            .frame(width: 52, height: 68)
+            .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(AppTheme.colors.border.opacity(isSelected ? 0 : 0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
             .frame(width: 56, height: 56)
             .background(isSelected ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
