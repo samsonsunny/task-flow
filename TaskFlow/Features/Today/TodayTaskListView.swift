@@ -193,11 +193,11 @@ struct TodayTaskListView: View {
                     VStack(spacing: 2) {
                 Text(dayString)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isSelected ? Color.white : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
+                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
                     .textCase(.uppercase)
                 Text(numString)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? Color.white : AppTheme.colors.textPrimary)
+                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
             }
             .frame(width: 52, height: 68)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.surface)

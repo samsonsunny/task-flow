@@ -6,6 +6,7 @@ struct AppColors {
     // Backgrounds / Surfaces
     static let appBackground: Color = Color(.systemGroupedBackground)
     static let secondaryBackground: Color = Color(.secondarySystemGroupedBackground)
+    static let background: Color = Color(.systemBackground)
 
     static let tint: Color = .accentColor
 
