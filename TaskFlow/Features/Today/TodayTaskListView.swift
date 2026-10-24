@@ -55,7 +55,7 @@ struct TodayTaskListView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(segment.rawValue)
-                                    .font(.system(size: 30, weight: .semibold))
+                                    .font(.system(size: 34, weight: .semibold))
                                     .foregroundStyle(selectedSegment == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
                                 Rectangle()
                                     .fill(selectedSegment == segment ? AppTheme.colors.tint : Color.clear)
