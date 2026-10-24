@@ -373,21 +373,24 @@ private struct DateChip: View {
                     .textCase(.uppercase)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text(numString)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday ? AppTheme.colors.tint : AppTheme.colors.textPrimary))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                HStack(spacing: 3) {
+                    Text(numString)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if isToday && !isSelected {
+                        Circle()
+                            .fill(AppTheme.colors.tint)
+                            .frame(width: 4, height: 4)
+                    }
+                }
             }
             .padding(.vertical, 8)
             .frame(width: width)
             .frame(minHeight: height)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isToday && !isSelected ? AppTheme.colors.tint.opacity(0.9) : Color.clear, lineWidth: 1.5)
-            )
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
