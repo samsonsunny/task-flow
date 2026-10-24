@@ -87,7 +87,10 @@ final class TodayViewModel {
     func selectDate(_ date: Date) {
         let calendar = Calendar.current
         let newDate = calendar.startOfDay(for: date)
-        guard newDate != selectedDate else { return }
+        if newDate == selectedDate {
+            recompute()
+            return
+        }
         selectedDate = newDate
         recompute()
     }
