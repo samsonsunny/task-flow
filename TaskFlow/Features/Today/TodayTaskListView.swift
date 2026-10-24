@@ -91,18 +91,17 @@ struct TodayTaskListView: View {
                 .padding(.bottom, 16)
 
                 GeometryReader { geo in
-                    let chipWidth: CGFloat = 52
                     let spacing: CGFloat = 8
-                    let totalPadding: CGFloat = 40
-                    let available = geo.size.width - totalPadding
-                    let maxCount = Int(floor((available + spacing) / (chipWidth + spacing)))
-                    let visibleCount = max(1, min(maxCount, dateStripDays.count))
+                    let horizontalPadding: CGFloat = 20
+                    let availableWidth = geo.size.width - (horizontalPadding * 2)
+                    let maxCount = min(8, dateStripDays.count)
+                    let chipWidth = max(44, (availableWidth - spacing * CGFloat(max(0, maxCount - 1))) / CGFloat(maxCount))
                     HStack(spacing: spacing) {
-                        ForEach(Array(dateStripDays.prefix(visibleCount)), id: \.self) { date in
-                            dateChip(for: date)
+                        ForEach(Array(dateStripDays.prefix(maxCount)), id: \.self) { date in
+                            dateChip(for: date, width: chipWidth)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, horizontalPadding)
                     .padding(.bottom, 16)
                     .frame(width: geo.size.width, alignment: .leading)
                 }
@@ -181,7 +180,7 @@ struct TodayTaskListView: View {
         }
     }
 
-    private func dateChip(for date: Date) -> some View {
+    private func dateChip(for date: Date, width: CGFloat = 52) -> some View {
         let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
         let isToday = calendar.isDateInToday(date)
         let dayFormatter = DateFormatter()
@@ -202,11 +201,14 @@ struct TodayTaskListView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
                     .textCase(.uppercase)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Text(numString)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
+                    .lineLimit(1)
             }
-            .frame(width: 52, height: 68)
+            .frame(width: width, height: 68)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
