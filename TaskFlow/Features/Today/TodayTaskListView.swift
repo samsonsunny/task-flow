@@ -46,16 +46,17 @@ struct TodayTaskListView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 16) {
+                HStack(spacing: 18) {
                     ForEach(TodaySegment.allCases, id: \.self) { segment in
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedSegment = segment
                             }
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(segment.rawValue)
-                                    .font(.system(size: 18, weight: .semibold))
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
                                     .foregroundStyle(selectedSegment == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
                                 Rectangle()
                                     .fill(selectedSegment == segment ? AppTheme.colors.tint : Color.clear)
@@ -68,8 +69,8 @@ struct TodayTaskListView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+                .padding(.top, 4)
+                .padding(.bottom, 10)
 
                 Text(monthYearString)
                     .font(.subheadline)
