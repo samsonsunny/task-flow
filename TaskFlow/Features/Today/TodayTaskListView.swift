@@ -190,14 +190,14 @@ struct TodayTaskListView: View {
             }
             selectedDate = calendar.startOfDay(for: date)
         } label: {
-            VStack(spacing: 2) {
+                    VStack(spacing: 2) {
                 Text(dayString)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(isSelected ? AppTheme.colors.background : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
+                    .foregroundStyle(isSelected ? Color.white : (isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
                     .textCase(.uppercase)
                 Text(numString)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppTheme.colors.background : AppTheme.colors.textPrimary)
+                    .foregroundStyle(isSelected ? Color.white : AppTheme.colors.textPrimary)
             }
             .frame(width: 52, height: 68)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.surface)
