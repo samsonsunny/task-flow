@@ -94,8 +94,8 @@ struct TodayTaskListView: View {
                     let spacing: CGFloat = 8
                     let horizontalPadding: CGFloat = 20
                     let availableWidth = geo.size.width - (horizontalPadding * 2)
-                    let maxCount = min(8, dateStripDays.count)
-                    let chipWidth = max(44, (availableWidth - spacing * CGFloat(max(0, maxCount - 1))) / CGFloat(maxCount))
+                    let maxCount = min(7, dateStripDays.count)
+                    let chipWidth = max(48, (availableWidth - spacing * CGFloat(max(0, maxCount - 1))) / CGFloat(maxCount))
                     HStack(spacing: spacing) {
                         ForEach(Array(dateStripDays.prefix(maxCount)), id: \.self) { date in
                             dateChip(for: date, width: chipWidth)
