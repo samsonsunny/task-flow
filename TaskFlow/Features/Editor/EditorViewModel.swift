@@ -96,9 +96,8 @@ final class ReminderEditorViewModel {
     }
 
     func handleClose() {
-        if isDirty {
-            isDiscardConfirmationPresented = true
-        }
+        // Discard immediately without confirmation
+        return
     }
 
     // MARK: - Subtask Operations

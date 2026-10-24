@@ -49,16 +49,6 @@
 			path = TaskFlow;
 			sourceTree = "<group>";
 		};
-		226A11EF2EAE0C3000B7573F /* TaskFlowTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TaskFlowTests;
-			sourceTree = "<group>";
-		};
-		226A11F92EAE0C3000B7573F /* TaskFlowUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TaskFlowUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,8 +80,6 @@
 			isa = PBXGroup;
 			children = (
 				226A11DD2EAE0C2F00B7573F /* TaskFlow */,
-				226A11EF2EAE0C3000B7573F /* TaskFlowTests */,
-				226A11F92EAE0C3000B7573F /* TaskFlowUITests */,
 				226A120C2EAE2AB300B7573F /* Frameworks */,
 				226A11DC2EAE0C2F00B7573F /* Products */,
 			);
@@ -153,9 +141,6 @@
 			dependencies = (
 				226A11EE2EAE0C3000B7573F /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				226A11EF2EAE0C3000B7573F /* TaskFlowTests */,
-			);
 			name = TaskFlowTests;
 			packageProductDependencies = (
 			);
@@ -175,9 +160,6 @@
 			);
 			dependencies = (
 				226A11F82EAE0C3000B7573F /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				226A11F92EAE0C3000B7573F /* TaskFlowUITests */,
 			);
 			name = TaskFlowUITests;
 			packageProductDependencies = (

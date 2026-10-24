@@ -143,7 +143,7 @@ struct ReminderEditorView: View {
             }
             .presentationDetents(reminderLists.count <= 8 ? [.medium, .large] : [.large])
         }
-        .alert("Discard Changes?", isPresented: discardConfirmationBinding) {
+        .alert("Discard Changes?", isPresented: .constant(false)) {
             Button("Keep Editing", role: .cancel) {}
             Button("Discard", role: .destructive) {
                 dismiss()
@@ -396,9 +396,7 @@ struct ReminderEditorView: View {
 
     private func handleClose() {
         viewModel?.handleClose()
-        if viewModel?.isDirty == false {
-            dismiss()
-        }
+        dismiss()
     }
 
     private func saveReminder() {
