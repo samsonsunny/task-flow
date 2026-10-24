@@ -117,9 +117,7 @@ final class TodayViewModel {
         rebuildFilterOptions()
 
         let calendar = Calendar.current
-        let referenceStart = Calendar.current.startOfDay(for: selectedDate)
-        let nowStart = calendar.startOfDay(for: now)
-        var overdue: [TaskItem] = []
+        let referenceStart = calendar.startOfDay(for: selectedDate)
         var dueOnSelected: [TaskItem] = []
 
         for task in allTasks {
@@ -128,11 +126,6 @@ final class TodayViewModel {
             guard matchesAreaFilter(task) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)
-            // Overdue relative to selected date start
-            if dueStart < referenceStart {
-                overdue.append(task)
-                continue
-            }
             if dueStart == referenceStart {
                 dueOnSelected.append(task)
             }
@@ -151,9 +144,6 @@ final class TodayViewModel {
         }
 
         var result: [TodaySection] = []
-        if !overdue.isEmpty {
-            result.append(TodaySection(kind: .overdue, tasks: sort(overdue)))
-        }
         if !dueOnSelected.isEmpty {
             result.append(TodaySection(kind: .today, tasks: sort(dueOnSelected)))
         }

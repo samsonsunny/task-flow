@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// The app's root navigation surface.
 ///
@@ -7,7 +8,7 @@ import SwiftData
 /// Personal show every incomplete task filed in that domain, and More holds domain list
 /// management, activity, notifications, and settings. Projects/lists never become tabs.
 struct MainTabView: View {
-    private enum AppTab: Hashable {
+    enum AppTab: Hashable {
         case today
         case work
         case personal
@@ -17,25 +18,101 @@ struct MainTabView: View {
     @State private var selectedTab: AppTab = .today
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            Tab("Today", systemImage: "text.rectangle.page", value: AppTab.today) {
-                TodayTaskListView()
-            }
+        MainTabBarController(
+            selection: $selectedTab,
+            todayView: { TodayTaskListView() },
+            workView: { AreaTasksView(areaName: AreaNames.work, storageKey: AreaNames.work) },
+            personalView: { AreaTasksView(areaName: AreaNames.personal, storageKey: AreaNames.personal) },
+            moreView: { MoreView() }
+        )
+        .ignoresSafeArea(.all, edges: .bottom)
+    }
+}
 
-            Tab("Work", systemImage: "briefcase.fill", value: AppTab.work) {
-                AreaTasksView(areaName: AreaNames.work, storageKey: AreaNames.work)
-            }
+struct MainTabBarController: UIViewControllerRepresentable {
+    @Binding var selection: MainTabView.AppTab
+    let todayView: () -> TodayTaskListView
+    let workView: () -> AreaTasksView
+    let personalView: () -> AreaTasksView
+    let moreView: () -> MoreView
 
-            Tab("Personal", systemImage: "person.crop.circle.fill", value: AppTab.personal) {
-                AreaTasksView(areaName: AreaNames.personal, storageKey: AreaNames.personal)
-            }
+    func makeUIViewController(context: Context) -> UITabBarController {
+        let tabBarController = UITabBarController()
+        tabBarController.delegate = context.coordinator
+        tabBarController.tabBar.tintColor = UIColor(AppTheme.colors.tint)
 
-            Tab("More", systemImage: "square.grid.2x2.fill", value: AppTab.more) {
-                MoreView()
+        let todayVC = UIHostingController(rootView: todayView())
+        todayVC.tabBarItem = UITabBarItem(title: "Today", image: UIImage(systemName: "text.rectangle.page"), tag: 0)
+
+        let workVC = UIHostingController(rootView: workView())
+        workVC.tabBarItem = UITabBarItem(title: "Work", image: UIImage(systemName: "briefcase.fill"), tag: 1)
+
+        let personalVC = UIHostingController(rootView: personalView())
+        personalVC.tabBarItem = UITabBarItem(title: "Personal", image: UIImage(systemName: "person.crop.circle.fill"), tag: 2)
+
+        let moreVC = UIHostingController(rootView: moreView())
+        moreVC.tabBarItem = UITabBarItem(title: "More", image: UIImage(systemName: "square.grid.2x2.fill"), tag: 3)
+
+        tabBarController.viewControllers = [todayVC, workVC, personalVC, moreVC]
+        return tabBarController
+    }
+
+    func updateUIViewController(_ uiViewController: UITabBarController, context: Context) {
+        let tag: Int
+        switch selection {
+        case .today: tag = 0
+        case .work: tag = 1
+        case .personal: tag = 2
+        case .more: tag = 3
+        }
+        if uiViewController.selectedIndex != tag {
+            uiViewController.selectedIndex = tag
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, UITabBarControllerDelegate {
+        var parent: MainTabBarController
+
+        init(_ parent: MainTabBarController) {
+            self.parent = parent
+        }
+
+        func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+            if tabBarController.selectedViewController == viewController && tabBarController.selectedIndex == 0 {
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+                NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
+                return false
+            }
+            return true
+        }
+
+        func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+            switch tabBarController.selectedIndex {
+            case 0:
+                parent.selection = .today
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+                NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
+            case 1:
+                parent.selection = .work
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+            case 2:
+                parent.selection = .personal
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+            case 3:
+                parent.selection = .more
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+            default: break
             }
         }
-        .tint(AppTheme.colors.tint)
-        .sensoryFeedback(.selection, trigger: selectedTab)
     }
 }
 
