@@ -47,7 +47,7 @@ struct TodayTaskListView: View {
                 }
 
                 DateStripView(days: dateStripDays, selectedDate: $selectedDate)
-                    .frame(height: 80)
+                    .padding(.bottom, 12)
 
                 content
             }
@@ -286,70 +286,37 @@ private struct DateStripView: View {
     let days: [Date]
     @Binding var selectedDate: Date
 
+    @Environment(\.sizeCategory) private var sizeCategory
+
     private let calendar = Calendar.current
 
     private static let spacing: CGFloat = 8
     private static let horizontalPadding: CGFloat = 20
-    private static let chipHeight: CGFloat = 64
-    private static let minChipWidth: CGFloat = 48
-    private static let maxChipWidth: CGFloat = 52
+    private static let baseChipHeight: CGFloat = 64
+    private static let verticalPadding: CGFloat = 8
+    private static let targetCount = 5
 
     var body: some View {
         GeometryReader { geo in
-            let layout = layout(for: geo.size.width)
-            if layout.shouldScroll {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Self.spacing) {
-                        ForEach(days, id: \.self) { date in
-                            chip(for: date, width: Self.minChipWidth)
-                        }
-                    }
-                    .padding(.horizontal, Self.horizontalPadding)
-                }
-            } else {
-                HStack(spacing: Self.spacing) {
-                    ForEach(Array(days.prefix(layout.visibleCount)), id: \.self) { date in
-                        chip(for: date, width: layout.fittedWidth)
+            let availableWidth = geo.size.width - (Self.horizontalPadding * 2)
+            let chipWidth = max(48, (availableWidth - Self.spacing * CGFloat(Self.targetCount - 1)) / CGFloat(Self.targetCount))
+            let chipHeight = max(Self.baseChipHeight, Self.baseChipHeight + max(0, sizeCategory.scale - 1) * 12)
+            HStack(spacing: Self.spacing) {
+                ForEach(days, id: \.self) { date in
+                    DateChip(
+                        date: date,
+                        width: chipWidth,
+                        height: chipHeight,
+                        isSelected: calendar.isDate(date, inSameDayAs: selectedDate)
+                    ) {
+                        select(date)
                     }
                 }
-                .padding(.horizontal, Self.horizontalPadding)
-                .frame(width: geo.size.width, alignment: .leading)
             }
+            .padding(.horizontal, Self.horizontalPadding)
+            .frame(width: geo.size.width, alignment: .leading)
         }
-    }
-
-    private func layout(for totalWidth: CGFloat) -> (visibleCount: Int, fittedWidth: CGFloat, shouldScroll: Bool) {
-        let availableWidth = totalWidth - (Self.horizontalPadding * 2)
-        var visibleCount = 0
-        var currentWidth: CGFloat = 0
-        for _ in days {
-            let nextWidth = currentWidth + Self.minChipWidth + (visibleCount == 0 ? 0 : Self.spacing)
-            if nextWidth <= availableWidth {
-                currentWidth += Self.minChipWidth + (visibleCount == 0 ? 0 : Self.spacing)
-                visibleCount += 1
-            } else {
-                break
-            }
-        }
-        if visibleCount == 0 { visibleCount = 1 }
-        let contentWidth = Self.minChipWidth * CGFloat(visibleCount) + Self.spacing * CGFloat(max(0, visibleCount - 1))
-        let shouldScroll = contentWidth > availableWidth + 1
-        let fittedWidth = min(
-            (availableWidth - Self.spacing * CGFloat(max(0, visibleCount - 1))) / CGFloat(visibleCount),
-            Self.maxChipWidth
-        )
-        return (visibleCount, fittedWidth, shouldScroll)
-    }
-
-    private func chip(for date: Date, width: CGFloat) -> some View {
-        DateChip(
-            date: date,
-            width: width,
-            height: Self.chipHeight,
-            isSelected: calendar.isDate(date, inSameDayAs: selectedDate)
-        ) {
-            select(date)
-        }
+        .frame(height: max(Self.baseChipHeight, Self.baseChipHeight + max(0, sizeCategory.scale - 1) * 12) + 16)
     }
 
     private func select(_ date: Date) {
@@ -380,18 +347,19 @@ private struct DateChip: View {
         let numString = dateFormatter.string(from: date)
 
         return Button(action: onSelect) {
-            VStack(spacing: 1) {
+            VStack(spacing: 0) {
                 Text(dayString)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textSecondary)
                     .textCase(.uppercase)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
                 HStack(spacing: 4) {
                     Text(numString)
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     if isToday && !isSelected {
                         Circle()
                             .fill(AppTheme.colors.tint)
@@ -399,11 +367,14 @@ private struct DateChip: View {
                     }
                 }
             }
-            .frame(width: width, height: height)
+            .padding(.vertical, 8)
+            .frame(width: width)
+            .frame(minHeight: height)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 }
 
