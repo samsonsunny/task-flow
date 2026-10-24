@@ -46,14 +46,24 @@ struct TodayTaskListView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Picker("Area", selection: $selectedSegment) {
-                        ForEach(TodaySegment.allCases, id: \.self) { segment in
-                            Text(segment.rawValue).tag(segment)
+                HStack(spacing: 20) {
+                    ForEach(TodaySegment.allCases, id: \.self) { segment in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedSegment = segment
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(segment.rawValue)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(selectedSegment == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+                                Rectangle()
+                                    .fill(selectedSegment == segment ? AppTheme.colors.tint : Color.clear)
+                                    .frame(height: 2)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 220)
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -178,10 +188,10 @@ struct TodayTaskListView: View {
             VStack(spacing: 4) {
                 Text(dayString)
                     .font(.caption)
-                    .foregroundStyle(isSelected ? AppTheme.colors.background : AppTheme.colors.textSecondary)
+                    .foregroundStyle(isSelected ? AppTheme.colors.appBackground : AppTheme.colors.textSecondary)
                 Text(numString)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(isSelected ? AppTheme.colors.background : AppTheme.colors.textPrimary)
+                    .foregroundStyle(isSelected ? AppTheme.colors.appBackground : AppTheme.colors.textPrimary)
             }
             .frame(width: 56, height: 56)
             .background(isSelected ? AppTheme.colors.primaryAction : AppTheme.colors.surface)
