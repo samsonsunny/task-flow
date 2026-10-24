@@ -65,6 +65,7 @@ final class TodayViewModel {
     private var groups: [ReminderListGroup] = []
     private var allTasks: [TaskItem] = []
     private var now: Date = Date()
+    private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
 
     private(set) var sections: [TodaySection] = []
     private(set) var filterOptions: [TodayFilterOption] = [.all]
@@ -80,6 +81,14 @@ final class TodayViewModel {
     func selectFilter(_ filter: TodayAreaFilter) {
         guard areaFilter != filter else { return }
         areaFilter = filter
+        recompute()
+    }
+
+    func selectDate(_ date: Date) {
+        let calendar = Calendar.current
+        let newDate = calendar.startOfDay(for: date)
+        guard newDate != selectedDate else { return }
+        selectedDate = newDate
         recompute()
     }
 
@@ -99,12 +108,16 @@ final class TodayViewModel {
         self.groups = groups
         self.allTasks = allTasks
         self.now = now
+        if Calendar.current.startOfDay(for: selectedDate) > Calendar.current.startOfDay(for: now).addingTimeInterval(86400 * 365) {
+            // keep as is
+        }
         rebuildFilterOptions()
 
         let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
+        let referenceStart = Calendar.current.startOfDay(for: selectedDate)
+        let nowStart = calendar.startOfDay(for: now)
         var overdue: [TaskItem] = []
-        var dueToday: [TaskItem] = []
+        var dueOnSelected: [TaskItem] = []
 
         for task in allTasks {
             let isPendingUndo = pendingUndo?.id == task.persistentModelID
@@ -112,12 +125,13 @@ final class TodayViewModel {
             guard matchesAreaFilter(task) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)
-            if dueDate < now && (task.hasTime == true ? true : dueStart < todayStart) {
+            // Overdue relative to selected date start
+            if dueStart < referenceStart {
                 overdue.append(task)
                 continue
             }
-            if dueStart == todayStart {
-                dueToday.append(task)
+            if dueStart == referenceStart {
+                dueOnSelected.append(task)
             }
         }
 
@@ -137,8 +151,8 @@ final class TodayViewModel {
         if !overdue.isEmpty {
             result.append(TodaySection(kind: .overdue, tasks: sort(overdue)))
         }
-        if !dueToday.isEmpty {
-            result.append(TodaySection(kind: .today, tasks: sort(dueToday)))
+        if !dueOnSelected.isEmpty {
+            result.append(TodaySection(kind: .today, tasks: sort(dueOnSelected)))
         }
         sections = result
     }
