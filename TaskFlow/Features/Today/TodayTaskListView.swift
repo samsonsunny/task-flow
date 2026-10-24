@@ -1,6 +1,71 @@
 import SwiftUI
 import SwiftData
 
+private struct DateStripView: View {
+    let days: [Date]
+    @Binding var selectedDate: Date
+
+    @Environment(\.sizeCategory) private var sizeCategory
+
+    // Map content size category to a reasonable scale factor for the chip height.
+    private var sizeCategoryScale: CGFloat {
+        switch sizeCategory {
+        case .extraSmall: return 0.9
+        case .small: return 0.95
+        case .medium: return 1.0
+        case .large: return 1.0
+        case .extraLarge: return 1.05
+        case .extraExtraLarge: return 1.1
+        case .extraExtraExtraLarge: return 1.15
+        case .accessibilityMedium: return 1.2
+        case .accessibilityLarge: return 1.3
+        case .accessibilityExtraLarge: return 1.4
+        case .accessibilityExtraExtraLarge: return 1.5
+        case .accessibilityExtraExtraExtraLarge: return 1.6
+        @unknown default: return 1.0
+        }
+    }
+
+    private let calendar = Calendar.current
+
+    private static let spacing: CGFloat = 8
+    private static let horizontalPadding: CGFloat = 20
+    private static let baseChipHeight: CGFloat = 64
+    private static let verticalPadding: CGFloat = 8
+    private static let targetCount = 5
+
+    var body: some View {
+        GeometryReader { geo in
+            let availableWidth = geo.size.width - (Self.horizontalPadding * 2)
+            let chipWidth = max(48, (availableWidth - Self.spacing * CGFloat(Self.targetCount - 1)) / CGFloat(Self.targetCount))
+            let chipHeight = max(Self.baseChipHeight, Self.baseChipHeight * sizeCategoryScale)
+            HStack(spacing: Self.spacing) {
+                ForEach(days, id: \.self) { date in
+                    DateChip(
+                        date: date,
+                        width: chipWidth,
+                        height: chipHeight,
+                        isSelected: calendar.isDate(date, inSameDayAs: selectedDate)
+                    ) {
+                        select(date)
+                    }
+                }
+            }
+            .padding(.horizontal, Self.horizontalPadding)
+            .frame(width: geo.size.width, alignment: .leading)
+        }
+        .frame(height: max(Self.baseChipHeight, Self.baseChipHeight * sizeCategoryScale) + 16)
+    }
+
+    private func select(_ date: Date) {
+        let startOfDay = calendar.startOfDay(for: date)
+        if selectedDate != startOfDay {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+        selectedDate = startOfDay
+    }
+}
+
 struct TodayTaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
@@ -282,52 +347,6 @@ private struct MonthYearButton: View {
     }
 }
 
-private struct DateStripView: View {
-    let days: [Date]
-    @Binding var selectedDate: Date
-
-    @Environment(\.sizeCategory) private var sizeCategory
-
-    private let calendar = Calendar.current
-
-    private static let spacing: CGFloat = 8
-    private static let horizontalPadding: CGFloat = 20
-    private static let baseChipHeight: CGFloat = 64
-    private static let verticalPadding: CGFloat = 8
-    private static let targetCount = 5
-
-    var body: some View {
-        GeometryReader { geo in
-            let availableWidth = geo.size.width - (Self.horizontalPadding * 2)
-            let chipWidth = max(48, (availableWidth - Self.spacing * CGFloat(Self.targetCount - 1)) / CGFloat(Self.targetCount))
-            let chipHeight = max(Self.baseChipHeight, Self.baseChipHeight + max(0, sizeCategory.scale - 1) * 12)
-            HStack(spacing: Self.spacing) {
-                ForEach(days, id: \.self) { date in
-                    DateChip(
-                        date: date,
-                        width: chipWidth,
-                        height: chipHeight,
-                        isSelected: calendar.isDate(date, inSameDayAs: selectedDate)
-                    ) {
-                        select(date)
-                    }
-                }
-            }
-            .padding(.horizontal, Self.horizontalPadding)
-            .frame(width: geo.size.width, alignment: .leading)
-        }
-        .frame(height: max(Self.baseChipHeight, Self.baseChipHeight + max(0, sizeCategory.scale - 1) * 12) + 16)
-    }
-
-    private func select(_ date: Date) {
-        let startOfDay = calendar.startOfDay(for: date)
-        if selectedDate != startOfDay {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
-        selectedDate = startOfDay
-    }
-}
-
 private struct DateChip: View {
     let date: Date
     let width: CGFloat
@@ -354,24 +373,21 @@ private struct DateChip: View {
                     .textCase(.uppercase)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                HStack(spacing: 4) {
-                    Text(numString)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : AppTheme.colors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    if isToday && !isSelected {
-                        Circle()
-                            .fill(AppTheme.colors.tint)
-                            .frame(width: 4, height: 4)
-                    }
-                }
+                Text(numString)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(isSelected ? AppTheme.colors.textOnTint : (isToday ? AppTheme.colors.tint : AppTheme.colors.textPrimary))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .padding(.vertical, 8)
             .frame(width: width)
             .frame(minHeight: height)
             .background(isSelected ? AppTheme.colors.tint : AppTheme.colors.secondaryBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isToday && !isSelected ? AppTheme.colors.tint.opacity(0.9) : Color.clear, lineWidth: 1.5)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
