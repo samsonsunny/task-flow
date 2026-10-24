@@ -49,6 +49,9 @@ struct TodayTaskListView: View {
                 HStack(spacing: 24) {
                     ForEach(TodaySegment.allCases, id: \.self) { segment in
                         Button {
+                            if selectedSegment != segment {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedSegment = segment
                             }
