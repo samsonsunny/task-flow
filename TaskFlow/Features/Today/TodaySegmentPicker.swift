@@ -14,14 +14,11 @@ struct TodaySegmentPicker: View {
                         selection = segment
                     }
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(segment.rawValue)
-                            .font(.system(size: 34, weight: .semibold))
-                            .foregroundStyle(selection == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
-                        Rectangle()
-                            .fill(selection == segment ? AppTheme.colors.tint : Color.clear)
-                            .frame(height: 3)
-                    }
+                    Text(segment.rawValue)
+                        .font(selection == segment ? .largeTitle.bold() : .system(size: 30, weight: .regular))
+                        .foregroundStyle(selection == segment ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+                        .frame(minHeight: 44, alignment: .topLeading)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .fixedSize()
@@ -29,7 +26,6 @@ struct TodaySegmentPicker: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 20)
+        .padding(.vertical, 12)
     }
 }

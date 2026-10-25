@@ -85,13 +85,12 @@ struct AreaTasksView: View {
                         )
                     }
                 }
-                .safeAreaInset(edge: .top, spacing: 0) {
+                .overlay(alignment: .top) {
                     if let pending = viewModel?.pendingUndo {
                         UndoToast(title: pending.task.safeTitle) {
                             viewModel?.undoCompletion()
                         }
                         .padding(.top, 8)
-                        .padding(.bottom, 4)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
