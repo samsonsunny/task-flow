@@ -67,8 +67,8 @@ struct WeekStripView: View {
             selectedDate = startOfDay
         } label: {
             VStack(spacing: 3) {
-                Text(isToday ? "TODAY" : Self.weekdayFormatter.string(from: date))
-                    .font(.system(size: 10, weight: .medium))
+                Text(isToday ? "TODAY" : Self.weekdayFormatter.string(from: date).uppercased())
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(isToday ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -79,7 +79,7 @@ struct WeekStripView: View {
                     .lineLimit(1)
 
                 Circle()
-                    .fill(isSelected ? AppTheme.colors.tint : Color.clear)
+                    .fill(isToday ? AppTheme.colors.tint : Color.clear)
                     .frame(width: 4, height: 4)
             }
             .frame(maxWidth: .infinity)

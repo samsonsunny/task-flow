@@ -224,13 +224,13 @@ struct TaskRowView: View, Equatable {
             }
 
             if !task.safeDescription.isEmpty {
-                Text(task.safeDescription)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
-                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                    .lineLimit(4)
-                    .lineSpacing(2)
-                    .multilineTextAlignment(.leading)
+            Text(task.safeDescription)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
+                .opacity(isCompletedVisualState ? 0.82 : 1.0)
+                .lineLimit(4)
+                .lineSpacing(2)
+                .multilineTextAlignment(.leading)
             }
 
             if let metadataText {
@@ -336,28 +336,32 @@ struct TaskRowView: View, Equatable {
 
     private var completionButton: some View {
         Button {
+            Haptics.impact(.light)
             animateChipTap()
             onToggleCompletion()
         } label: {
             ZStack {
                 Circle()
-                    .stroke(isCompletedVisualState ? AppTheme.colors.primaryAction : AppTheme.colors.textTertiary, lineWidth: 1)
-                    .background(
-                        Circle()
-                            .fill(isCompletedVisualState ? AppTheme.colors.primaryAction : .clear)
-                    )
-                    .frame(width: 20, height: 20)
+                    .fill(isCompletedVisualState ? AppTheme.colors.tint.opacity(0.15) : .clear)
+                    .frame(width: 22, height: 22)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
+                if !isCompletedVisualState {
+                    Circle()
+                        .stroke(AppTheme.colors.textTertiary, lineWidth: 1.2)
+                        .frame(width: 22, height: 22)
+                        .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+                }
+
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(AppTheme.colors.tint)
                     .opacity(isCompletedVisualState ? 1 : 0)
                     .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
                     .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
             }
             .scaleEffect(chipScale)
-            .frame(width: 20, height: 20)
+            .frame(width: 22, height: 22)
             .background(Color.clear.frame(width: 44, height: 44))
             .contentShape(Rectangle())
         }

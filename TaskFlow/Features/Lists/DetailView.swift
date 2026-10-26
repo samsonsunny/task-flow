@@ -331,6 +331,7 @@ struct ListDetailView: View {
             task: task,
             isCompletedVisualState: task.isCompleted == true,
             onToggleCompletion: {
+                Haptics.impact(.light)
                 viewModel?.toggleCompletion(for: task)
             },
             onDueDateAction: { action in

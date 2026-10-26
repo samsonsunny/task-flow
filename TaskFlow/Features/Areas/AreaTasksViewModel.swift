@@ -65,6 +65,11 @@ final class AreaTasksViewModel {
                 return areaListIDs.contains(listID)
             }
             .sorted { lhs, rhs in
+                let lhsCompleted = lhs.isCompleted ?? false
+                let rhsCompleted = rhs.isCompleted ?? false
+                if lhsCompleted != rhsCompleted {
+                    return !lhsCompleted
+                }
                 let lhsDate = lhs.createdAt ?? .distantPast
                 let rhsDate = rhs.createdAt ?? .distantPast
                 if lhsDate != rhsDate { return lhsDate > rhsDate }

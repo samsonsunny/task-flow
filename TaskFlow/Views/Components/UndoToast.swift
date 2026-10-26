@@ -8,12 +8,12 @@ struct UndoToast: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(AppTheme.colors.success.opacity(0.15))
+                    .fill(AppTheme.colors.tint.opacity(0.15))
                     .frame(width: 32, height: 32)
 
                 Image(systemName: "checkmark")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(AppTheme.colors.success)
+                    .foregroundStyle(AppTheme.colors.tint)
             }
 
             VStack(alignment: .leading, spacing: 1) {

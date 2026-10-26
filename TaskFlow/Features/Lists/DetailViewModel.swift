@@ -113,9 +113,6 @@ final class ListDetailViewModel {
     private func computeTasks() -> [TaskItem] {
         displayTasks.filter {
             guard $0.reminderList?.persistentModelID == listID else { return false }
-            if $0.isCompleted == true {
-                return justCompleted.contains($0.taskId ?? "")
-            }
             return true
         }
     }

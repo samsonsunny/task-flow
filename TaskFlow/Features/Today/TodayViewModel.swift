@@ -121,8 +121,6 @@ final class TodayViewModel {
         var dueOnSelected: [TaskItem] = []
 
         for task in allTasks {
-            let isPendingUndo = pendingUndo?.id == task.persistentModelID
-            guard task.isCompleted != true || isPendingUndo else { continue }
             guard matchesAreaFilter(task) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)

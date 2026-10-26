@@ -37,17 +37,7 @@ struct MoreView: View {
                     Text("Domains")
                 }
 
-                Section {
-                    NavigationLink {
-                        CompletedView()
-                            .navigationTitle("Completed")
-                            .navigationBarTitleDisplayMode(.inline)
-                    } label: {
-                        Label("Recently Completed", systemImage: "checkmark.circle")
-                    }
-                } header: {
-                    Text("Activity")
-                }
+
 
                 Section {
                     Toggle("Daily Morning Reminder", isOn: Binding(

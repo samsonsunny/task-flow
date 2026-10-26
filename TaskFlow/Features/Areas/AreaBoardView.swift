@@ -188,7 +188,10 @@ private struct BoardTaskCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Button(action: onToggleCompletion) {
+            Button(action: {
+                Haptics.impact(.light)
+                onToggleCompletion()
+            }) {
                 Image(systemName: task.isCompleted == true ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18, weight: .regular))
                     .foregroundStyle(

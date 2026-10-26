@@ -14,10 +14,25 @@ struct TodayTaskListView: View {
     @State private var viewModel: TodayViewModel?
     @State private var editingTask: TaskItem?
     @State private var newTaskConfig: NewTaskSheetConfig?
-    @AppStorage("today.selectedSegment") private var selectedSegment: TodaySegment = .work
-    @State private var selectedFilter: TimeFilter = .today
-    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+    @AppStorage("today.selectedSegment") private var selectedSegmentRaw: String = TodaySegment.work.rawValue
+    private var selectedSegment: TodaySegment {
+        get { TodaySegment(rawValue: selectedSegmentRaw) ?? .work }
+        set { selectedSegmentRaw = newValue.rawValue }
+    }
+    @AppStorage("today.selectedFilter") private var selectedFilter: TimeFilter = .today
+    @AppStorage("today.selectedDate") private var selectedDateTimestamp: Double = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
     @State private var isCalendarPresented = false
+    
+    private var selectedDate: Date {
+        Date(timeIntervalSince1970: selectedDateTimestamp)
+    }
+    
+    private var selectedDateBinding: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSince1970: self.selectedDateTimestamp) },
+            set: { self.selectedDateTimestamp = Calendar.current.startOfDay(for: $0).timeIntervalSince1970 }
+        )
+    }
 
     enum TodaySegment: String, CaseIterable {
         case work = "Work"
@@ -64,7 +79,10 @@ struct TodayTaskListView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                TodaySegmentPicker(selection: $selectedSegment)
+                TodaySegmentPicker(selection: Binding(
+                    get: { selectedSegment },
+                    set: { selectedSegmentRaw = $0.rawValue }
+                ))
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
@@ -105,7 +123,7 @@ struct TodayTaskListView: View {
                         isCalendarPresented = true
                     }
 
-                    WeekStripView(selectedDate: $selectedDate)
+                    WeekStripView(selectedDate: selectedDateBinding)
                         .padding(.bottom, 14)
                 } else if selectedFilter == .today {
                     TaskListContentHeader(title: contentHeaderTitle)
@@ -144,7 +162,7 @@ struct TodayTaskListView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .todayRefreshRequested)) { _ in
             let today = calendar.startOfDay(for: Date())
-            selectedDate = today
+            selectedDateTimestamp = today.timeIntervalSince1970
             viewModel?.selectDate(today)
             if selectedFilter == .today {
                 refresh()
@@ -164,17 +182,18 @@ struct TodayTaskListView: View {
         }
         .onChange(of: selectedFilter) { _, newValue in
             if newValue == .today {
-                selectedDate = calendar.startOfDay(for: Date())
-                viewModel?.selectDate(selectedDate)
+                let today = calendar.startOfDay(for: Date())
+                selectedDateTimestamp = today.timeIntervalSince1970
+                viewModel?.selectDate(today)
             }
             refresh()
         }
-        .onChange(of: selectedDate) { _, newValue in
-            viewModel?.selectDate(newValue)
-            if selectedFilter == .today || selectedFilter == .upcoming {
-                refresh()
+            .onChange(of: selectedDateTimestamp) { _, _ in
+                viewModel?.selectDate(selectedDate)
+                if selectedFilter == .today || selectedFilter == .upcoming {
+                    refresh()
+                }
             }
-        }
         .sheet(item: $newTaskConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
         }
@@ -182,15 +201,15 @@ struct TodayTaskListView: View {
             NavigationStack {
                 DatePicker(
                     "Select Date",
-                    selection: $selectedDate,
+                    selection: selectedDateBinding,
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
                 .padding()
-                .onChange(of: selectedDate) { _, _ in
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    isCalendarPresented = false
-                }
+            .onChange(of: selectedDateTimestamp) { _, _ in
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                isCalendarPresented = false
+            }
                 .navigationBarTitleDisplayMode(.inline)
             }
             .presentationDetents([.medium, .large])
@@ -244,7 +263,10 @@ struct TodayTaskListView: View {
             } else {
                 TodayTaskList(
                     tasks: sections.flatMap { $0.tasks },
-                    onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+                    onToggleCompletion: {
+                        Haptics.impact(.light)
+                        viewModel?.toggleCompletion(for: $0)
+                    },
                     onDelete: { viewModel?.delete($0) },
                     onTap: { editingTask = $0 },
                     onRefresh: refresh
@@ -261,7 +283,10 @@ struct TodayTaskListView: View {
             } else {
                 TodayTaskList(
                     tasks: tasks,
-                    onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+                    onToggleCompletion: {
+                        Haptics.impact(.light)
+                        viewModel?.toggleCompletion(for: $0)
+                    },
                     onDelete: { viewModel?.delete($0) },
                     onTap: { editingTask = $0 },
                     onRefresh: refresh
@@ -270,7 +295,7 @@ struct TodayTaskListView: View {
         case .upcoming:
             UpcomingAgendaView(
                 sections: upcomingAgendaSections,
-                selectedDate: $selectedDate,
+                selectedDate: selectedDateBinding,
                 onAddTask: { date in
                     newTaskConfig = NewTaskSheetConfig(
                         initialDate: date,
@@ -309,9 +334,8 @@ struct TodayTaskListView: View {
         let todayStart = calendar.startOfDay(for: now)
         var result: [TaskItem] = []
         for task in allTasks {
-            let isPendingUndo = viewModel?.pendingUndo?.id == task.persistentModelID
-            guard task.isCompleted != true || isPendingUndo else { continue }
             guard matchesArea(task) else { continue }
+            guard !(task.isCompleted ?? false) else { continue }
             guard let dueDate = task.dueDate else { continue }
             if task.hasTime == true {
                 if dueDate < now {
@@ -337,8 +361,6 @@ struct TodayTaskListView: View {
         var tasksByDay: [Date: [TaskItem]] = [:]
 
         for task in allTasks {
-            let isPendingUndo = viewModel?.pendingUndo?.id == task.persistentModelID
-            guard task.isCompleted != true || isPendingUndo else { continue }
             guard matchesArea(task) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)

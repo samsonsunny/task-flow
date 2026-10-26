@@ -97,34 +97,34 @@ struct AreaTasksView: View {
                 .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
                 .navigationTitle(displayName)
                 .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Picker("Display Mode", selection: displayModeBinding) {
-                                ForEach(AreaDisplayMode.allCases) { mode in
-                                    Label(mode.title, systemImage: mode.icon)
-                                        .tag(mode)
-                                }
-                            }
-
-                            Divider()
-
-                            Toggle("Show Completed", isOn: $showCompleted)
-                        } label: {
-                            if showCompleted {
-                                Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundStyle(AppTheme.colors.tint)
-                                    .frame(width: 32, height: 32)
-                            } else {
-                                Image(systemName: "line.3.horizontal.decrease")
-                                    .foregroundStyle(AppTheme.colors.textPrimary)
-                                    .frame(width: 32, height: 32)
-                            }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Display Mode", selection: displayModeBinding) {
+                        ForEach(AreaDisplayMode.allCases) { mode in
+                            Label(mode.title, systemImage: mode.icon)
+                                .tag(mode)
                         }
-                        .accessibilityLabel("Filter")
+                    }
+
+                    Divider()
+
+                    Toggle("Show Completed", isOn: $showCompleted)
+                } label: {
+                    if showCompleted {
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(AppTheme.colors.tint)
+                            .frame(width: 32, height: 32)
+                    } else {
+                        Image(systemName: "line.3.horizontal.decrease")
+                            .foregroundStyle(AppTheme.colors.textPrimary)
+                            .frame(width: 32, height: 32)
                     }
                 }
+                .accessibilityLabel("Filter")
+            }
+        }
                 // Pushed rather than presented: the editor's toolbar buttons need a real stack.
                 .navigationDestination(item: $editingTask) { task in
                     ReminderEditorView(task: task, embedInNavigationStack: false)
@@ -187,7 +187,10 @@ struct AreaTasksView: View {
                     TaskRowView(
                         task: task,
                         isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: { viewModel?.toggleCompletion(for: task) },
+                        onToggleCompletion: {
+                            Haptics.impact(.light)
+                            viewModel?.toggleCompletion(for: task)
+                        },
                         onDelete: { viewModel?.delete(task) },
                         onTap: { editingTask = task },
                         showsDueDate: true,

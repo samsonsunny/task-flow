@@ -48,10 +48,10 @@ struct UpcomingAgendaView: View {
     private static let headingFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMM d")
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMMM d")
         return formatter
     }()
-
+    
     private static let accessibilityFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .current
@@ -105,9 +105,16 @@ struct UpcomingAgendaView: View {
     private func daySection(_ section: UpcomingDaySection) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text(Self.headingFormatter.string(from: section.date))
+                let calendar = Calendar.current
+                let isToday = calendar.isDateInToday(section.date)
+                let isTomorrow = calendar.isDateInTomorrow(section.date)
+                let dateText = Self.headingFormatter.string(from: section.date)
+                let headingText = isToday ? "Today · \(dateText)" : isTomorrow ? "Tomorrow · \(dateText)" : dateText
+                Text(headingText)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Spacer(minLength: 8)
 
@@ -122,29 +129,40 @@ struct UpcomingAgendaView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Add task on \(Self.accessibilityFormatter.string(from: section.date))")
+                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : Self.accessibilityFormatter.string(from: section.date))")
             }
             .padding(.horizontal, 20)
 
             if section.tasks.isEmpty {
-                Text("No tasks scheduled")
-                    .font(.system(size: 14))
-                    .foregroundStyle(AppTheme.colors.textTertiary)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 4)
+                let calendar = Calendar.current
+                let isToday = calendar.isDateInToday(section.date)
+                let isTomorrow = calendar.isDateInTomorrow(section.date)
+                Button {
+                    Haptics.impact(.light)
+                    onAddTask(section.date)
+                } label: {
+                    Text("No tasks scheduled")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AppTheme.colors.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 4)
+                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : Self.accessibilityFormatter.string(from: section.date))")
             } else {
                 VStack(spacing: 2) {
                     ForEach(section.tasks) { task in
                         TaskRowView(
                             task: task,
                             isCompletedVisualState: task.isCompleted ?? false,
-                            onToggleCompletion: { onToggleCompletion(task) },
+                            onToggleCompletion: {
+                                Haptics.impact(.light)
+                                onToggleCompletion(task)
+                            },
                             onDelete: { onDelete(task) },
                             onTap: { onTapTask(task) },
-                            showsDueDate: false,
-                            showsListName: true,
-                            showsGroupName: false,
-                            groupNameOverride: nil
+                            showsDueDate: true,
+                            showsListName: true
                         )
                         .padding(.horizontal, 20)
                         .padding(.vertical, 4)
