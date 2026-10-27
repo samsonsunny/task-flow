@@ -95,7 +95,9 @@ struct TodayTaskListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0)
+                .background(Color(.systemGroupedBackground))
+                .clipped() {
                 TodaySegmentPicker(
                     selection: Binding(
                         get: { selectedSegment },
@@ -114,6 +116,7 @@ struct TodayTaskListView: View {
 
                 content
             }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .overlay(alignment: .top) {
                 if let pending = viewModel?.pendingUndo {
                     UndoToast(title: pending.task.safeTitle) {
