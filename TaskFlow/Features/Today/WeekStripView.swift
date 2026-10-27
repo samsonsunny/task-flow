@@ -34,24 +34,22 @@ struct WeekStripView: View {
     }()
 
     private var weekDays: [Date] {
-        let start = calendar.startOfDay(for: selectedDate)
-        return (0..<4).compactMap {
+        let start = calendar.startOfDay(for: selectedDate).addingTimeInterval(-86400 * 30)
+        return (0..<61).compactMap {
             calendar.date(byAdding: .day, value: $0, to: start)
         }
     }
 
     var body: some View {
-        HStack(spacing: Self.cellSpacing) {
-            ForEach(weekDays, id: \.self) { date in
-                dayCell(for: date)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Self.cellSpacing) {
+                ForEach(weekDays, id: \.self) { date in
+                    dayCell(for: date)
+                }
             }
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
-        .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 20)
-                .onEnded(handleSwipe)
-        )
+        .scrollTargetLayout()
     }
 
     private func dayCell(for date: Date) -> some View {
@@ -88,6 +86,7 @@ struct WeekStripView: View {
                     .fill(isSelected ? AppTheme.colors.tint.opacity(0.12) : Color.clear)
             )
             .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
+            .frame(width: 52)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isToday
@@ -95,22 +94,5 @@ struct WeekStripView: View {
             : Self.accessibilityFormatter.string(from: date)
         )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private func handleSwipe(_ value: DragGesture.Value) {
-        let horizontal = value.translation.width
-        guard abs(horizontal) > 40,
-              abs(horizontal) > abs(value.translation.height)
-        else { return }
-
-        let dayOffset = horizontal < 0 ? 4 : -4
-        guard let newDate = calendar.date(byAdding: .day, value: dayOffset, to: selectedDate) else {
-            return
-        }
-
-        Haptics.selection()
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedDate = calendar.startOfDay(for: newDate)
-        }
     }
 }
