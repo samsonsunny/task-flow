@@ -9,8 +9,8 @@ struct WeekStripView: View {
     @Binding var selectedDate: Date
 
     private let calendar = Calendar.current
-    private static let cellSpacing: CGFloat = 8
-    private static let cornerRadius: CGFloat = 14
+    private static let cellSpacing: CGFloat = 10
+    private static let cornerRadius: CGFloat = 16
 
     private static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -78,21 +78,21 @@ struct WeekStripView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             selectedDate = startOfDay
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 Text(Self.weekdayFormatter.string(from: date).uppercased())
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
                 Text(Self.dayNumberFormatter.string(from: date))
-                    .font(.system(size: 18, weight: isSelected ? .bold : .semibold))
+                    .font(.system(size: 20, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.colors.tint : AppTheme.colors.textPrimary))
                     .lineLimit(1)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-            .frame(minWidth: 56)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .frame(minWidth: 64)
             .background(
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
                     .fill(isSelected ? AppTheme.colors.tint : Color(.secondarySystemGroupedBackground))
