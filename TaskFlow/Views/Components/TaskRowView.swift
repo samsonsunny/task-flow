@@ -158,7 +158,7 @@ struct TaskRowView: View, Equatable {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 14) {
             if isSelecting {
                 Button {
                     Haptics.selection()
@@ -199,13 +199,23 @@ struct TaskRowView: View, Equatable {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.colors.textSecondary)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 40, height: 40)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
             }
         }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(AppTheme.colors.textTertiary.opacity(0.12), lineWidth: 1)
+        )
     }
 
     @ViewBuilder

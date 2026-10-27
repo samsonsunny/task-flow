@@ -35,6 +35,7 @@ struct TodayTaskList: View {
                 )
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
             }
         }
         .listStyle(.plain)
