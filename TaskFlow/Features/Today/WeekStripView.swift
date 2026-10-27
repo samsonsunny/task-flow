@@ -42,15 +42,30 @@ struct WeekStripView: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Self.cellSpacing) {
-                ForEach(weekDays, id: \.self) { date in
-                    dayCell(for: date)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Self.cellSpacing) {
+                    ForEach(weekDays, id: \.self) { date in
+                        dayCell(for: date)
+                            .id(date)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollTargetLayout()
+            .onChange(of: selectedDate) { _, newValue in
+                let day = calendar.startOfDay(for: newValue)
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(day, anchor: .leading)
                 }
             }
-            .padding(.horizontal, 20)
+            .onAppear {
+                let day = calendar.startOfDay(for: selectedDate)
+                DispatchQueue.main.async {
+                    proxy.scrollTo(day, anchor: .leading)
+                }
+            }
         }
-        .scrollTargetLayout()
     }
 
     private func dayCell(for date: Date) -> some View {
