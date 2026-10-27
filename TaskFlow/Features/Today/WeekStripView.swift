@@ -65,6 +65,12 @@ struct WeekStripView: View {
                     proxy.scrollTo(day, anchor: UnitPoint(x: 0.05, y: 0.5))
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("scrollTodayToStart"))) { _ in
+                let today = calendar.startOfDay(for: Date())
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(today, anchor: UnitPoint(x: 0.05, y: 0.5))
+                }
+            }
         }
     }
 

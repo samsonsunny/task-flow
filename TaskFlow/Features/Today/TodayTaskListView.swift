@@ -148,6 +148,9 @@ struct TodayTaskListView: View {
             selectedDateTimestamp = today.timeIntervalSince1970
             viewModel?.selectDate(today)
             refresh()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: NSNotification.Name("scrollTodayToStart"), object: nil)
+            }
         }
         .onChange(of: groups) { _, _ in
             refresh()
