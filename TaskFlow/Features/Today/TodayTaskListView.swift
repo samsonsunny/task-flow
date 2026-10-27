@@ -144,10 +144,10 @@ struct TodayTaskListView: View {
             refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: .todayRefreshRequested)) { _ in
-                    let today = calendar.startOfDay(for: Date())
-                    selectedDateTimestamp = today.timeIntervalSince1970
-                    viewModel?.selectDate(today)
-                    refresh()
+            let today = calendar.startOfDay(for: Date())
+            selectedDateTimestamp = today.timeIntervalSince1970
+            viewModel?.selectDate(today)
+            refresh()
         }
         .onChange(of: groups) { _, _ in
             refresh()

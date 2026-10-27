@@ -94,6 +94,12 @@ struct MainTabBarController: UIViewControllerRepresentable {
         func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
             switch tabBarController.selectedIndex {
             case 0:
+                if parent.selection == .today {
+                    let generator = UISelectionFeedbackGenerator()
+                    generator.selectionChanged()
+                    NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
+                    return
+                }
                 parent.selection = .today
                 let generator = UISelectionFeedbackGenerator()
                 generator.selectionChanged()
