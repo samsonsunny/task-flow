@@ -307,11 +307,10 @@ struct TodayTaskListView: View {
 
         for task in allTasks {
             guard matchesArea(task) else { continue }
-            guard !(task.isCompleted ?? false) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)
 
-            // Include in its due date section if it's in the week
+            // Include in its due date section if it's in the range
             if daySet.contains(dueStart) {
                 tasksByDay[dueStart, default: []].append(task)
             }
@@ -319,11 +318,11 @@ struct TodayTaskListView: View {
             // Also include overdue tasks in today section
             var isOverdueTask = false
             if task.hasTime == true {
-                if dueDate < now {
+                if dueDate < now && !(task.isCompleted ?? false) {
                     isOverdueTask = true
                 }
             } else {
-                if dueStart < todayStart {
+                if dueStart < todayStart && !(task.isCompleted ?? false) {
                     isOverdueTask = true
                 }
             }
