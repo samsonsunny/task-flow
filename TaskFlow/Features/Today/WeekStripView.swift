@@ -105,7 +105,7 @@ struct WeekStripView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
-                    .stroke(isToday && !isSelected ? AppTheme.colors.tint : Color(.separator).opacity(0.25), lineWidth: isToday && !isSelected ? 1.5 : 1)
+                    .stroke(isToday && !isSelected ? AppTheme.colors.tint : Color.clear, lineWidth: isToday && !isSelected ? 1.5 : 0)
             )
             .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
         }
