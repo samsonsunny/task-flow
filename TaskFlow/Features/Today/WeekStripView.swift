@@ -56,13 +56,13 @@ struct WeekStripView: View {
             .onChange(of: selectedDate) { _, newValue in
                 let day = calendar.startOfDay(for: newValue)
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(day, anchor: .leading)
+                    proxy.scrollTo(day, anchor: UnitPoint(x: 0.05, y: 0.5))
                 }
             }
             .onAppear {
                 let day = calendar.startOfDay(for: selectedDate)
                 DispatchQueue.main.async {
-                    proxy.scrollTo(day, anchor: .leading)
+                    proxy.scrollTo(day, anchor: UnitPoint(x: 0.05, y: 0.5))
                 }
             }
         }
