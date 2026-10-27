@@ -101,13 +101,12 @@ struct WeekStripView: View {
             .frame(minWidth: 64)
             .background(
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
-                    .fill(isSelected ? AppTheme.colors.tint : Color(.systemBackground))
+                    .fill(isSelected ? AppTheme.colors.tint : Color(.secondarySystemGroupedBackground))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
-                    .stroke(isToday && !isSelected ? AppTheme.colors.tint.opacity(0.7) : Color(.separator).opacity(0.3), lineWidth: isToday && !isSelected ? 1.8 : 1)
+                    .stroke(isToday && !isSelected ? AppTheme.colors.tint.opacity(0.6) : Color(.separator).opacity(0.25), lineWidth: isToday && !isSelected ? 1.5 : 1)
             )
-            .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 1)
             .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
         }
         .buttonStyle(.plain)
