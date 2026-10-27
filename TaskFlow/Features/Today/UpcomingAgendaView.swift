@@ -152,6 +152,17 @@ struct UpcomingAgendaView: View {
             } else {
                 VStack(spacing: 2) {
                     ForEach(section.tasks) { task in
+                        let calendar = Calendar.current
+                        let now = Date()
+                        let todayStart = calendar.startOfDay(for: now)
+                        let isOverdueTask: Bool = {
+                            guard let dueDate = task.dueDate, !(task.isCompleted ?? false) else { return false }
+                            if task.hasTime == true {
+                                return dueDate < now
+                            } else {
+                                return calendar.startOfDay(for: dueDate) < todayStart
+                            }
+                        }()
                         TaskRowView(
                             task: task,
                             isCompletedVisualState: task.isCompleted ?? false,
@@ -161,7 +172,7 @@ struct UpcomingAgendaView: View {
                             },
                             onDelete: { onDelete(task) },
                             onTap: { onTapTask(task) },
-                            showsDueDate: false,
+                            showsDueDate: isOverdueTask,
                             showsListName: true
                         )
                         .padding(.horizontal, 20)
