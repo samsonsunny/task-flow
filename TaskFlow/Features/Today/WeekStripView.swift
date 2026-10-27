@@ -9,8 +9,8 @@ struct WeekStripView: View {
     @Binding var selectedDate: Date
 
     private let calendar = Calendar.current
-    private static let cellSpacing: CGFloat = 3
-    private static let cornerRadius: CGFloat = 10
+    private static let cellSpacing: CGFloat = 8
+    private static let cornerRadius: CGFloat = 14
 
     private static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -78,31 +78,30 @@ struct WeekStripView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             selectedDate = startOfDay
         } label: {
-            VStack(spacing: 3) {
-                Text(isToday ? "TODAY" : Self.weekdayFormatter.string(from: date).uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(isToday ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
+            VStack(spacing: 4) {
+                Text(Self.weekdayFormatter.string(from: date).uppercased())
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.colors.tint : AppTheme.colors.textSecondary))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
                 Text(Self.dayNumberFormatter.string(from: date))
-                    .font(.system(size: 17, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isToday && !isSelected ? AppTheme.colors.tint : AppTheme.colors.textPrimary)
+                    .font(.system(size: 18, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(isSelected ? .white : (isToday ? AppTheme.colors.tint : AppTheme.colors.textPrimary))
                     .lineLimit(1)
-
-                Circle()
-                    .fill(isToday ? AppTheme.colors.tint : Color.clear)
-                    .frame(width: 4, height: 4)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .frame(minHeight: 44)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .frame(minWidth: 56)
             .background(
                 RoundedRectangle(cornerRadius: Self.cornerRadius)
-                    .fill(isSelected ? AppTheme.colors.tint.opacity(0.12) : Color.clear)
+                    .fill(isSelected ? AppTheme.colors.tint : (isToday ? AppTheme.colors.tint.opacity(0.12) : Color.clear))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Self.cornerRadius)
+                    .stroke(isToday && !isSelected ? AppTheme.colors.tint.opacity(0.4) : Color.clear, lineWidth: 1)
             )
             .contentShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
-            .frame(width: 52)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isToday
