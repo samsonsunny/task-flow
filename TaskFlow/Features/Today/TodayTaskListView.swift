@@ -292,8 +292,9 @@ struct TodayTaskListView: View {
     }
 
     private var upcomingAgendaSections: [UpcomingDaySection] {
-        let start = calendar.startOfDay(for: selectedDate).addingTimeInterval(-86400 * 30)
-        let days = (0..<61).compactMap {
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -10, to: today)!
+        let days = (0..<41).compactMap {
             calendar.date(byAdding: .day, value: $0, to: start)
         }
         let daySet = Set(days)

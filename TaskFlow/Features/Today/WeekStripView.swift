@@ -34,8 +34,9 @@ struct WeekStripView: View {
     }()
 
     private var weekDays: [Date] {
-        let start = calendar.startOfDay(for: selectedDate).addingTimeInterval(-86400 * 30)
-        return (0..<61).compactMap {
+        let today = calendar.startOfDay(for: Date())
+        let start = calendar.date(byAdding: .day, value: -10, to: today)!
+        return (0..<41).compactMap {
             calendar.date(byAdding: .day, value: $0, to: start)
         }
     }
