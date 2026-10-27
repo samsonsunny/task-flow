@@ -90,14 +90,12 @@ struct TodayTaskListView: View {
     }
 
     private var contentHeaderTitle: String {
-        return Self.upcomingHeaderDateFormatter.string(from: selectedDate)
+        Self.upcomingHeaderDateFormatter.string(from: selectedDate)
     }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0)
-                .background(Color(.systemGroupedBackground))
-                .clipped() {
+            VStack(alignment: .leading, spacing: 0) {
                 TodaySegmentPicker(
                     selection: Binding(
                         get: { selectedSegment },
@@ -116,7 +114,8 @@ struct TodayTaskListView: View {
 
                 content
             }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
+            .clipped()
+            .background(Color(.systemBackground).ignoresSafeArea())
             .overlay(alignment: .top) {
                 if let pending = viewModel?.pendingUndo {
                     UndoToast(title: pending.task.safeTitle) {
