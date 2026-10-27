@@ -161,7 +161,7 @@ struct UpcomingAgendaView: View {
                             },
                             onDelete: { onDelete(task) },
                             onTap: { onTapTask(task) },
-                            showsDueDate: true,
+                            showsDueDate: false,
                             showsListName: true
                         )
                         .padding(.horizontal, 20)

@@ -217,7 +217,6 @@ struct TaskRowView: View, Equatable {
                     .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
                     .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
                     .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                    .strikethrough(isCompletedVisualState, color: AppTheme.colors.textSecondary)
                     .lineSpacing(2)
                     .multilineTextAlignment(.leading)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
@@ -236,7 +235,7 @@ struct TaskRowView: View, Equatable {
             if let metadataText {
                 Text(metadataText)
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
+                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : (isOverdue ? AppTheme.colors.error : AppTheme.colors.textSecondary))
                     .opacity(isCompletedVisualState ? 0.82 : 1.0)
                     .lineLimit(1)
             }
@@ -304,6 +303,20 @@ struct TaskRowView: View, Equatable {
         return nil
     }
 
+    private var isOverdue: Bool {
+        let now = Date()
+        let calendar = Calendar.current
+        guard let dueDate = task.dueDate else { return false }
+        if isCompletedVisualState { return false }
+        if hasTime {
+            return dueDate < now
+        } else {
+            let dueStart = calendar.startOfDay(for: dueDate)
+            let todayStart = calendar.startOfDay(for: now)
+            return dueStart < todayStart
+        }
+    }
+
     private var metadataText: String? {
         var components: [String] = []
 
@@ -323,9 +336,7 @@ struct TaskRowView: View, Equatable {
             components.append(groupDisplayName)
         }
 
-        if showsListName {
-            components.append(task.listName)
-        }
+        // List name removed
 
         if !subtaskSummary.isEmpty {
             components.append(subtaskSummary.displayText)

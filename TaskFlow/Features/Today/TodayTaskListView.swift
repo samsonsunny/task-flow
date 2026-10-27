@@ -19,7 +19,7 @@ struct TodayTaskListView: View {
         get { TodaySegment(rawValue: selectedSegmentRaw) ?? .work }
         set { selectedSegmentRaw = newValue.rawValue }
     }
-    @AppStorage("today.selectedFilter") private var selectedFilter: TimeFilter = .today
+    private let selectedFilter: TimeFilter = .upcoming
     @AppStorage("today.selectedDate") private var selectedDateTimestamp: Double = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
     @State private var isCalendarPresented = false
     
@@ -40,8 +40,6 @@ struct TodayTaskListView: View {
     }
 
     enum TimeFilter: String, CaseIterable {
-        case today = "Today"
-        case overdue = "Overdue"
         case upcoming = "Upcoming"
     }
 
@@ -61,73 +59,58 @@ struct TodayTaskListView: View {
         return formatter
     }()
 
+    private func hasIndicator(for segment: TodaySegment) -> Bool {
+        let targetName = segment == .work ? AreaNames.work : AreaNames.personal
+        var targetGroup: ReminderListGroup? = groups.first(where: { $0.name == targetName || ($0.name == "Home" && targetName == AreaNames.personal) })
+        if targetGroup == nil {
+            targetGroup = groups.first(where: { $0.isLocked && ((segment == .work && $0.name == AreaNames.work) || (segment == .personal && ($0.name == AreaNames.personal || $0.name == "Home"))) })
+        }
+        guard let group = targetGroup else { return false }
+        let now = Date()
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        for task in allTasks {
+            guard !(task.isCompleted ?? false) else { continue }
+            guard task.reminderList?.group?.persistentModelID == group.persistentModelID else { continue }
+            guard let dueDate = task.dueDate else { continue }
+            if task.hasTime == true {
+                if dueDate < now { return true }
+                if calendar.isDate(dueDate, inSameDayAs: now) { return true }
+            } else {
+                let dueStart = calendar.startOfDay(for: dueDate)
+                if dueStart < todayStart { return true }
+                if dueStart == todayStart { return true }
+            }
+        }
+        return false
+    }
+
     private var hasOverdueTasks: Bool {
         !overdueTasks.isEmpty
     }
 
     private var contentHeaderTitle: String {
-        switch selectedFilter {
-        case .today:
-            return Self.contentHeaderDateFormatter.string(from: calendar.startOfDay(for: Date()))
-        case .overdue:
-            return "Overdue tasks"
-        case .upcoming:
-            return Self.upcomingHeaderDateFormatter.string(from: selectedDate)
-        }
+        return Self.upcomingHeaderDateFormatter.string(from: selectedDate)
     }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                TodaySegmentPicker(selection: Binding(
-                    get: { selectedSegment },
-                    set: { selectedSegmentRaw = $0.rawValue }
-                ))
+                TodaySegmentPicker(
+                    selection: Binding(
+                        get: { selectedSegment },
+                        set: { selectedSegmentRaw = $0.rawValue }
+                    ),
+                    workHasIndicator: hasIndicator(for: .work),
+                    personalHasIndicator: hasIndicator(for: .personal)
+                )
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(TimeFilter.allCases, id: \.self) { filter in
-                            Button {
-                                if selectedFilter != filter {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                }
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedFilter = filter
-                                }
-                            } label: {
-                                Text(filter.rawValue)
-                                    .font(.system(size: 18, weight: selectedFilter == filter ? .semibold : .regular))
-                                    .foregroundStyle(selectedFilter == filter ? AppTheme.colors.textPrimary : AppTheme.colors.textSecondary)
-                                    .overlay(alignment: .topTrailing) {
-                                        if filter == .overdue, hasOverdueTasks {
-                                            Circle()
-                                                .fill(AppTheme.colors.error)
-                                                .frame(width: 6, height: 6)
-                                                .offset(x: 8, y: -1)
-                                                .accessibilityHidden(true)
-                                        }
-                                    }
-                                    .frame(minHeight: 36)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .fixedSize()
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
+                TaskListContentHeader(title: contentHeaderTitle, showsDisclosure: true) {
+                    isCalendarPresented = true
                 }
 
-                if selectedFilter == .upcoming {
-                    TaskListContentHeader(title: contentHeaderTitle, showsDisclosure: true) {
-                        isCalendarPresented = true
-                    }
-
-                    WeekStripView(selectedDate: selectedDateBinding)
-                        .padding(.bottom, 14)
-                } else if selectedFilter == .today {
-                    TaskListContentHeader(title: contentHeaderTitle)
-                }
+                WeekStripView(selectedDate: selectedDateBinding)
+                    .padding(.bottom, 14)
 
                 content
             }
@@ -143,7 +126,7 @@ struct TodayTaskListView: View {
             .overlay(alignment: .bottomTrailing) {
                 FloatingAddButton {
                     newTaskConfig = NewTaskSheetConfig(
-                        initialDate: selectedFilter == .upcoming || selectedFilter == .today ? selectedDate : nil,
+                        initialDate: selectedDate,
                         initialListID: defaultListID
                     )
                 }
@@ -161,12 +144,10 @@ struct TodayTaskListView: View {
             refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: .todayRefreshRequested)) { _ in
-            let today = calendar.startOfDay(for: Date())
-            selectedDateTimestamp = today.timeIntervalSince1970
-            viewModel?.selectDate(today)
-            if selectedFilter == .today {
-                refresh()
-            }
+                    let today = calendar.startOfDay(for: Date())
+                    selectedDateTimestamp = today.timeIntervalSince1970
+                    viewModel?.selectDate(today)
+                    refresh()
         }
         .onChange(of: groups) { _, _ in
             refresh()
@@ -180,20 +161,11 @@ struct TodayTaskListView: View {
             updateFilterForSegment()
             refresh()
         }
-        .onChange(of: selectedFilter) { _, newValue in
-            if newValue == .today {
-                let today = calendar.startOfDay(for: Date())
-                selectedDateTimestamp = today.timeIntervalSince1970
-                viewModel?.selectDate(today)
-            }
+
+        .onChange(of: selectedDateTimestamp) { _, _ in
+            viewModel?.selectDate(selectedDate)
             refresh()
         }
-            .onChange(of: selectedDateTimestamp) { _, _ in
-                viewModel?.selectDate(selectedDate)
-                if selectedFilter == .today || selectedFilter == .upcoming {
-                    refresh()
-                }
-            }
         .sheet(item: $newTaskConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
         }
@@ -251,63 +223,20 @@ struct TodayTaskListView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch selectedFilter {
-        case .today:
-            let sections = viewModel?.sections ?? []
-            if sections.isEmpty {
-                ContentUnavailableView(
-                    "No tasks",
-                    systemImage: "sun.max",
-                    description: Text("Tasks due on the selected date will appear here.")
+        UpcomingAgendaView(
+            sections: upcomingAgendaSections,
+            selectedDate: selectedDateBinding,
+            onAddTask: { date in
+                newTaskConfig = NewTaskSheetConfig(
+                    initialDate: date,
+                    initialListID: defaultListID
                 )
-            } else {
-                TodayTaskList(
-                    tasks: sections.flatMap { $0.tasks },
-                    onToggleCompletion: {
-                        Haptics.impact(.light)
-                        viewModel?.toggleCompletion(for: $0)
-                    },
-                    onDelete: { viewModel?.delete($0) },
-                    onTap: { editingTask = $0 },
-                    onRefresh: refresh
-                )
-            }
-        case .overdue:
-            let tasks = overdueTasks
-            if tasks.isEmpty {
-                ContentUnavailableView(
-                    "No overdue tasks",
-                    systemImage: "exclamationmark.circle",
-                    description: Text("Tasks past their due date will appear here.")
-                )
-            } else {
-                TodayTaskList(
-                    tasks: tasks,
-                    onToggleCompletion: {
-                        Haptics.impact(.light)
-                        viewModel?.toggleCompletion(for: $0)
-                    },
-                    onDelete: { viewModel?.delete($0) },
-                    onTap: { editingTask = $0 },
-                    onRefresh: refresh
-                )
-            }
-        case .upcoming:
-            UpcomingAgendaView(
-                sections: upcomingAgendaSections,
-                selectedDate: selectedDateBinding,
-                onAddTask: { date in
-                    newTaskConfig = NewTaskSheetConfig(
-                        initialDate: date,
-                        initialListID: defaultListID
-                    )
-                },
-                onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
-                onDelete: { viewModel?.delete($0) },
-                onTapTask: { editingTask = $0 },
-                onRefresh: refresh
-            )
-        }
+            },
+            onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+            onDelete: { viewModel?.delete($0) },
+            onTapTask: { editingTask = $0 },
+            onRefresh: refresh
+        )
     }
 
     private var targetGroupID: PersistentIdentifier? {
@@ -326,6 +255,18 @@ struct TodayTaskListView: View {
     private func matchesArea(_ task: TaskItem) -> Bool {
         guard let targetGroupID else { return true }
         return task.reminderList?.group?.persistentModelID == targetGroupID
+    }
+
+    private func isOverdue(_ task: TaskItem) -> Bool {
+        let now = Date()
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        guard let dueDate = task.dueDate else { return false }
+        if task.hasTime == true {
+            return dueDate < now
+        } else {
+            return calendar.startOfDay(for: dueDate) < todayStart
+        }
     }
 
     private var overdueTasks: [TaskItem] {

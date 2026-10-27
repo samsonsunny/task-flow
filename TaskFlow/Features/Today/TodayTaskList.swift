@@ -11,13 +11,24 @@ struct TodayTaskList: View {
     var body: some View {
         List {
             ForEach(tasks) { task in
+                let calendar = Calendar.current
+                let now = Date()
+                let todayStart = calendar.startOfDay(for: now)
+                let isOverdueTask: Bool = {
+                    guard let dueDate = task.dueDate, !(task.isCompleted ?? false) else { return false }
+                    if task.hasTime == true {
+                        return dueDate < now
+                    } else {
+                        return calendar.startOfDay(for: dueDate) < todayStart
+                    }
+                }()
                 TaskRowView(
                     task: task,
                     isCompletedVisualState: task.isCompleted ?? false,
                     onToggleCompletion: { onToggleCompletion(task) },
                     onDelete: { onDelete(task) },
                     onTap: { onTap(task) },
-                    showsDueDate: true,
+                    showsDueDate: isOverdueTask,
                     showsListName: true,
                     showsGroupName: false,
                     groupNameOverride: nil
