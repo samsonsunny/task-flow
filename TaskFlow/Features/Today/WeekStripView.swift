@@ -34,11 +34,9 @@ struct WeekStripView: View {
     }()
 
     private var weekDays: [Date] {
-        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: selectedDate)?.start else {
-            return [calendar.startOfDay(for: selectedDate)]
-        }
-        return (0..<7).compactMap {
-            calendar.date(byAdding: .day, value: $0, to: weekStart)
+        let start = calendar.startOfDay(for: selectedDate)
+        return (0..<4).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: start)
         }
     }
 
@@ -105,7 +103,7 @@ struct WeekStripView: View {
               abs(horizontal) > abs(value.translation.height)
         else { return }
 
-        let dayOffset = horizontal < 0 ? 7 : -7
+        let dayOffset = horizontal < 0 ? 4 : -4
         guard let newDate = calendar.date(byAdding: .day, value: dayOffset, to: selectedDate) else {
             return
         }

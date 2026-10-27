@@ -292,11 +292,9 @@ struct TodayTaskListView: View {
     }
 
     private var upcomingAgendaSections: [UpcomingDaySection] {
-        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: selectedDate)?.start else {
-            return []
-        }
-        let days = (0..<7).compactMap {
-            calendar.date(byAdding: .day, value: $0, to: weekStart)
+        let start = calendar.startOfDay(for: selectedDate)
+        let days = (0..<4).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: start)
         }
         let daySet = Set(days)
         var tasksByDay: [Date: [TaskItem]] = [:]
