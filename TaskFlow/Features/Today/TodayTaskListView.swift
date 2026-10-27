@@ -300,17 +300,45 @@ struct TodayTaskListView: View {
         }
         let daySet = Set(days)
         var tasksByDay: [Date: [TaskItem]] = [:]
+        let now = Date()
+        let todayStart = calendar.startOfDay(for: now)
 
         for task in allTasks {
             guard matchesArea(task) else { continue }
+            guard !(task.isCompleted ?? false) else { continue }
             guard let dueDate = task.dueDate else { continue }
             let dueStart = calendar.startOfDay(for: dueDate)
-            guard daySet.contains(dueStart) else { continue }
-            tasksByDay[dueStart, default: []].append(task)
+
+            // Include in its due date section if it's in the week
+            if daySet.contains(dueStart) {
+                tasksByDay[dueStart, default: []].append(task)
+            }
+
+            // Also include overdue tasks in today section
+            var isOverdueTask = false
+            if task.hasTime == true {
+                if dueDate < now {
+                    isOverdueTask = true
+                }
+            } else {
+                if dueStart < todayStart {
+                    isOverdueTask = true
+                }
+            }
+            if isOverdueTask {
+                tasksByDay[todayStart, default: []].append(task)
+            }
         }
 
         return days.map { day in
-            let tasks = (tasksByDay[day] ?? []).sorted { lhs, rhs in
+            let tasks = (tasksByDay[day] ?? [])
+            // Remove duplicates within same day while preserving order preference
+            var seen = Set<PersistentIdentifier>()
+            let unique = tasks.filter { task in
+                if seen.contains(task.persistentModelID) { return false }
+                seen.insert(task.persistentModelID)
+                return true
+            }.sorted { lhs, rhs in
                 let lhsDate = lhs.dueDate ?? .distantFuture
                 let rhsDate = rhs.dueDate ?? .distantFuture
                 if lhsDate != rhsDate { return lhsDate < rhsDate }
@@ -319,7 +347,7 @@ struct TodayTaskListView: View {
                 if lhsCreated != rhsCreated { return lhsCreated < rhsCreated }
                 return (lhs.taskId ?? "") < (rhs.taskId ?? "")
             }
-            return UpcomingDaySection(date: day, tasks: tasks)
+            return UpcomingDaySection(date: day, tasks: unique)
         }
     }
 
