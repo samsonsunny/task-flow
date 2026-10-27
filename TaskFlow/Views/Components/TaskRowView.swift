@@ -210,11 +210,11 @@ struct TaskRowView: View, Equatable {
         .padding(.horizontal, 16)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(AppTheme.colors.background)
+                .fill(Color(.secondarySystemGroupedBackground))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(AppTheme.colors.textTertiary.opacity(0.12), lineWidth: 1)
+                .stroke(Color(.separator).opacity(0.25), lineWidth: 1)
         )
     }
 
