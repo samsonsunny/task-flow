@@ -99,12 +99,17 @@ struct TaskFlowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(appState)
-                .onAppear {
-                    let context = ModelContext(sharedModelContainer)
-                    NotificationService.shared.reschedulePendingOnLaunch(modelContext: context)
-                }
+            ZStack {
+                AppTheme.colors.pageBackground
+                    .ignoresSafeArea()
+
+                ContentView()
+                    .environment(appState)
+                    .onAppear {
+                        let context = ModelContext(sharedModelContainer)
+                        NotificationService.shared.reschedulePendingOnLaunch(modelContext: context)
+                    }
+            }
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, phase in

@@ -5,6 +5,11 @@ import SwiftUI
 struct AppColors {
     // Backgrounds / Surfaces
     static let appBackground: Color = Color(.systemGroupedBackground)
+    /// Page background: #F2F3F5 in light mode, #000000 in dark mode.
+    static let pageBackground: Color = adaptiveColor(
+        light: UIColor(red: 0xF2 / 255, green: 0xF3 / 255, blue: 0xF5 / 255, alpha: 1),
+        dark: .black
+    )
     static let secondaryBackground: Color = Color(.secondarySystemGroupedBackground)
     static let background: Color = Color(.systemBackground)
 
@@ -32,9 +37,22 @@ struct AppColors {
     static let border: Color = Color(.separator)
     static let borderSubtle: Color = Color(.separator).opacity(0.5)
     static let divider: Color = Color(.separator)
+    /// Card border: #E5E5EA in light mode, #303034 in dark mode.
+    static let cardBorder: Color = adaptiveColor(
+        light: UIColor(red: 0xE5 / 255, green: 0xE5 / 255, blue: 0xEA / 255, alpha: 1),
+        dark: UIColor(red: 0x30 / 255, green: 0x30 / 255, blue: 0x34 / 255, alpha: 1)
+    )
 
     // Status
     static let success: Color = .green
     static let warning: Color = .orange
     static let error: Color = .red
+
+    private static func adaptiveColor(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? dark.resolvedColor(with: traits)
+                : light.resolvedColor(with: traits)
+        })
+    }
 }

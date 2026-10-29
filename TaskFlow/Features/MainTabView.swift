@@ -15,11 +15,20 @@ struct MainTabView: View {
         case more
     }
 
+    @Environment(AppState.self) private var appState
     @State private var selectedTab: AppTab = .today
 
     var body: some View {
         MainTabBarController(
             selection: $selectedTab,
+            onTabReselected: { tab in
+                switch tab {
+                case .today: appState.requestTodayReset()
+                case .work: appState.requestScrollToTop(id: AreaNames.work)
+                case .personal: appState.requestScrollToTop(id: AreaNames.personal)
+                case .more: appState.requestScrollToTop(id: "more")
+                }
+            },
             todayView: { TodayTaskListView() },
             workView: { AreaTasksView(areaName: AreaNames.work, storageKey: AreaNames.work) },
             personalView: { AreaTasksView(areaName: AreaNames.personal, storageKey: AreaNames.personal) },
@@ -31,6 +40,7 @@ struct MainTabView: View {
 
 struct MainTabBarController: UIViewControllerRepresentable {
     @Binding var selection: MainTabView.AppTab
+    let onTabReselected: (MainTabView.AppTab) -> Void
     let todayView: () -> TodayTaskListView
     let workView: () -> AreaTasksView
     let personalView: () -> AreaTasksView
@@ -82,10 +92,10 @@ struct MainTabBarController: UIViewControllerRepresentable {
         }
 
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
-            if tabBarController.selectedViewController == viewController && tabBarController.selectedIndex == 0 {
+            if tabBarController.selectedViewController == viewController {
                 let generator = UISelectionFeedbackGenerator()
                 generator.selectionChanged()
-                NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
+                parent.onTabReselected(Self.tab(for: tabBarController.selectedIndex))
                 return false
             }
             return true
@@ -97,13 +107,12 @@ struct MainTabBarController: UIViewControllerRepresentable {
                 if parent.selection == .today {
                     let generator = UISelectionFeedbackGenerator()
                     generator.selectionChanged()
-                    NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
+                    parent.onTabReselected(.today)
                     return
                 }
                 parent.selection = .today
                 let generator = UISelectionFeedbackGenerator()
                 generator.selectionChanged()
-                NotificationCenter.default.post(name: .todayRefreshRequested, object: nil)
             case 1:
                 parent.selection = .work
                 let generator = UISelectionFeedbackGenerator()
@@ -117,6 +126,15 @@ struct MainTabBarController: UIViewControllerRepresentable {
                 let generator = UISelectionFeedbackGenerator()
                 generator.selectionChanged()
             default: break
+            }
+        }
+
+        private static func tab(for index: Int) -> MainTabView.AppTab {
+            switch index {
+            case 0: .today
+            case 1: .work
+            case 2: .personal
+            default: .more
             }
         }
     }

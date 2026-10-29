@@ -32,6 +32,7 @@ enum AreaDisplayMode: String, CaseIterable, Identifiable {
 /// columns changes the task's list.
 struct AreaTasksView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
 
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
     @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
@@ -175,35 +176,60 @@ struct AreaTasksView: View {
 
     @ViewBuilder
     private var listContent: some View {
-        if viewModel?.tasks.isEmpty ?? true {
-            ContentUnavailableView(
-                "No \(displayName.lowercased()) tasks",
-                systemImage: areaName == AreaNames.work ? "briefcase" : "house",
-                description: Text("Tasks in your \(areaName) lists will appear here.")
-            )
-        } else {
-            List {
-                ForEach(viewModel?.tasks ?? []) { task in
-                    TaskRowView(
-                        task: task,
-                        isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: {
-                            Haptics.impact(.light)
-                            viewModel?.toggleCompletion(for: task)
-                        },
-                        onDelete: { viewModel?.delete(task) },
-                        onTap: { editingTask = task },
-                        showsDueDate: true,
-                        showsListName: true
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+        Group {
+            if viewModel?.tasks.isEmpty ?? true {
+                ContentUnavailableView(
+                    "No \(displayName.lowercased()) tasks",
+                    systemImage: areaName == AreaNames.work ? "briefcase" : "house",
+                    description: Text("Tasks in your \(areaName) lists will appear here.")
+                )
+            } else {
+                let tasks = viewModel?.tasks ?? []
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                                TaskRowView(
+                                    task: task,
+                                    isCompletedVisualState: task.isCompleted ?? false,
+                                    onToggleCompletion: {
+                                        Haptics.impact(.light)
+                                        viewModel?.toggleCompletion(for: task)
+                                    },
+                                    onDelete: { viewModel?.delete(task) },
+                                    onTap: { editingTask = task },
+                                    showsDueDate: true,
+                                    showsListName: true,
+                                    showsRowBackground: false
+                                )
+
+                                if index < tasks.count - 1 {
+                                    Divider()
+                                        .padding(.leading, 54)
+                                }
+                            }
+                        }
+                        .id("areaListTop")
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
+                        .background(
+                            RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
+                                .fill(Color(.secondarySystemGroupedBackground))
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 2)
+                        .padding(.bottom, 100)
+                    }
+                    .scrollIndicators(.hidden)
+                    .refreshable { refresh() }
+                    .onChange(of: appState.scrollToTopRequestIDs[areaName] ?? 0) { _, _ in
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo("areaListTop", anchor: .top)
+                        }
+                    }
                 }
             }
-            .listStyle(.plain)
-            .contentMargins(.bottom, 88, for: .scrollContent)
-            .refreshable { refresh() }
         }
+        .background(AppTheme.colors.pageBackground)
     }
 
     private func bootstrap() {

@@ -7,6 +7,8 @@ final class AppState {
     var pendingCaptureDate: Date?
     private(set) var hasAutoFocusedOnce = false
     private(set) var pendingCaptureFocus = false
+    private(set) var todayResetRequestID = 0
+    private(set) var scrollToTopRequestIDs: [String: Int] = [:]
 
     /// The domain currently being browsed and captured into. Session-scoped: never persisted,
     /// so every launch starts on Work. Only Work and Personal are exposed; extra groups are
@@ -69,6 +71,14 @@ final class AppState {
 
     func notifyMutation() {
         mutationCount += 1
+    }
+
+    func requestTodayReset() {
+        todayResetRequestID += 1
+    }
+
+    func requestScrollToTop(id: String) {
+        scrollToTopRequestIDs[id, default: 0] += 1
     }
 
     func markAutoFocusedOnce() {

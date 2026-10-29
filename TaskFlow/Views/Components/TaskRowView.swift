@@ -43,6 +43,7 @@ struct TaskRowView: View, Equatable {
     var onSelectToggle: (() -> Void)? = nil
     var isExpanded: Bool = false
     var onToggleExpand: (() -> Void)? = nil
+    var showsRowBackground: Bool = true
 
     private static let cachedDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -56,6 +57,7 @@ struct TaskRowView: View, Equatable {
             && lhs.subtaskSummary == rhs.subtaskSummary
             && lhs.isSelecting == rhs.isSelecting
             && lhs.isSelected == rhs.isSelected
+            && lhs.showsRowBackground == rhs.showsRowBackground
     }
     
     var body: some View {
@@ -158,7 +160,7 @@ struct TaskRowView: View, Equatable {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .center, spacing: 16) {
             if isSelecting {
                 Button {
                     Haptics.selection()
@@ -206,16 +208,26 @@ struct TaskRowView: View, Equatable {
                 .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
             }
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 16)
         .padding(.horizontal, 16)
-        .background(
+        .background(rowBackground)
+        .overlay(rowBorder)
+    }
+
+    @ViewBuilder
+    private var rowBackground: some View {
+        if showsRowBackground {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .overlay(
+        }
+    }
+
+    @ViewBuilder
+    private var rowBorder: some View {
+        if showsRowBackground {
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(.separator).opacity(0.25), lineWidth: 1)
-        )
+                .stroke(AppTheme.colors.cardBorder, lineWidth: 1)
+        }
     }
 
     @ViewBuilder

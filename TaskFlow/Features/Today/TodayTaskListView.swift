@@ -1,12 +1,9 @@
 import SwiftUI
 import SwiftData
 
-extension Notification.Name {
-    static let todayRefreshRequested = Notification.Name("todayRefreshRequested")
-}
-
 struct TodayTaskListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
     @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
@@ -22,7 +19,10 @@ struct TodayTaskListView: View {
     private let selectedFilter: TimeFilter = .upcoming
     @AppStorage("today.selectedDate") private var selectedDateTimestamp: Double = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
     @State private var isCalendarPresented = false
-    
+    @State private var scrollRequestToken = 0
+    @State private var lastHandledTodayResetID = 0
+    @State private var hasPerformedInitialSetup = false
+
     private var selectedDate: Date {
         Date(timeIntervalSince1970: selectedDateTimestamp)
     }
@@ -109,13 +109,13 @@ struct TodayTaskListView: View {
                     isCalendarPresented = true
                 }
 
-                WeekStripView(selectedDate: selectedDateBinding)
+                WeekStripView(selectedDate: selectedDateBinding, scrollRequestToken: scrollRequestToken)
                     .padding(.bottom, 14)
 
                 content
             }
             .clipped()
-            .background(Color(.systemBackground).ignoresSafeArea())
+            .background(AppTheme.colors.pageBackground.ignoresSafeArea())
             .overlay(alignment: .top) {
                 if let pending = viewModel?.pendingUndo {
                     UndoToast(title: pending.task.safeTitle) {
@@ -141,18 +141,14 @@ struct TodayTaskListView: View {
         }
         .onAppear {
             bootstrap()
+            performInitialSetupIfNeeded()
             updateFilterForSegment()
             viewModel?.selectDate(selectedDate)
             refresh()
+            handleTodayResetIfNeeded()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .todayRefreshRequested)) { _ in
-            let today = calendar.startOfDay(for: Date())
-            selectedDateTimestamp = today.timeIntervalSince1970
-            viewModel?.selectDate(today)
-            refresh()
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: NSNotification.Name("scrollTodayToStart"), object: nil)
-            }
+        .onChange(of: appState.todayResetRequestID) { _, _ in
+            handleTodayResetIfNeeded()
         }
         .onChange(of: groups) { _, _ in
             refresh()
@@ -187,7 +183,7 @@ struct TodayTaskListView: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 isCalendarPresented = false
             }
-                .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
             }
             .presentationDetents([.medium, .large])
         }
@@ -231,6 +227,7 @@ struct TodayTaskListView: View {
         UpcomingAgendaView(
             sections: upcomingAgendaSections,
             selectedDate: selectedDateBinding,
+            scrollRequestToken: scrollRequestToken,
             onAddTask: { date in
                 newTaskConfig = NewTaskSheetConfig(
                     initialDate: date,
@@ -359,6 +356,25 @@ struct TodayTaskListView: View {
             viewModel = TodayViewModel(modelContext: modelContext)
         }
         refresh()
+    }
+
+    private func performInitialSetupIfNeeded() {
+        guard !hasPerformedInitialSetup else { return }
+        hasPerformedInitialSetup = true
+        let today = calendar.startOfDay(for: Date())
+        guard selectedDateTimestamp != today.timeIntervalSince1970 else { return }
+        selectedDateTimestamp = today.timeIntervalSince1970
+        scrollRequestToken += 1
+    }
+
+    private func handleTodayResetIfNeeded() {
+        guard appState.todayResetRequestID != lastHandledTodayResetID else { return }
+        lastHandledTodayResetID = appState.todayResetRequestID
+        let today = calendar.startOfDay(for: Date())
+        selectedDateTimestamp = today.timeIntervalSince1970
+        viewModel?.selectDate(today)
+        refresh()
+        scrollRequestToken += 1
     }
 
     private func refresh() {

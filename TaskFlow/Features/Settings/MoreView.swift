@@ -3,6 +3,7 @@ import SwiftData
 
 struct MoreView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
 
     @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
 
@@ -20,22 +21,24 @@ struct MoreView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    ForEach(viewModel?.domains ?? []) { domain in
-                        NavigationLink {
-                            ListsView(groupID: domain.persistentModelID)
-                                .navigationBarTitleDisplayMode(.inline)
-                        } label: {
-                            Label(
-                                areaDisplayName(domain.name),
-                                systemImage: domainIcon(for: domain)
-                            )
+            ScrollViewReader { proxy in
+                Form {
+                    Section {
+                        ForEach(viewModel?.domains ?? []) { domain in
+                            NavigationLink {
+                                ListsView(groupID: domain.persistentModelID)
+                                    .navigationBarTitleDisplayMode(.inline)
+                            } label: {
+                                Label(
+                                    areaDisplayName(domain.name),
+                                    systemImage: domainIcon(for: domain)
+                                )
+                            }
                         }
+                    } header: {
+                        Text("Domains")
                     }
-                } header: {
-                    Text("Domains")
-                }
+                    .id("moreTop")
 
 
 
@@ -116,6 +119,12 @@ struct MoreView: View {
                 }
             }
             .navigationTitle("More")
+            .onChange(of: appState.scrollToTopRequestIDs["more"] ?? 0) { _, _ in
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo("moreTop", anchor: .top)
+                }
+            }
+            }
         }
         .onAppear(perform: bootstrap)
         .onChange(of: groups) { _, _ in refresh() }

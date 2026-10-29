@@ -8,27 +8,39 @@ struct UpcomingDaySection: Identifiable {
     var id: Date { date }
 }
 
+private struct AgendaSectionTopKey: PreferenceKey {
+    static var defaultValue: [Date: CGFloat] = [:]
+    static func reduce(value: inout [Date: CGFloat], nextValue: () -> [Date: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 /// Vertically scrolling week agenda. Each day of the selected week stays visible,
 /// even when it has no tasks, and the selected date is kept in sync with the
 /// week strip above it.
 struct UpcomingAgendaView: View {
     let sections: [UpcomingDaySection]
     @Binding var selectedDate: Date
+    let scrollRequestToken: Int
     let onAddTask: (Date) -> Void
     let onToggleCompletion: (TaskItem) -> Void
     let onDelete: (TaskItem) -> Void
     let onTapTask: (TaskItem) -> Void
     let onRefresh: () -> Void
 
-    @State private var scrollPosition: Date?
-    @State private var isProgrammaticScroll = false
+    @State private var sectionTops: [Date: CGFloat] = [:]
+    @State private var isUserScrolling = false
     @State private var isScrollDrivenSelection = false
+    @State private var lastScrollTop: CGFloat = 0
+    @State private var scrollAnimation = ScrollAnimationController()
+    @State private var hasPerformedInitialScroll = false
 
     private let calendar = Calendar.current
 
     init(
         sections: [UpcomingDaySection],
         selectedDate: Binding<Date>,
+        scrollRequestToken: Int,
         onAddTask: @escaping (Date) -> Void,
         onToggleCompletion: @escaping (TaskItem) -> Void,
         onDelete: @escaping (TaskItem) -> Void,
@@ -37,18 +49,18 @@ struct UpcomingAgendaView: View {
     ) {
         self.sections = sections
         self._selectedDate = selectedDate
+        self.scrollRequestToken = scrollRequestToken
         self.onAddTask = onAddTask
         self.onToggleCompletion = onToggleCompletion
         self.onDelete = onDelete
         self.onTapTask = onTapTask
         self.onRefresh = onRefresh
-        _scrollPosition = State(initialValue: Calendar.current.startOfDay(for: selectedDate.wrappedValue))
     }
 
     private static let headingFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMMM d")
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, d")
         return formatter
     }()
     
@@ -60,45 +72,93 @@ struct UpcomingAgendaView: View {
     }()
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 18) {
-                ForEach(sections) { section in
-                    daySection(section)
-                        .id(section.id)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 18) {
+                    ForEach(sections) { section in
+                        daySection(section)
+                            .id(section.id)
+                    }
+                }
+                .scrollTargetLayout()
+                .padding(.top, 2)
+                .padding(.bottom, 100)
+                .coordinateSpace(.named("agendaContent"))
+                .onPreferenceChange(AgendaSectionTopKey.self) { sectionTops = $0 }
+                .background(ScrollViewLocator(controller: scrollAnimation))
+            }
+            .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, top in
+                lastScrollTop = top
+                if isUserScrolling {
+                    updateSelectionForScroll(top: top)
                 }
             }
-            .scrollTargetLayout()
-            .padding(.top, 2)
-            .padding(.bottom, 100)
-        }
-        .scrollIndicators(.hidden)
-        .scrollPosition(id: $scrollPosition, anchor: .top)
-        .refreshable { onRefresh() }
-        .onChange(of: selectedDate) { _, newValue in
-            if isScrollDrivenSelection {
-                isScrollDrivenSelection = false
-                return
+            .onScrollPhaseChange { _, newPhase in
+                switch newPhase {
+                case .tracking, .interacting, .decelerating:
+                    isUserScrolling = true
+                case .idle:
+                    if isUserScrolling {
+                        updateSelectionForScroll(top: lastScrollTop)
+                    }
+                    isUserScrolling = false
+                case .animating:
+                    isUserScrolling = false
+                }
             }
+            .onAppear {
+                guard !hasPerformedInitialScroll else { return }
+                hasPerformedInitialScroll = true
+                scrollToInitialPosition(proxy: proxy)
+            }
+            .refreshable { onRefresh() }
+            .onChange(of: selectedDate) { _, newValue in
+                if isScrollDrivenSelection {
+                    isScrollDrivenSelection = false
+                    return
+                }
 
-            let day = calendar.startOfDay(for: newValue)
-            guard scrollPosition != day else { return }
+                scrollAgenda(to: newValue, proxy: proxy)
+            }
+            .onChange(of: scrollRequestToken) { _, _ in
+                scrollAgenda(to: calendar.startOfDay(for: Date()), proxy: proxy)
+            }
+        }
+    }
 
-            isProgrammaticScroll = true
-            withAnimation(.easeInOut(duration: 0.25)) {
-                scrollPosition = day
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                isProgrammaticScroll = false
+    private func scrollToInitialPosition(proxy: ScrollViewProxy) {
+        for delay in [0.0, 0.12] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                let day = calendar.startOfDay(for: selectedDate)
+                isUserScrolling = false
+                scrollAnimation.halt()
+                proxy.scrollTo(day, anchor: .top)
             }
         }
-        .onChange(of: scrollPosition) { _, newValue in
-            guard !isProgrammaticScroll, let date = newValue else { return }
-            let day = calendar.startOfDay(for: date)
-            guard selectedDate != day else { return }
-            Haptics.selection()
-            isScrollDrivenSelection = true
-            selectedDate = day
+    }
+
+    private func scrollAgenda(to date: Date, proxy: ScrollViewProxy) {
+        let day = calendar.startOfDay(for: date)
+        isUserScrolling = false
+        scrollAnimation.halt()
+        withAnimation(.easeInOut(duration: 0.25)) {
+            proxy.scrollTo(day, anchor: .top)
         }
+    }
+
+    private func updateSelectionForScroll(top: CGFloat) {
+        guard let date = sectionTops
+            .filter({ $0.value <= top })
+            .max(by: { $0.value < $1.value })?
+            .key else { return }
+        let day = calendar.startOfDay(for: date)
+        guard selectedDate != day else { return }
+        Haptics.selection()
+        isScrollDrivenSelection = true
+        selectedDate = day
     }
 
     @ViewBuilder
@@ -108,8 +168,9 @@ struct UpcomingAgendaView: View {
                 let calendar = Calendar.current
                 let isToday = calendar.isDateInToday(section.date)
                 let isTomorrow = calendar.isDateInTomorrow(section.date)
+                let isYesterday = calendar.isDateInYesterday(section.date)
                 let dateText = Self.headingFormatter.string(from: section.date)
-                let headingText = isToday ? "Today · \(dateText)" : isTomorrow ? "Tomorrow · \(dateText)" : dateText
+                let headingText = isToday ? "\(dateText) · Today" : isTomorrow ? "\(dateText) · Tomorrow" : isYesterday ? "\(dateText) · Yesterday" : dateText
                 Text(headingText)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppTheme.colors.textPrimary)
@@ -129,7 +190,7 @@ struct UpcomingAgendaView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : Self.accessibilityFormatter.string(from: section.date))")
+                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : isYesterday ? "Yesterday" : Self.accessibilityFormatter.string(from: section.date))")
             }
             .padding(.horizontal, 20)
 
@@ -137,6 +198,7 @@ struct UpcomingAgendaView: View {
                 let calendar = Calendar.current
                 let isToday = calendar.isDateInToday(section.date)
                 let isTomorrow = calendar.isDateInTomorrow(section.date)
+                let isYesterday = calendar.isDateInYesterday(section.date)
                 Button {
                     Haptics.impact(.light)
                     onAddTask(section.date)
@@ -148,10 +210,10 @@ struct UpcomingAgendaView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 4)
-                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : Self.accessibilityFormatter.string(from: section.date))")
+                .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : isYesterday ? "Yesterday" : Self.accessibilityFormatter.string(from: section.date))")
             } else {
-                VStack(spacing: 2) {
-                    ForEach(section.tasks) { task in
+                VStack(spacing: 0) {
+                    ForEach(Array(section.tasks.enumerated()), id: \.element.id) { index, task in
                         let calendar = Calendar.current
                         let now = Date()
                         let todayStart = calendar.startOfDay(for: now)
@@ -173,13 +235,31 @@ struct UpcomingAgendaView: View {
                             onDelete: { onDelete(task) },
                             onTap: { onTapTask(task) },
                             showsDueDate: isOverdueTask,
-                            showsListName: true
+                            showsListName: true,
+                            showsRowBackground: false
                         )
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 4)
+
+                        if index < section.tasks.count - 1 {
+                            Divider()
+                                .padding(.leading, 54)
+                        }
                     }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .padding(.horizontal, 20)
             }
         }
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: AgendaSectionTopKey.self,
+                    value: [section.date: proxy.frame(in: .named("agendaContent")).minY]
+                )
+            }
+        )
     }
 }
