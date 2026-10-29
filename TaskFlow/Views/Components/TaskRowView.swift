@@ -377,17 +377,18 @@ struct TaskRowView: View, Equatable {
                 Circle()
                     .fill(isCompletedVisualState ? AppTheme.colors.tint.opacity(0.15) : .clear)
                     .frame(width: 22, height: 22)
+                    .scaleEffect(isCompletedVisualState ? 1.09 : 1)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
                 if !isCompletedVisualState {
                     Circle()
-                        .stroke(AppTheme.colors.textTertiary, lineWidth: 1.2)
+                        .stroke(AppTheme.colors.tint, lineWidth: 1)
                         .frame(width: 22, height: 22)
                         .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
                 }
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(AppTheme.colors.tint)
                     .opacity(isCompletedVisualState ? 1 : 0)
                     .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)

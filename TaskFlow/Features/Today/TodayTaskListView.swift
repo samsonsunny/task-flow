@@ -95,49 +95,50 @@ struct TodayTaskListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                TodaySegmentPicker(
-                    selection: Binding(
-                        get: { selectedSegment },
-                        set: { selectedSegmentRaw = $0.rawValue }
-                    ),
-                    workHasIndicator: hasIndicator(for: .work),
-                    personalHasIndicator: hasIndicator(for: .personal)
-                )
+            content
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        TodaySegmentPicker(
+                            selection: Binding(
+                                get: { selectedSegment },
+                                set: { selectedSegmentRaw = $0.rawValue }
+                            ),
+                            workHasIndicator: hasIndicator(for: .work),
+                            personalHasIndicator: hasIndicator(for: .personal)
+                        )
 
-                TaskListContentHeader(title: contentHeaderTitle, showsDisclosure: true) {
-                    isCalendarPresented = true
-                }
+                        TaskListContentHeader(title: contentHeaderTitle, showsDisclosure: true) {
+                            isCalendarPresented = true
+                        }
 
-                WeekStripView(selectedDate: selectedDateBinding, scrollRequestToken: scrollRequestToken)
-                    .padding(.bottom, 14)
-
-                content
-            }
-            .clipped()
-            .background(AppTheme.colors.pageBackground.ignoresSafeArea())
-            .overlay(alignment: .top) {
-                if let pending = viewModel?.pendingUndo {
-                    UndoToast(title: pending.task.safeTitle) {
-                        viewModel?.undoCompletion()
+                        WeekStripView(selectedDate: selectedDateBinding, scrollRequestToken: scrollRequestToken)
+                            .padding(.bottom, 14)
                     }
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .background(AppTheme.colors.pageBackground)
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                FloatingAddButton {
-                    newTaskConfig = NewTaskSheetConfig(
-                        initialDate: selectedDate,
-                        initialListID: defaultListID
-                    )
+                .background(AppTheme.colors.pageBackground.ignoresSafeArea())
+                .overlay(alignment: .top) {
+                    if let pending = viewModel?.pendingUndo {
+                        UndoToast(title: pending.task.safeTitle) {
+                            viewModel?.undoCompletion()
+                        }
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
-            }
-            .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(item: $editingTask) { task in
-                ReminderEditorView(task: task, embedInNavigationStack: false)
-            }
+                .overlay(alignment: .bottomTrailing) {
+                    FloatingAddButton {
+                        newTaskConfig = NewTaskSheetConfig(
+                            initialDate: selectedDate,
+                            initialListID: defaultListID
+                        )
+                    }
+                }
+                .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(item: $editingTask) { task in
+                    ReminderEditorView(task: task, embedInNavigationStack: false)
+                }
         }
         .onAppear {
             bootstrap()

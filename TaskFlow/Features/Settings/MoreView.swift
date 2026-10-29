@@ -119,6 +119,8 @@ struct MoreView: View {
                 }
             }
             .navigationTitle("More")
+            .scrollContentBackground(.hidden)
+            .background(AppTheme.colors.pageBackground.ignoresSafeArea())
             .onChange(of: appState.scrollToTopRequestIDs["more"] ?? 0) { _, _ in
                 withAnimation(.easeInOut(duration: 0.25)) {
                     proxy.scrollTo("moreTop", anchor: .top)

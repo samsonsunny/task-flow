@@ -229,7 +229,7 @@ struct AreaTasksView: View {
                 }
             }
         }
-        .background(AppTheme.colors.pageBackground)
+        .background(AppTheme.colors.pageBackground.ignoresSafeArea())
     }
 
     private func bootstrap() {

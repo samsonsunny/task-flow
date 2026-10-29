@@ -40,7 +40,7 @@ struct AreaBoardView: View {
                 .padding(.vertical, 8)
             }
         }
-        .background(AppTheme.colors.appBackground)
+        .background(AppTheme.colors.pageBackground.ignoresSafeArea())
     }
 
     private func columnWidth(for availableWidth: CGFloat) -> CGFloat {
