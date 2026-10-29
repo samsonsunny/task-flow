@@ -20,6 +20,9 @@ struct TodayTaskListView: View {
     @AppStorage("today.selectedDate") private var selectedDateTimestamp: Double = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
     @State private var isCalendarPresented = false
     @State private var scrollRequestToken = 0
+    @State private var agendaTapToken = 0
+    @State private var agendaTapDate = Date()
+    @State private var agendaScrollController = ScrollAnimationController()
     @State private var lastHandledTodayResetID = 0
     @State private var hasPerformedInitialSetup = false
 
@@ -111,7 +114,15 @@ struct TodayTaskListView: View {
                             isCalendarPresented = true
                         }
 
-                        WeekStripView(selectedDate: selectedDateBinding, scrollRequestToken: scrollRequestToken)
+                        WeekStripView(
+                            selectedDate: selectedDateBinding,
+                            scrollRequestToken: scrollRequestToken,
+                            onDayTap: { date in
+                                agendaScrollController.halt()
+                                agendaTapDate = date
+                                agendaTapToken += 1
+                            }
+                        )
                             .padding(.bottom, 14)
                     }
                     .background(AppTheme.colors.pageBackground)
@@ -229,6 +240,9 @@ struct TodayTaskListView: View {
             sections: upcomingAgendaSections,
             selectedDate: selectedDateBinding,
             scrollRequestToken: scrollRequestToken,
+            dayTapToken: agendaTapToken,
+            dayTapDate: agendaTapDate,
+            scrollController: agendaScrollController,
             onAddTask: { date in
                 newTaskConfig = NewTaskSheetConfig(
                     initialDate: date,

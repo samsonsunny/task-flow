@@ -10,6 +10,10 @@ import UIKit
 final class ScrollAnimationController {
     private weak var anchorView: UIView?
 
+    var scrollView: UIScrollView? {
+        anchorView?.enclosingScrollView
+    }
+
     func attach(to view: UIView) {
         anchorView = view
     }
@@ -26,6 +30,12 @@ final class ScrollAnimationController {
         }
 
         scrollView.layer.removeAllAnimations()
+
+        if scrollView.isDecelerating {
+            scrollView.isScrollEnabled = false
+            scrollView.isScrollEnabled = true
+        }
+
         scrollView.setContentOffset(visibleOffset, animated: false)
     }
 }

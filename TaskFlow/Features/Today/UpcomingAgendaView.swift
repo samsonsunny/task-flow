@@ -22,6 +22,9 @@ struct UpcomingAgendaView: View {
     let sections: [UpcomingDaySection]
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
+    let dayTapToken: Int
+    let dayTapDate: Date
+    let scrollController: ScrollAnimationController
     let onAddTask: (Date) -> Void
     let onToggleCompletion: (TaskItem) -> Void
     let onDelete: (TaskItem) -> Void
@@ -32,8 +35,8 @@ struct UpcomingAgendaView: View {
     @State private var isUserScrolling = false
     @State private var isScrollDrivenSelection = false
     @State private var lastScrollTop: CGFloat = 0
-    @State private var scrollAnimation = ScrollAnimationController()
     @State private var hasPerformedInitialScroll = false
+    @State private var pendingExactScrollDate: Date?
 
     private let calendar = Calendar.current
 
@@ -41,6 +44,9 @@ struct UpcomingAgendaView: View {
         sections: [UpcomingDaySection],
         selectedDate: Binding<Date>,
         scrollRequestToken: Int,
+        dayTapToken: Int,
+        dayTapDate: Date,
+        scrollController: ScrollAnimationController,
         onAddTask: @escaping (Date) -> Void,
         onToggleCompletion: @escaping (TaskItem) -> Void,
         onDelete: @escaping (TaskItem) -> Void,
@@ -50,6 +56,9 @@ struct UpcomingAgendaView: View {
         self.sections = sections
         self._selectedDate = selectedDate
         self.scrollRequestToken = scrollRequestToken
+        self.dayTapToken = dayTapToken
+        self.dayTapDate = dayTapDate
+        self.scrollController = scrollController
         self.onAddTask = onAddTask
         self.onToggleCompletion = onToggleCompletion
         self.onDelete = onDelete
@@ -84,8 +93,8 @@ struct UpcomingAgendaView: View {
                 .padding(.top, 2)
                 .padding(.bottom, 100)
                 .coordinateSpace(.named("agendaContent"))
-                .onPreferenceChange(AgendaSectionTopKey.self) { sectionTops = $0 }
-                .background(ScrollViewLocator(controller: scrollAnimation))
+                .onPreferenceChange(AgendaSectionTopKey.self) { handleSectionTops($0) }
+                .background(ScrollViewLocator(controller: scrollController))
             }
             .scrollIndicators(.hidden)
             .onScrollGeometryChange(for: CGFloat.self) { geometry in
@@ -126,6 +135,15 @@ struct UpcomingAgendaView: View {
             .onChange(of: scrollRequestToken) { _, _ in
                 scrollAgenda(to: calendar.startOfDay(for: Date()), proxy: proxy)
             }
+            .onChange(of: dayTapToken) { _, _ in
+                let day = calendar.startOfDay(for: dayTapDate)
+                isUserScrolling = false
+                if calendar.startOfDay(for: selectedDate) != day {
+                    isScrollDrivenSelection = true
+                    selectedDate = day
+                }
+                scrollAgenda(to: day, proxy: proxy, animated: false)
+            }
         }
     }
 
@@ -134,24 +152,56 @@ struct UpcomingAgendaView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 let day = calendar.startOfDay(for: selectedDate)
                 isUserScrolling = false
-                scrollAnimation.halt()
+                scrollController.halt()
                 proxy.scrollTo(day, anchor: .top)
             }
         }
     }
 
-    private func scrollAgenda(to date: Date, proxy: ScrollViewProxy) {
+    private func scrollAgenda(to date: Date, proxy: ScrollViewProxy, animated: Bool = true) {
         let day = calendar.startOfDay(for: date)
         isUserScrolling = false
-        scrollAnimation.halt()
-        withAnimation(.easeInOut(duration: 0.25)) {
+        scrollController.halt()
+        setExactOffset(for: day, animated: animated, proxy: proxy)
+    }
+
+    private func setExactOffset(for day: Date, animated: Bool, proxy: ScrollViewProxy) {
+        guard let scrollView = scrollController.scrollView else {
+            pendingExactScrollDate = day
             proxy.scrollTo(day, anchor: .top)
+            return
         }
+
+        guard let top = sectionTops[day] else {
+            pendingExactScrollDate = day
+            proxy.scrollTo(day, anchor: .top)
+            return
+        }
+
+        applyOffset(top, in: scrollView, animated: animated)
+        pendingExactScrollDate = nil
+    }
+
+    private func handleSectionTops(_ tops: [Date: CGFloat]) {
+        sectionTops = tops
+        guard let pending = pendingExactScrollDate,
+              let top = tops[pending],
+              let scrollView = scrollController.scrollView else { return }
+        pendingExactScrollDate = nil
+        applyOffset(top, in: scrollView, animated: false)
+    }
+
+    private func applyOffset(_ top: CGFloat, in scrollView: UIScrollView, animated: Bool) {
+        let insetTop = scrollView.adjustedContentInset.top
+        let maxY = scrollView.contentSize.height - scrollView.bounds.height + scrollView.adjustedContentInset.bottom
+        let y = min(max(-insetTop, top - insetTop), maxY)
+        scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: y), animated: animated)
+        lastScrollTop = top
     }
 
     private func updateSelectionForScroll(top: CGFloat) {
         guard let date = sectionTops
-            .filter({ $0.value <= top })
+            .filter({ $0.value <= top + 1 })
             .max(by: { $0.value < $1.value })?
             .key else { return }
         let day = calendar.startOfDay(for: date)

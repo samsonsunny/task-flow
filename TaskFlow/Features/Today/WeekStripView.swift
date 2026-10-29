@@ -8,6 +8,7 @@ import SwiftUI
 struct WeekStripView: View {
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
+    let onDayTap: (Date) -> Void
 
     @State private var scrollAnimation = ScrollAnimationController()
 
@@ -106,9 +107,11 @@ struct WeekStripView: View {
 
         return Button {
             let startOfDay = calendar.startOfDay(for: date)
-            guard startOfDay != selectedDate else { return }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            selectedDate = startOfDay
+            onDayTap(startOfDay)
+            if startOfDay != selectedDate {
+                selectedDate = startOfDay
+            }
         } label: {
             VStack(spacing: 5) {
                 Text((specialLabel ?? Self.weekdayFormatter.string(from: date)).uppercased())
