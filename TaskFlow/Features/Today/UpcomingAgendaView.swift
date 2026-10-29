@@ -15,13 +15,14 @@ private struct AgendaSectionTopKey: PreferenceKey {
     }
 }
 
-/// Vertically scrolling week agenda. Each day of the selected week stays visible,
-/// even when it has no tasks, and the selected date is kept in sync with the
-/// week strip above it.
+/// Vertically scrolling day agenda. Each day in the current date window stays
+/// visible, even when it has no tasks, and the selected date is kept in sync
+/// with the date strip above it.
 struct UpcomingAgendaView: View {
     let sections: [UpcomingDaySection]
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
+    let dateWindowVersion: Int
     let dayTapToken: Int
     let dayTapDate: Date
     let scrollController: ScrollAnimationController
@@ -44,6 +45,7 @@ struct UpcomingAgendaView: View {
         sections: [UpcomingDaySection],
         selectedDate: Binding<Date>,
         scrollRequestToken: Int,
+        dateWindowVersion: Int,
         dayTapToken: Int,
         dayTapDate: Date,
         scrollController: ScrollAnimationController,
@@ -56,6 +58,7 @@ struct UpcomingAgendaView: View {
         self.sections = sections
         self._selectedDate = selectedDate
         self.scrollRequestToken = scrollRequestToken
+        self.dateWindowVersion = dateWindowVersion
         self.dayTapToken = dayTapToken
         self.dayTapDate = dayTapDate
         self.scrollController = scrollController
@@ -134,6 +137,12 @@ struct UpcomingAgendaView: View {
             }
             .onChange(of: scrollRequestToken) { _, _ in
                 scrollAgenda(to: calendar.startOfDay(for: Date()), proxy: proxy)
+            }
+            .onChange(of: dateWindowVersion) { _, _ in
+                sectionTops = [:]
+                pendingExactScrollDate = nil
+                isUserScrolling = false
+                scrollToInitialPosition(proxy: proxy)
             }
             .onChange(of: dayTapToken) { _, _ in
                 let day = calendar.startOfDay(for: dayTapDate)

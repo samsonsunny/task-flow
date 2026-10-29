@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// Compact seven-day calendar strip used by the Upcoming filter.
+/// Compact calendar strip used by the Upcoming filter.
 ///
-/// The visible week always follows the selected date, so tapping a day,
-/// swiping to another week, or jumping from the calendar picker all keep the
-/// selected day highlighted and anchored to the same weekday.
+/// The strip renders the current three-year date window lazily, so tapping a
+/// day, swiping, or jumping from the calendar picker all keep the selected day
+/// highlighted without materializing every date at once.
 struct WeekStripView: View {
+    let days: [Date]
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
+    let dateWindowVersion: Int
     let onDayTap: (Date) -> Void
 
     @State private var scrollAnimation = ScrollAnimationController()
@@ -39,23 +41,16 @@ struct WeekStripView: View {
         return formatter
     }()
 
-    private var weekDays: [Date] {
-        let today = calendar.startOfDay(for: Date())
-        let start = calendar.date(byAdding: .day, value: -10, to: today)!
-        return (0..<41).compactMap {
-            calendar.date(byAdding: .day, value: $0, to: start)
-        }
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Self.cellSpacing) {
-                    ForEach(weekDays, id: \.self) { date in
+                LazyHStack(spacing: Self.cellSpacing) {
+                    ForEach(days, id: \.self) { date in
                         dayCell(for: date)
                             .id(date)
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 20)
                 .background(ScrollViewLocator(controller: scrollAnimation))
             }
@@ -70,6 +65,11 @@ struct WeekStripView: View {
             }
             .onChange(of: scrollRequestToken) { _, _ in
                 scroll(to: calendar.startOfDay(for: Date()), proxy: proxy, animated: true)
+            }
+            .onChange(of: dateWindowVersion) { _, _ in
+                DispatchQueue.main.async {
+                    scroll(to: selectedDate, proxy: proxy, animated: false)
+                }
             }
         }
     }

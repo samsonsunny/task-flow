@@ -25,6 +25,10 @@ struct TodayTaskListView: View {
     @State private var agendaScrollController = ScrollAnimationController()
     @State private var lastHandledTodayResetID = 0
     @State private var hasPerformedInitialSetup = false
+    @State private var dateWindow = TodayDateWindow(anchor: Date())
+    @State private var agendaSections: [UpcomingDaySection] = []
+    @State private var dateWindowVersion = 0
+    @State private var hasPreparedDateWindow = false
 
     private var selectedDate: Date {
         Date(timeIntervalSince1970: selectedDateTimestamp)
@@ -115,8 +119,10 @@ struct TodayTaskListView: View {
                         }
 
                         WeekStripView(
+                            days: dateWindow.days,
                             selectedDate: selectedDateBinding,
                             scrollRequestToken: scrollRequestToken,
+                            dateWindowVersion: dateWindowVersion,
                             onDayTap: { date in
                                 agendaScrollController.halt()
                                 agendaTapDate = date
@@ -154,30 +160,41 @@ struct TodayTaskListView: View {
         .onAppear {
             bootstrap()
             performInitialSetupIfNeeded()
+            prepareDateWindow(for: selectedDate, force: !hasPreparedDateWindow)
+            hasPreparedDateWindow = true
             updateFilterForSegment()
             viewModel?.selectDate(selectedDate)
-            refresh()
+            refreshViewModel()
             handleTodayResetIfNeeded()
         }
         .onChange(of: appState.todayResetRequestID) { _, _ in
             handleTodayResetIfNeeded()
         }
         .onChange(of: groups) { _, _ in
-            refresh()
             updateFilterForSegment()
+            rebuildAgenda()
+            refreshViewModel()
         }
-        .onChange(of: allTasks) { _, _ in refresh() }
+        .onChange(of: allTasks) { _, _ in
+            rebuildAgenda()
+            refreshViewModel()
+        }
         .onChange(of: editingTask) { _, task in
-            if task == nil { refresh() }
+            if task == nil {
+                rebuildAgenda()
+                refreshViewModel()
+            }
         }
         .onChange(of: selectedSegment) { _, _ in
             updateFilterForSegment()
-            refresh()
+            rebuildAgenda()
+            refreshViewModel()
         }
 
         .onChange(of: selectedDateTimestamp) { _, _ in
+            prepareDateWindow(for: selectedDate)
             viewModel?.selectDate(selectedDate)
-            refresh()
+            refreshViewModel()
         }
         .sheet(item: $newTaskConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
@@ -237,9 +254,10 @@ struct TodayTaskListView: View {
     @ViewBuilder
     private var content: some View {
         UpcomingAgendaView(
-            sections: upcomingAgendaSections,
+            sections: agendaSections,
             selectedDate: selectedDateBinding,
             scrollRequestToken: scrollRequestToken,
+            dateWindowVersion: dateWindowVersion,
             dayTapToken: agendaTapToken,
             dayTapDate: agendaTapDate,
             scrollController: agendaScrollController,
@@ -308,12 +326,7 @@ struct TodayTaskListView: View {
         return result.sorted { ($0.dueDate ?? .distantPast) < ($1.dueDate ?? .distantPast) }
     }
 
-    private var upcomingAgendaSections: [UpcomingDaySection] {
-        let today = calendar.startOfDay(for: Date())
-        let start = calendar.date(byAdding: .day, value: -10, to: today)!
-        let days = (0..<41).compactMap {
-            calendar.date(byAdding: .day, value: $0, to: start)
-        }
+    private func buildAgendaSections(days: [Date]) -> [UpcomingDaySection] {
         let daySet = Set(days)
         var tasksByDay: [Date: [TaskItem]] = [:]
         let now = Date()
@@ -366,11 +379,29 @@ struct TodayTaskListView: View {
         }
     }
 
+    private func rebuildAgenda() {
+        agendaSections = buildAgendaSections(days: dateWindow.days)
+    }
+
+    private func rebuildDateWindow(anchor: Date) {
+        let window = TodayDateWindow(anchor: anchor)
+        dateWindow = window
+        agendaSections = buildAgendaSections(days: window.days)
+        dateWindowVersion += 1
+    }
+
+    private func prepareDateWindow(for date: Date, force: Bool = false) {
+        if force || !dateWindow.contains(date) {
+            rebuildDateWindow(anchor: date)
+        } else if agendaSections.isEmpty {
+            rebuildAgenda()
+        }
+    }
+
     private func bootstrap() {
         if viewModel == nil {
             viewModel = TodayViewModel(modelContext: modelContext)
         }
-        refresh()
     }
 
     private func performInitialSetupIfNeeded() {
@@ -386,13 +417,19 @@ struct TodayTaskListView: View {
         guard appState.todayResetRequestID != lastHandledTodayResetID else { return }
         lastHandledTodayResetID = appState.todayResetRequestID
         let today = calendar.startOfDay(for: Date())
+        prepareDateWindow(for: today)
         selectedDateTimestamp = today.timeIntervalSince1970
         viewModel?.selectDate(today)
-        refresh()
+        refreshViewModel()
         scrollRequestToken += 1
     }
 
     private func refresh() {
+        rebuildAgenda()
+        refreshViewModel()
+    }
+
+    private func refreshViewModel() {
         viewModel?.selectDate(selectedDate)
         viewModel?.update(groups: groups, allTasks: allTasks, now: Date())
     }
