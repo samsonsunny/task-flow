@@ -11,390 +11,151 @@ struct TodayTaskListView: View {
     @State private var viewModel: TodayViewModel?
     @State private var editingTask: TaskItem?
     @State private var newTaskConfig: NewTaskSheetConfig?
-    @AppStorage("today.selectedSegment") private var selectedSegmentRaw: String = TodaySegment.work.rawValue
-    private var selectedSegment: TodaySegment {
-        get { TodaySegment(rawValue: selectedSegmentRaw) ?? .work }
-        set { selectedSegmentRaw = newValue.rawValue }
-    }
-    private let selectedFilter: TimeFilter = .upcoming
-    @AppStorage("today.selectedDate") private var selectedDateTimestamp: Double = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
-    @State private var isCalendarPresented = false
-    @State private var scrollRequestToken = 0
-    @State private var agendaTapToken = 0
-    @State private var agendaTapDate = Date()
-    @State private var agendaScrollController = ScrollAnimationController()
     @State private var lastHandledTodayResetID = 0
-    @State private var hasPerformedInitialSetup = false
-    @State private var dateWindow = TodayDateWindow(anchor: Date())
-    @State private var agendaSections: [UpcomingDaySection] = []
-    @State private var dateWindowVersion = 0
-    @State private var hasPreparedDateWindow = false
 
-    private var selectedDate: Date {
-        Date(timeIntervalSince1970: selectedDateTimestamp)
-    }
-    
-    private var selectedDateBinding: Binding<Date> {
-        Binding(
-            get: { Date(timeIntervalSince1970: self.selectedDateTimestamp) },
-            set: { self.selectedDateTimestamp = Calendar.current.startOfDay(for: $0).timeIntervalSince1970 }
-        )
-    }
+    private let embedInNavigationStack: Bool
 
-    enum TodaySegment: String, CaseIterable {
-        case work = "Work"
-        case personal = "Personal"
-    }
-
-    enum TimeFilter: String, CaseIterable {
-        case upcoming = "Upcoming"
+    init(embedInNavigationStack: Bool = true) {
+        self.embedInNavigationStack = embedInNavigationStack
     }
 
     private var calendar: Calendar { Calendar.current }
 
-    private static let contentHeaderDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMMM d")
-        return formatter
-    }()
-
-    private static let upcomingHeaderDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
-        return formatter
-    }()
-
-    private func hasIndicator(for segment: TodaySegment) -> Bool {
-        let targetName = segment == .work ? AreaNames.work : AreaNames.personal
-        var targetGroup: ReminderListGroup? = groups.first(where: { $0.name == targetName || ($0.name == "Home" && targetName == AreaNames.personal) })
-        if targetGroup == nil {
-            targetGroup = groups.first(where: { $0.isLocked && ((segment == .work && $0.name == AreaNames.work) || (segment == .personal && ($0.name == AreaNames.personal || $0.name == "Home"))) })
-        }
-        guard let group = targetGroup else { return false }
-        let now = Date()
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        for task in allTasks {
-            guard !(task.isCompleted ?? false) else { continue }
-            guard task.reminderList?.group?.persistentModelID == group.persistentModelID else { continue }
-            guard let dueDate = task.dueDate else { continue }
-            if task.hasTime == true {
-                if dueDate < now { return true }
-                if calendar.isDate(dueDate, inSameDayAs: now) { return true }
-            } else {
-                let dueStart = calendar.startOfDay(for: dueDate)
-                if dueStart < todayStart { return true }
-                if dueStart == todayStart { return true }
-            }
-        }
-        return false
-    }
-
-    private var hasOverdueTasks: Bool {
-        !overdueTasks.isEmpty
-    }
-
-    private var contentHeaderTitle: String {
-        Self.upcomingHeaderDateFormatter.string(from: selectedDate)
-    }
-
     var body: some View {
-        NavigationStack {
-            content
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        TodaySegmentPicker(
-                            selection: Binding(
-                                get: { selectedSegment },
-                                set: { selectedSegmentRaw = $0.rawValue }
-                            ),
-                            workHasIndicator: hasIndicator(for: .work),
-                            personalHasIndicator: hasIndicator(for: .personal)
-                        )
-
-                        TaskListContentHeader(title: contentHeaderTitle, showsDisclosure: true) {
-                            isCalendarPresented = true
-                        }
-
-                        WeekStripView(
-                            days: dateWindow.days,
-                            selectedDate: selectedDateBinding,
-                            scrollRequestToken: scrollRequestToken,
-                            dateWindowVersion: dateWindowVersion,
-                            onDayTap: { date in
-                                agendaScrollController.halt()
-                                agendaTapDate = date
-                                agendaTapToken += 1
-                            }
-                        )
-                            .padding(.bottom, 14)
-                    }
-                    .background(AppTheme.colors.pageBackground)
+        Group {
+            if embedInNavigationStack {
+                NavigationStack {
+                    navigationContent
                 }
-                .background(AppTheme.colors.pageBackground.ignoresSafeArea())
-                .overlay(alignment: .top) {
-                    if let pending = viewModel?.pendingUndo {
-                        UndoToast(title: pending.task.safeTitle) {
-                            viewModel?.undoCompletion()
-                        }
-                        .padding(.top, 8)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    FloatingAddButton {
-                        newTaskConfig = NewTaskSheetConfig(
-                            initialDate: selectedDate,
-                            initialListID: defaultListID
-                        )
-                    }
-                }
-                .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationDestination(item: $editingTask) { task in
-                    ReminderEditorView(task: task, embedInNavigationStack: false)
-                }
+            } else {
+                navigationContent
+            }
         }
         .onAppear {
             bootstrap()
-            performInitialSetupIfNeeded()
-            prepareDateWindow(for: selectedDate, force: !hasPreparedDateWindow)
-            hasPreparedDateWindow = true
-            updateFilterForSegment()
-            viewModel?.selectDate(selectedDate)
-            refreshViewModel()
+            syncTodayState()
             handleTodayResetIfNeeded()
         }
         .onChange(of: appState.todayResetRequestID) { _, _ in
             handleTodayResetIfNeeded()
         }
-        .onChange(of: groups) { _, _ in
-            updateFilterForSegment()
-            rebuildAgenda()
-            refreshViewModel()
-        }
-        .onChange(of: allTasks) { _, _ in
-            rebuildAgenda()
-            refreshViewModel()
-        }
+        .onChange(of: groups) { _, _ in refreshViewModel() }
+        .onChange(of: allTasks) { _, _ in refreshViewModel() }
         .onChange(of: editingTask) { _, task in
-            if task == nil {
-                rebuildAgenda()
-                refreshViewModel()
-            }
-        }
-        .onChange(of: selectedSegment) { _, _ in
-            updateFilterForSegment()
-            rebuildAgenda()
-            refreshViewModel()
-        }
-
-        .onChange(of: selectedDateTimestamp) { _, _ in
-            prepareDateWindow(for: selectedDate)
-            viewModel?.selectDate(selectedDate)
-            refreshViewModel()
+            if task == nil { refreshViewModel() }
         }
         .sheet(item: $newTaskConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
         }
-        .sheet(isPresented: $isCalendarPresented) {
-            NavigationStack {
-                DatePicker(
-                    "Select Date",
-                    selection: selectedDateBinding,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .padding()
-            .onChange(of: selectedDateTimestamp) { _, _ in
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                isCalendarPresented = false
+    }
+
+    private var navigationContent: some View {
+        content
+            .background(AppTheme.colors.pageBackground.ignoresSafeArea())
+            .overlay(alignment: .top) {
+                if let pending = viewModel?.pendingUndo {
+                    UndoToast(title: pending.task.safeTitle) {
+                        viewModel?.undoCompletion()
+                    }
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .overlay(alignment: .bottomTrailing) {
+                FloatingAddButton {
+                    newTaskConfig = NewTaskSheetConfig(
+                        initialDate: calendar.startOfDay(for: Date()),
+                        initialListID: defaultListID
+                    )
+                }
             }
-            .presentationDetents([.medium, .large])
-        }
+            .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
+            .navigationTitle("Today")
+            .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(item: $editingTask) { task in
+                ReminderEditorView(task: task, embedInNavigationStack: false)
+            }
     }
 
     private var defaultListID: ReminderList.ID? {
-        let targetName = selectedSegment == .work ? AreaNames.work : AreaNames.personal
-        if let inbox = lists.first(where: { $0.isBucket && ($0.group?.name == targetName || ($0.group?.name == "Home" && targetName == AreaNames.personal)) }) {
-            return inbox.persistentModelID
-        }
-        if let group = groups.first(where: { $0.name == targetName || ($0.name == "Home" && targetName == AreaNames.personal) }) {
-            if let inbox = lists.first(where: { $0.isBucket && $0.group?.persistentModelID == group.persistentModelID }) {
-                return inbox.persistentModelID
-            }
-        }
-        if targetName == AreaNames.work {
-            if let inbox = lists.first(where: { $0.isBucket && $0.group?.name == AreaNames.work }) {
-                return inbox.persistentModelID
-            }
-        }
-        return lists.first(where: { $0.isBucket })?.persistentModelID ?? lists.first?.persistentModelID
+        lists.first(where: { $0.isBucket })?.persistentModelID ?? lists.first?.persistentModelID
     }
 
-    private func updateFilterForSegment() {
-        guard let viewModel else { return }
-        let targetName = selectedSegment == .work ? AreaNames.work : AreaNames.personal
-        if let group = groups.first(where: { $0.name == targetName || ($0.name == "Home" && targetName == AreaNames.personal) }) {
-            viewModel.selectFilter(.area(group.persistentModelID))
-        } else if let group = groups.first(where: { $0.isLocked }) {
-            let name = group.name
-            if name == AreaNames.work && selectedSegment == .work {
-                viewModel.selectFilter(.area(group.persistentModelID))
-            } else if (name == AreaNames.personal || name == "Home") && selectedSegment == .personal {
-                viewModel.selectFilter(.area(group.persistentModelID))
-            }
-        }
+    private func isWorkDomain(_ name: String?) -> Bool {
+        name == AreaNames.work
+    }
+
+    private func isPersonalDomain(_ name: String?) -> Bool {
+        name == AreaNames.personal || name == "Home"
     }
 
     @ViewBuilder
     private var content: some View {
-        UpcomingAgendaView(
-            sections: agendaSections,
-            selectedDate: selectedDateBinding,
-            scrollRequestToken: scrollRequestToken,
-            dateWindowVersion: dateWindowVersion,
-            dayTapToken: agendaTapToken,
-            dayTapDate: agendaTapDate,
-            scrollController: agendaScrollController,
-            onAddTask: { date in
-                newTaskConfig = NewTaskSheetConfig(
-                    initialDate: date,
-                    initialListID: defaultListID
-                )
-            },
-            onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
-            onDelete: { viewModel?.delete($0) },
-            onTapTask: { editingTask = $0 },
-            onRefresh: refresh
-        )
-    }
+        let tasks = viewModel?.visibleTasks ?? []
+        let workTasks = tasks.filter { isWorkDomain($0.reminderList?.group?.name) }
+        let personalTasks = tasks.filter { isPersonalDomain($0.reminderList?.group?.name) }
 
-    private var targetGroupID: PersistentIdentifier? {
-        let targetName = selectedSegment == .work ? AreaNames.work : AreaNames.personal
-        if let group = groups.first(where: { $0.name == targetName || ($0.name == "Home" && targetName == AreaNames.personal) }) {
-            return group.persistentModelID
-        }
-        if let group = groups.first(where: { $0.isLocked }) {
-            let name = group.name
-            if name == AreaNames.work && selectedSegment == .work { return group.persistentModelID }
-            if (name == AreaNames.personal || name == "Home") && selectedSegment == .personal { return group.persistentModelID }
-        }
-        return nil
-    }
-
-    private func matchesArea(_ task: TaskItem) -> Bool {
-        guard let targetGroupID else { return true }
-        return task.reminderList?.group?.persistentModelID == targetGroupID
-    }
-
-    private func isOverdue(_ task: TaskItem) -> Bool {
-        let now = Date()
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        guard let dueDate = task.dueDate else { return false }
-        if task.hasTime == true {
-            return dueDate < now
+        if workTasks.isEmpty && personalTasks.isEmpty {
+            ContentUnavailableView(
+                "No tasks for today",
+                systemImage: "checklist",
+                description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            return calendar.startOfDay(for: dueDate) < todayStart
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    if !workTasks.isEmpty {
+                        taskSection(title: "Work", tasks: workTasks)
+                    }
+                    if !personalTasks.isEmpty {
+                        taskSection(title: "Personal", tasks: personalTasks)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 100)
+            }
+            .scrollIndicators(.hidden)
+            .refreshable { refreshViewModel() }
         }
     }
 
-    private var overdueTasks: [TaskItem] {
-        let now = Date()
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: now)
-        var result: [TaskItem] = []
-        for task in allTasks {
-            guard matchesArea(task) else { continue }
-            guard !(task.isCompleted ?? false) else { continue }
-            guard let dueDate = task.dueDate else { continue }
-            if task.hasTime == true {
-                if dueDate < now {
-                    result.append(task)
-                }
-            } else {
-                if calendar.startOfDay(for: dueDate) < todayStart {
-                    result.append(task)
-                }
-            }
-        }
-        return result.sorted { ($0.dueDate ?? .distantPast) < ($1.dueDate ?? .distantPast) }
-    }
+    @ViewBuilder
+    private func taskSection(title: String, tasks: [TaskItem]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(AppTheme.colors.textSecondary)
+                .padding(.horizontal, 4)
 
-    private func buildAgendaSections(days: [Date]) -> [UpcomingDaySection] {
-        let daySet = Set(days)
-        var tasksByDay: [Date: [TaskItem]] = [:]
-        let now = Date()
-        let todayStart = calendar.startOfDay(for: now)
+            VStack(spacing: 0) {
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                    TaskRowView(
+                        task: task,
+                        isCompletedVisualState: task.isCompleted ?? false,
+                        onToggleCompletion: {
+                            Haptics.impact(.light)
+                            viewModel?.toggleCompletion(for: task)
+                        },
+                        onDelete: { viewModel?.delete(task) },
+                        onTap: { editingTask = task },
+                        showsDueDate: viewModel?.isOverdue(task) == true,
+                        showsListName: true,
+                        showsRowBackground: false
+                    )
 
-        for task in allTasks {
-            guard matchesArea(task) else { continue }
-            guard let dueDate = task.dueDate else { continue }
-            let dueStart = calendar.startOfDay(for: dueDate)
-
-            // Include in its due date section if it's in the range
-            if daySet.contains(dueStart) {
-                tasksByDay[dueStart, default: []].append(task)
-            }
-
-            // Also include overdue tasks in today section
-            var isOverdueTask = false
-            if task.hasTime == true {
-                if dueDate < now && !(task.isCompleted ?? false) {
-                    isOverdueTask = true
-                }
-            } else {
-                if dueStart < todayStart && !(task.isCompleted ?? false) {
-                    isOverdueTask = true
+                    if index < tasks.count - 1 {
+                        Divider()
+                            .padding(.leading, 54)
+                    }
                 }
             }
-            if isOverdueTask {
-                tasksByDay[todayStart, default: []].append(task)
-            }
-        }
-
-        return days.map { day in
-            let tasks = (tasksByDay[day] ?? [])
-            // Remove duplicates within same day while preserving order preference
-            var seen = Set<PersistentIdentifier>()
-            let unique = tasks.filter { task in
-                if seen.contains(task.persistentModelID) { return false }
-                seen.insert(task.persistentModelID)
-                return true
-            }.sorted { lhs, rhs in
-                let lhsDate = lhs.dueDate ?? .distantFuture
-                let rhsDate = rhs.dueDate ?? .distantFuture
-                if lhsDate != rhsDate { return lhsDate < rhsDate }
-                let lhsCreated = lhs.createdAt ?? .distantPast
-                let rhsCreated = rhs.createdAt ?? .distantPast
-                if lhsCreated != rhsCreated { return lhsCreated < rhsCreated }
-                return (lhs.taskId ?? "") < (rhs.taskId ?? "")
-            }
-            return UpcomingDaySection(date: day, tasks: unique)
-        }
-    }
-
-    private func rebuildAgenda() {
-        agendaSections = buildAgendaSections(days: dateWindow.days)
-    }
-
-    private func rebuildDateWindow(anchor: Date) {
-        let window = TodayDateWindow(anchor: anchor)
-        dateWindow = window
-        agendaSections = buildAgendaSections(days: window.days)
-        dateWindowVersion += 1
-    }
-
-    private func prepareDateWindow(for date: Date, force: Bool = false) {
-        if force || !dateWindow.contains(date) {
-            rebuildDateWindow(anchor: date)
-        } else if agendaSections.isEmpty {
-            rebuildAgenda()
+            .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
         }
     }
 
@@ -404,33 +165,20 @@ struct TodayTaskListView: View {
         }
     }
 
-    private func performInitialSetupIfNeeded() {
-        guard !hasPerformedInitialSetup else { return }
-        hasPerformedInitialSetup = true
-        let today = calendar.startOfDay(for: Date())
-        guard selectedDateTimestamp != today.timeIntervalSince1970 else { return }
-        selectedDateTimestamp = today.timeIntervalSince1970
-        scrollRequestToken += 1
+    private func syncTodayState() {
+        viewModel?.selectDate(calendar.startOfDay(for: Date()))
+        viewModel?.selectFilter(.all)
+        refreshViewModel()
     }
 
     private func handleTodayResetIfNeeded() {
         guard appState.todayResetRequestID != lastHandledTodayResetID else { return }
         lastHandledTodayResetID = appState.todayResetRequestID
-        let today = calendar.startOfDay(for: Date())
-        prepareDateWindow(for: today)
-        selectedDateTimestamp = today.timeIntervalSince1970
-        viewModel?.selectDate(today)
-        refreshViewModel()
-        scrollRequestToken += 1
-    }
-
-    private func refresh() {
-        rebuildAgenda()
-        refreshViewModel()
+        syncTodayState()
     }
 
     private func refreshViewModel() {
-        viewModel?.selectDate(selectedDate)
+        viewModel?.selectFilter(.all)
         viewModel?.update(groups: groups, allTasks: allTasks, now: Date())
     }
 }

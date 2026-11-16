@@ -29,7 +29,7 @@ struct MainTabView: View {
                 case .more: appState.requestScrollToTop(id: "more")
                 }
             },
-            todayView: { TodayTaskListView() },
+            todayView: { TodayNavigationStackView() },
             workView: { AreaTasksView(areaName: AreaNames.work, storageKey: AreaNames.work) },
             personalView: { AreaTasksView(areaName: AreaNames.personal, storageKey: AreaNames.personal) },
             moreView: { MoreView() }
@@ -41,7 +41,7 @@ struct MainTabView: View {
 struct MainTabBarController: UIViewControllerRepresentable {
     @Binding var selection: MainTabView.AppTab
     let onTabReselected: (MainTabView.AppTab) -> Void
-    let todayView: () -> TodayTaskListView
+    let todayView: () -> TodayNavigationStackView
     let workView: () -> AreaTasksView
     let personalView: () -> AreaTasksView
     let moreView: () -> MoreView

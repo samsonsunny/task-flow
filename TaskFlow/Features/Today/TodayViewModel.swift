@@ -68,6 +68,7 @@ final class TodayViewModel {
     private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
 
     private(set) var sections: [TodaySection] = []
+    private(set) var visibleTasks: [TaskItem] = []
     private(set) var filterOptions: [TodayFilterOption] = [.all]
     private(set) var areaFilter: TodayAreaFilter = .all
     private(set) var pendingUndo: CompletionUndo?
@@ -85,8 +86,7 @@ final class TodayViewModel {
     }
 
     func selectDate(_ date: Date) {
-        let calendar = Calendar.current
-        let newDate = calendar.startOfDay(for: date)
+        let newDate = Calendar.current.startOfDay(for: date)
         if newDate == selectedDate {
             recompute()
             return
@@ -111,26 +111,16 @@ final class TodayViewModel {
         self.groups = groups
         self.allTasks = allTasks
         self.now = now
-        if Calendar.current.startOfDay(for: selectedDate) > Calendar.current.startOfDay(for: now).addingTimeInterval(86400 * 365) {
-            // keep as is
-        }
         rebuildFilterOptions()
 
-        let calendar = Calendar.current
-        let referenceStart = calendar.startOfDay(for: selectedDate)
-        var dueOnSelected: [TaskItem] = []
-
-        for task in allTasks {
-            guard matchesAreaFilter(task) else { continue }
-            guard let dueDate = task.dueDate else { continue }
-            let dueStart = calendar.startOfDay(for: dueDate)
-            if dueStart == referenceStart {
-                dueOnSelected.append(task)
-            }
-        }
-
-        func sort(_ tasks: [TaskItem]) -> [TaskItem] {
-            tasks.sorted { lhs, rhs in
+        let todayStart = Calendar.current.startOfDay(for: now)
+        visibleTasks = allTasks
+            .filter { matchesAreaFilter($0) }
+            .filter { isDueTodayOrOverdue($0, todayStart: todayStart) }
+            .sorted { lhs, rhs in
+                let lOverdue = isOverdue(lhs, now: now, todayStart: todayStart)
+                let rOverdue = isOverdue(rhs, now: now, todayStart: todayStart)
+                if lOverdue != rOverdue { return lOverdue && !rOverdue }
                 let lhsDate = lhs.dueDate ?? .distantFuture
                 let rhsDate = rhs.dueDate ?? .distantFuture
                 if lhsDate != rhsDate { return lhsDate < rhsDate }
@@ -139,17 +129,34 @@ final class TodayViewModel {
                 if lhsCreated != rhsCreated { return lhsCreated < rhsCreated }
                 return (lhs.taskId ?? "") < (rhs.taskId ?? "")
             }
-        }
 
-        var result: [TodaySection] = []
-        if !dueOnSelected.isEmpty {
-            result.append(TodaySection(kind: .today, tasks: sort(dueOnSelected)))
-        }
-        sections = result
+        sections = visibleTasks.isEmpty ? [] : [TodaySection(kind: .today, tasks: visibleTasks)]
     }
 
     private func recompute() {
         update(groups: groups, allTasks: allTasks, now: now)
+    }
+
+    func isOverdue(_ task: TaskItem) -> Bool {
+        let todayStart = Calendar.current.startOfDay(for: now)
+        return isOverdue(task, now: now, todayStart: todayStart)
+    }
+
+    private func isDueTodayOrOverdue(_ task: TaskItem, todayStart: Date) -> Bool {
+        guard !(task.isCompleted ?? false), let dueDate = task.dueDate else { return false }
+        let dueStart = Calendar.current.startOfDay(for: dueDate)
+        if task.hasTime == true {
+            return Calendar.current.isDate(dueDate, inSameDayAs: now) || dueDate < now
+        }
+        return dueStart == todayStart || dueStart < todayStart
+    }
+
+    private func isOverdue(_ task: TaskItem, now: Date, todayStart: Date) -> Bool {
+        guard !(task.isCompleted ?? false), let dueDate = task.dueDate else { return false }
+        if task.hasTime == true {
+            return dueDate < now
+        }
+        return Calendar.current.startOfDay(for: dueDate) < todayStart
     }
 
     private func rebuildFilterOptions() {
