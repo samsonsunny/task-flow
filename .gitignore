@@ -5,6 +5,7 @@ build/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
+.derivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
