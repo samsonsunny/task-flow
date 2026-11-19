@@ -12,7 +12,7 @@
 | `TaskFlow.xcodeproj/` | Xcode project; `PBXFileSystemSynchronizedRootGroup` auto-discovers sources |
 | `TaskFlow/` | All app source |
 | `scripts/publish-devto.mjs` | Forem API publisher (230 lines) |
-| `ci_scripts/` | Xcode Cloud version bump/tag/post-build scripts + release notes |
+| `ci_scripts/` | Xcode Cloud version/tag script + release notes |
 | `.github/workflows/devto-publish.yml` | PR → Dev.to draft; merge → live publish |
 | `package.json` | Dev dependencies only (`app-store-scraper`, `playwright`); no scripts |
 

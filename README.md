@@ -63,51 +63,45 @@ See `ai/OPERATIONS.md` for test, CI, release, and content publishing commands.
 Trunk-based development with a single permanent branch:
 
 - **`main`** — only branch. All development lands here directly.
-- **Tags** (`v26.7.15`) mark weekly releases. Force pushes and deletions are blocked on `main`.
+- **Tags** (`v26.7.15`) mark daily releases. Force pushes and deletions are blocked on `main`.
 
 ## Versioning
 
 Versions are **release dates** in `YY.M.DD` format (e.g. `26.7.15` = release on July 15).
 
-- Build runs on **Wednesday** for the **next Wednesday's** release
-- Version on `main` during the week points to the upcoming release
-- After the build, `main` advances to the week after that
+- Build runs **daily** and uses the **trigger date** as its version
+- `ci_post_clone.sh` updates `main` to that date before building
+- No post-build version bump
 
 ## Xcode Cloud Workflows
 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | **CI** | Branch changes on `main` | Builds + tests on every push |
-| **Weekly Release** | Schedule — Wednesday | Builds, tags, and distributes to App Store Connect |
+| **Daily Release** | Schedule — daily | Builds, tags, and distributes to App Store Connect |
+
+Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
 
 ## Auto-Release Flow (ci_scripts)
 
-Two scripts automate the weekly release — no manual version bumps needed.
+One script automates the daily release — no manual version bumps needed.
 
 ### Before build (`ci_post_clone.sh`)
 
-Sets the project to the **next Wednesday's date** (e.g. July 8 → `26.7.15`), commits it, tags `v26.7.15`, and pushes. The build then uses this version.
-
-### After build (`ci_post_xcodebuild.sh`)
-
-Bumps `main` to the **Wednesday after the release** (e.g. `26.7.22`) so the project is ready for the next week's development.
+Sets the project to **today's date** (e.g. July 8 → `26.7.8`), commits it, tags `v26.7.8`, and pushes. The build then uses this version.
 
 ### Example
 
 | Date | Step | main version | Tag |
 |---|---|---|---|
-| July 8 (Wed) | Clone before build | `26.7.15` | — |
-| | `ci_post_clone.sh` | `26.7.15` (committed) | `v26.7.15` |
-| | Xcode Cloud builds with `26.7.15` | | |
-| | `ci_post_xcodebuild.sh` | bumped to `26.7.22` | |
-| July 8–14 | Development | `26.7.22` | |
-| July 15 (Wed) | Clone before build | `26.7.22` | — |
-| | `ci_post_clone.sh` | `26.7.22` (already set, skip) | `v26.7.22` |
-| | `ci_post_xcodebuild.sh` | bumped to `26.7.29` | |
-| July 15–21 | Development | `26.7.29` | |
-| ... | repeats weekly | | |
+| July 8 | Clone before build | `26.7.8` | — |
+| | `ci_post_clone.sh` | `26.7.8` (committed) | `v26.7.8` |
+| | Xcode Cloud builds with `26.7.8` | | |
+| July 9 | Clone before build | `26.7.9` | — |
+| | `ci_post_clone.sh` | `26.7.9` (committed) | `v26.7.9` |
+| ... | repeats daily | | |
 
-No manual version bumps. Every Wednesday, Xcode Cloud tags the release version and advances main to the next one.
+No manual version bumps. Each day's build uses its own date as the release version.
 
 ## Notes
 

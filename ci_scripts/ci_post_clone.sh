@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Only run during the weekly release workflow on main
-if [ "$CI_BRANCH" != "main" ] || [ "$CI_WORKFLOW" != "Weekly Release" ]; then
+# Only run during the daily release workflow on main
+WORKFLOW_ID=$(printf '%s' "${CI_WORKFLOW_ID:-}" | tr '[:upper:]' '[:lower:]')
+if [ "$CI_BRANCH" != "main" ] || [ "$WORKFLOW_ID" != "30be9eca-6c99-4d5e-b3d9-2f6c129b9587" ]; then
   exit 0
 fi
 
@@ -20,8 +21,8 @@ git config user.email "ci@taskflow.app"
 # Switch to HTTPS with PAT for push access (set GITHUB_TOKEN in Xcode Cloud env vars)
 git remote set-url origin "https://samsonsunny:${GITHUB_TOKEN}@github.com/samsonsunny/task-flow.git"
 
-# Next Wednesday = release version (e.g. July 15 → 26.7.15)
-RELEASE=$(date -v +1d -v +Wed '+%y.%-m.%-d')
+# Today = release version (e.g. July 8 → 26.7.8)
+RELEASE=$(date '+%y.%-m.%-d')
 
 # Set project to release version
 CURRENT=$(grep -m1 "MARKETING_VERSION" TaskFlow.xcodeproj/project.pbxproj | grep -oE '\d+\.\d+\.\d+')

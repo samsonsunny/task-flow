@@ -16,7 +16,7 @@ Load this only for blog, Dev.to, marketing copy, or article work. The `content/`
 - Format: Markdown + YAML frontmatter in `content/blog/`.
 - Own site: `taskflow.app/blog` (subdirectory). Publish own site first → wait 7 days → cross-post to Medium/Dev.to with canonical link.
 - Current state: own site not live. Publish directly to Medium and Dev.to the same day; log links in `distribution.md`. When the site launches, republish there and switch canonical.
-- Sources: each weekly release is a content opportunity; otherwise write productivity insights aligned with the app's mental model.
+- Sources: each release is a content opportunity; otherwise write productivity insights aligned with the app's mental model.
 
 ## Frontmatter
 
