@@ -3,8 +3,8 @@ import SwiftData
 
 /// The flat task list behind the Work and Personal tabs.
 ///
-/// Unlike `HomeViewModel`, this is not a schedule: every incomplete task filed in the area is
-/// shown, dated or not, newest created first. The area is resolved by its canonical name
+/// This is not a schedule: every incomplete task filed in the area is shown, dated or not,
+/// newest created first. The area is resolved by its canonical name
 /// (`AreaNames`) because the locked areas are guaranteed by `AreaReconciler` on every launch.
 @MainActor
 @Observable

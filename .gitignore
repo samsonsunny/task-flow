@@ -22,3 +22,6 @@ DerivedData/
 
 # Secrets
 .env
+
+# Agent state
+.ralph/

@@ -25,7 +25,7 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 ## Data & Sync
 
-TaskFlow uses SwiftData with a private CloudKit database for sync across devices signed in to the same Apple ID. See `AGENTS.md` for CloudKit schema constraints.
+TaskFlow uses SwiftData with a private CloudKit database for sync across devices signed in to the same Apple ID. See `ai/CONVENTIONS.md` for CloudKit schema constraints.
 
 ## Project Structure
 
@@ -36,6 +36,10 @@ TaskFlow uses SwiftData with a private CloudKit database for sync across devices
 - `TaskFlow/DesignSystem`: App styling, typography, and tokens
 - `TaskFlow/Utilities`: Notifications, ordering, date, and badge helpers
 
+## AI Agent Navigation
+
+`AGENTS.md` is the agent entry point. `ai/INDEX.md` routes to focused docs (`ai/ARCHITECTURE.md`, `ai/REPO-MAP.md`, `ai/CONVENTIONS.md`, `ai/OPERATIONS.md`, `ai/CONTENT.md`) so agents load only the context they need. `ai/manifest.json` is the machine-readable index.
+
 ## Color System
 
 TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors.swift` and backed by color assets in `TaskFlow/Assets.xcassets`.
@@ -43,13 +47,15 @@ TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors
 - Never use raw hex values in views.
 - Use only semantic tokens (`primaryAction`, `appBackground`, `surface`, `textPrimary`, `border`, etc.).
 - Avoid opacity-based text coloring; use `textPrimary`, `textSecondary`, and `textDisabled`.
-- See `Docs/DesignSystem.md` for the full palette and roles.
+- See `ai/CONVENTIONS.md` and `TaskFlow/DesignSystem/Colors.swift` for palette and roles.
 
 ## Getting Started
 
 1. Open `TaskFlow.xcodeproj` in Xcode.
 2. Select an iOS target.
-3. Build and run.
+3. Build and run, or use `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'generic/platform=iOS Simulator' build`.
+
+See `ai/OPERATIONS.md` for test, CI, release, and content publishing commands.
 
 
 ## Branching Strategy

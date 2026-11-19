@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "project": "TaskFlow",
+  "customerName": "Wednesday Calendar",
+  "entryPoint": "AGENTS.md",
+  "contextDocs": {
+    "index": "ai/INDEX.md",
+    "architecture": "ai/ARCHITECTURE.md",
+    "repoMap": "ai/REPO-MAP.md",
+    "conventions": "ai/CONVENTIONS.md",
+    "operations": "ai/OPERATIONS.md",
+    "content": "ai/CONTENT.md"
+  },
+  "readPolicy": {
+    "always": ["AGENTS.md"],
+    "beforeNavigation": ["ai/INDEX.md"],
+    "onDemand": "exactly one context doc",
+    "avoidRecursiveScan": true
+  },
+  "commands": {
+    "build": "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'generic/platform=iOS Simulator' build",
+    "test": "xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'platform=iOS Simulator,name=iPhone 16'",
+    "devtoDraft": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --draft",
+    "devtoPublish": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --publish",
+    "devtoDryRun": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run"
+  },
+  "sourceAreas": {
+    "live": [
+      "TaskFlow/App",
+      "TaskFlow/Models",
+      "TaskFlow/DesignSystem",
+      "TaskFlow/Utilities",
+      "TaskFlow/Views/Components",
+      "TaskFlow/Previews",
+      "TaskFlow/Features/Today",
+      "TaskFlow/Features/Areas",
+      "TaskFlow/Features/Lists",
+      "TaskFlow/Features/Editor",
+      "TaskFlow/Features/Settings",
+      "TaskFlow/Features/MainTabView.swift"
+    ],
+    "liveHelpersInLegacyFolder": [
+      "TaskFlow/Features/Tasks/Timeline/TimeSegments.swift",
+      "TaskFlow/Features/Tasks/Timeline/TimelineViewModel.swift",
+      "TaskFlow/Features/Tasks/Timeline/TimelineSections.swift"
+    ]
+  },
+  "keyFiles": {
+    "appEntry": "TaskFlow/App/TaskFlowApp.swift",
+    "rootTabs": "TaskFlow/Features/MainTabView.swift",
+    "models": "TaskFlow/Models/TaskItem.swift",
+    "domainLocking": "TaskFlow/Models/AreaReconciler.swift",
+    "todayViewModel": "TaskFlow/Features/Today/TodayViewModel.swift",
+    "areaViewModel": "TaskFlow/Features/Areas/AreaTasksViewModel.swift",
+    "colors": "TaskFlow/DesignSystem/Colors.swift"
+  },
+  "fixedTabs": ["Today", "Work", "Personal", "More"],
+  "fixedDomains": ["Work", "Personal"],
+  "doNotCommit": [
+    ".derivedData/",
+    "DerivedData/",
+    "build/",
+    ".ralph/runs/",
+    ".env",
+    "*.xcuserdata",
+    ".DS_Store"
+  ],
+  "removedAsStale": [
+    "openspec/",
+    "content/",
+    "Docs/",
+    "CHANGELOG.md",
+    ".codex/",
+    ".amazonq/",
+    ".agents/tasks/archive/",
+    ".ralph/",
+    "TaskFlow/Features/Home/",
+    "TaskFlow/Features/Tasks/Timeline/TimelineView.swift",
+    "TaskFlow/Features/Tasks/TodayView.swift",
+    "TaskFlow/Features/Tasks/TomorrowView.swift",
+    "TaskFlow/Features/Tasks/UpcomingView.swift"
+  ],
+  "staleSinceCommit": "0c991b4",
+  "testSourcesPresent": false,
+  "lintConfigPresent": false
+}
