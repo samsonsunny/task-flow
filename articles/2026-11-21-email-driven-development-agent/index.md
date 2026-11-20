@@ -257,9 +257,14 @@ The scheduler is a standard user LaunchAgent:
 ```xml
 <key>ProgramArguments</key>
 <array>
-  <string>/Users/sam/Desktop/TaskFlowApp/scripts/email-agent</string>
+  <string>/Users/sam/Projects/TaskFlowApp/scripts/email-agent</string>
   <string>--once</string>
 </array>
+<key>EnvironmentVariables</key>
+<dict>
+  <key>PATH</key>
+  <string>/Users/sam/.opencode/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+</dict>
 <key>StartInterval</key>
 <integer>60</integer>
 <key>RunAtLoad</key>

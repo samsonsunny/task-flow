@@ -40,6 +40,13 @@ DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run  # previ
 
 Runs inbound `[dev]` emails through headless opencode directly in the clean `main` checkout, verifies with `xcodebuild`, commits to `main`, pushes to `EMAIL_AGENT_REMOTE` (default `origin`), and replies by SMTP. It never opens a PR or creates an `email-agent/*` branch. Incoming mail is read with Microsoft Graph because Outlook.com IMAP OAuth is unreliable.
 
+Prerequisites:
+
+- The repo must be in a non-TCC-protected path such as `~/Projects/TaskFlowApp`; a LaunchAgent cannot read scripts under `~/Desktop`.
+- You must be logged in to the macOS user session. The screen may be locked; after logout/restart the job stops until the next login.
+- The plist must include `/Users/sam/.opencode/bin` in `PATH`; launchd's default PATH omits it.
+- Git push must work non-interactively from launchd via the inherited `SSH_AUTH_SOCK`.
+
 Setup (one time):
 
 1. Put the non-secret settings in gitignored `.env` (the wrapper loads it):
@@ -50,13 +57,12 @@ Setup (one time):
    EMAIL_AGENT_SMTP_PORT=587
    EMAIL_AGENT_USERNAME=samsonsunny@outlook.com
    EMAIL_AGENT_ALLOWED_FROM=samsonsunny@outlook.com
-    EMAIL_AGENT_SUBJECT_PREFIX=[dev]
-    EMAIL_AGENT_POLL_SECONDS=60
-    EMAIL_AGENT_REMOTE=origin
-
+   EMAIL_AGENT_SUBJECT_PREFIX=[dev]
+   EMAIL_AGENT_POLL_SECONDS=60
+   EMAIL_AGENT_REMOTE=origin
    ```
 
-   Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
+2. Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
 3. Run `./scripts/email-agent --auth` and complete both Microsoft device-code sign-ins (Graph `Mail.ReadWrite`, then SMTP `Send`). Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
 4. Run `./scripts/email-agent --check` to verify Graph and SMTP auth, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
 5. Install the launch agent:
@@ -67,7 +73,7 @@ Setup (one time):
    launchctl kickstart -k gui/$UID/com.taskflow.email-agent
    ```
 
-    Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
+6. Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
 
 Send email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. On success it replies with target branch, commit, push result, build result, and changed files.
 
