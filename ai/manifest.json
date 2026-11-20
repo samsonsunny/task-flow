@@ -22,7 +22,11 @@
     "test": "xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'platform=iOS Simulator,name=iPhone 16'",
     "devtoDraft": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --draft",
     "devtoPublish": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --publish",
-    "devtoDryRun": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run"
+    "devtoDryRun": "DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run",
+    "emailAgentAuth": "./scripts/email-agent --auth",
+    "emailAgentCheck": "./scripts/email-agent --check",
+    "emailAgentOnce": "./scripts/email-agent --once",
+    "emailAgentDaemon": "./scripts/email-agent"
   },
   "sourceAreas": {
     "live": [
@@ -61,6 +65,7 @@
     "DerivedData/",
     "build/",
     ".ralph/runs/",
+    ".email-agent/",
     ".env",
     "*.xcuserdata",
     ".DS_Store"

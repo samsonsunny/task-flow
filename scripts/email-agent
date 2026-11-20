@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+export PYTHONWARNINGS="ignore::urllib3.exceptions.NotOpenSSLWarning"
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+mkdir -p "$ROOT/.email-agent/logs"
+VENV="$ROOT/.email-agent/venv"
+PYTHON="$VENV/bin/python"
+
+if [ ! -x "$PYTHON" ]; then
+  python3 -m venv "$VENV"
+fi
+
+if ! "$PYTHON" -c 'import msal' >/dev/null 2>&1; then
+  "$PYTHON" -m pip install -q -r "$ROOT/scripts/requirements-email-agent.txt"
+fi
+
+exec "$PYTHON" "$ROOT/scripts/email_agent.py" "$@"

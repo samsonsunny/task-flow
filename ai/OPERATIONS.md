@@ -36,6 +36,43 @@ DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run  # previ
 - State: `content/blog/.devto.json`; config: `content/blog/.config.json` (`ownSiteLive: false`).
 - `content/` was deleted in `0c991b4`; the script and workflow remain but the article tree must be recreated before use.
 
+## Email-driven development agent
+
+Runs inbound `[dev]` emails through headless opencode in an isolated git worktree, verifies with `xcodebuild`, commits to an `email-agent/*` branch, and replies by SMTP.
+
+Setup (one time):
+
+1. In Outlook.com web settings, enable **Let devices and apps use IMAP**.
+2. Put the non-secret settings in gitignored `.env` (the wrapper loads it):
+
+   ```text
+   EMAIL_AGENT_AUTH_MODE=oauth2
+   EMAIL_AGENT_IMAP_HOST=outlook.office365.com
+   EMAIL_AGENT_IMAP_PORT=993
+   EMAIL_AGENT_SMTP_HOST=smtp-mail.outlook.com
+   EMAIL_AGENT_SMTP_PORT=587
+   EMAIL_AGENT_USERNAME=samsonsunny@outlook.com
+   EMAIL_AGENT_ALLOWED_FROM=samsonsunny@outlook.com
+   EMAIL_AGENT_SUBJECT_PREFIX=[dev]
+   EMAIL_AGENT_MAILBOX=Inbox
+   EMAIL_AGENT_POLL_SECONDS=60
+   ```
+
+   Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
+3. Run `./scripts/email-agent --auth` once and complete the Microsoft device-code sign-in. Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
+4. Run `./scripts/email-agent --check` to verify IMAP login, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
+5. Install the launch agent:
+
+   ```bash
+   cp scripts/com.taskflow.email-agent.plist ~/Library/LaunchAgents/
+   launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist
+   launchctl kickstart -k gui/$UID/com.taskflow.email-agent
+   ```
+
+   Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, worktrees, tokens, and derived data live under gitignored `.email-agent/`.
+
+Send email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The agent replies with branch, commit, build result, and changed files. Only merge the branch after review.
+
 ## CI workflow (`.github/workflows/devto-publish.yml`)
 
 - PR open/update: drafts under `content/blog/drafts/` → private Dev.to drafts.
