@@ -47,6 +47,14 @@ PROTECTED_PATHS = (
     ".gitignore",
     ".github/workflows/",
 )
+TRANSIENT_OPENCODE_ERRORS = (
+    "unexpected server error",
+    "unknownerror",
+    "http 500",
+    "http 429",
+    "rate limit",
+    "temporarily unavailable",
+)
 
 
 class ConfigError(Exception):
@@ -76,6 +84,8 @@ class Config:
     remote: str
     max_body_chars: int
     agent_timeout: int
+    agent_attempts: int
+    agent_retry_delay: int
     build_timeout: int
     model: str | None
     git_name: str
@@ -154,6 +164,13 @@ def load_config() -> Config:
     if not allowed:
         raise ConfigError("EMAIL_AGENT_ALLOWED_FROM must contain at least one address")
 
+    agent_attempts = env_int("EMAIL_AGENT_AGENT_ATTEMPTS", 3)
+    if agent_attempts < 1:
+        raise ConfigError("EMAIL_AGENT_AGENT_ATTEMPTS must be at least 1")
+    agent_retry_delay = env_int("EMAIL_AGENT_AGENT_RETRY_DELAY", 5)
+    if agent_retry_delay < 0:
+        raise ConfigError("EMAIL_AGENT_AGENT_RETRY_DELAY cannot be negative")
+
     return Config(
         imap_host=values["imap_host"],
         imap_port=env_int("EMAIL_AGENT_IMAP_PORT", 993),
@@ -176,6 +193,8 @@ def load_config() -> Config:
         remote=os.environ.get("EMAIL_AGENT_REMOTE", "origin").strip() or "origin",
         max_body_chars=env_int("EMAIL_AGENT_MAX_BODY_CHARS", 12000),
         agent_timeout=env_int("EMAIL_AGENT_TIMEOUT", 1800),
+        agent_attempts=agent_attempts,
+        agent_retry_delay=agent_retry_delay,
         build_timeout=env_int("EMAIL_AGENT_BUILD_TIMEOUT", 1800),
         model=os.environ.get("EMAIL_AGENT_MODEL") or None,
         git_name=os.environ.get("EMAIL_AGENT_GIT_NAME", "Email Agent"),
@@ -545,6 +564,11 @@ def extract_agent_text(stdout: str) -> str:
     return stdout.strip()
 
 
+def is_transient_opencode_error(detail: str) -> bool:
+    lowered = detail.lower()
+    return any(marker in lowered for marker in TRANSIENT_OPENCODE_ERRORS)
+
+
 def run_opencode(cfg: Config, cwd: Path, instruction: Instruction) -> str:
     request = instruction.body[: cfg.max_body_chars]
     if len(instruction.body) > cfg.max_body_chars:
@@ -574,20 +598,47 @@ REQUEST END
     if cfg.model:
         command.extend(["--model", cfg.model])
     command.append(prompt)
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-        timeout=cfg.agent_timeout,
-    )
-    if result.returncode != 0:
+    for attempt in range(1, cfg.agent_attempts + 1):
+        before = changed_files(cwd)
+        try:
+            result = subprocess.run(
+                command,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=cfg.agent_timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            if attempt < cfg.agent_attempts and before == changed_files(cwd):
+                delay = cfg.agent_retry_delay * (2 ** (attempt - 1))
+                log(
+                    f"opencode attempt {attempt}/{cfg.agent_attempts} timed out; "
+                    f"retrying in {delay}s"
+                )
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"opencode timed out after {cfg.agent_timeout}s") from exc
+        if result.returncode == 0:
+            summary = extract_agent_text(result.stdout)
+            if not summary:
+                raise RuntimeError("opencode produced no output")
+            return summary
         detail = (result.stderr or result.stdout).strip()[-4000:]
+        if before != changed_files(cwd):
+            raise RuntimeError(
+                f"opencode exited {result.returncode} after modifying files; "
+                f"refusing retry: {detail}"
+            )
+        if attempt < cfg.agent_attempts and is_transient_opencode_error(detail):
+            delay = cfg.agent_retry_delay * (2 ** (attempt - 1))
+            log(
+                f"opencode attempt {attempt}/{cfg.agent_attempts} hit transient error; "
+                f"retrying in {delay}s"
+            )
+            time.sleep(delay)
+            continue
         raise RuntimeError(f"opencode exited {result.returncode}: {detail}")
-    summary = extract_agent_text(result.stdout)
-    if not summary:
-        raise RuntimeError("opencode produced no output")
-    return summary
+    raise RuntimeError("opencode retries exhausted")
 
 
 def run_build(cfg: Config, cwd: Path) -> tuple[bool, str]:

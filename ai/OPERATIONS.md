@@ -62,6 +62,8 @@ Setup (one time):
    EMAIL_AGENT_REMOTE=origin
    ```
 
+   Optional: `EMAIL_AGENT_AGENT_ATTEMPTS` (default `3`) and `EMAIL_AGENT_AGENT_RETRY_DELAY` (default `5` seconds) control retries for transient opencode server errors. Retries only happen when the failed attempt left no file changes.
+
 2. Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
 3. Run `./scripts/email-agent --auth` and complete both Microsoft device-code sign-ins (Graph `Mail.ReadWrite`, then SMTP `Send`). Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
 4. Run `./scripts/email-agent --check` to verify Graph and SMTP auth, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
