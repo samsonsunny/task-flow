@@ -38,7 +38,7 @@ DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run  # previ
 
 ## Email-driven development agent
 
-Runs inbound `[dev]` emails through headless opencode in an isolated git worktree, verifies with `xcodebuild`, commits to an `email-agent/*` branch, and replies by SMTP. Incoming mail is read with Microsoft Graph because Outlook.com IMAP OAuth is unreliable.
+Runs inbound `[dev]` emails through headless opencode directly in the clean `main` checkout, verifies with `xcodebuild`, commits to `main`, pushes to `EMAIL_AGENT_REMOTE` (default `origin`), and replies by SMTP. It never opens a PR or creates an `email-agent/*` branch. Incoming mail is read with Microsoft Graph because Outlook.com IMAP OAuth is unreliable.
 
 Setup (one time):
 
@@ -50,8 +50,10 @@ Setup (one time):
    EMAIL_AGENT_SMTP_PORT=587
    EMAIL_AGENT_USERNAME=samsonsunny@outlook.com
    EMAIL_AGENT_ALLOWED_FROM=samsonsunny@outlook.com
-   EMAIL_AGENT_SUBJECT_PREFIX=[dev]
-   EMAIL_AGENT_POLL_SECONDS=60
+    EMAIL_AGENT_SUBJECT_PREFIX=[dev]
+    EMAIL_AGENT_POLL_SECONDS=60
+    EMAIL_AGENT_REMOTE=origin
+
    ```
 
    Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
@@ -65,9 +67,10 @@ Setup (one time):
    launchctl kickstart -k gui/$UID/com.taskflow.email-agent
    ```
 
-   Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, worktrees, tokens, and derived data live under gitignored `.email-agent/`.
+    Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
 
-Send email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The agent replies with branch, commit, build result, and changed files. Only merge the branch after review.
+Send email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. On success it replies with target branch, commit, push result, build result, and changed files.
+
 
 ## CI workflow (`.github/workflows/devto-publish.yml`)
 

@@ -13,9 +13,9 @@ Load this only for blog, Dev.to, marketing copy, or article work. The `content/`
 ## Process
 
 - Cadence: one article per Wednesday, same day as app release.
-- Format: Markdown + YAML frontmatter in `content/blog/`.
+- Format: Markdown + YAML frontmatter in `articles/<date>-<slug>/index.md`. Do not recreate the deleted `content/` tree; the publishing script keeps its Dev.to state outside the repo.
 - Own site: `taskflow.app/blog` (subdirectory). Publish own site first → wait 7 days → cross-post to Medium/Dev.to with canonical link.
-- Current state: own site not live. Publish directly to Medium and Dev.to the same day; log links in `distribution.md`. When the site launches, republish there and switch canonical.
+- Current state: own site not live. Publish directly to Medium and Dev.to the same day; log links in `articles/distribution.md`. When the site launches, republish there and switch canonical.
 - Sources: each release is a content opportunity; otherwise write productivity insights aligned with the app's mental model.
 
 ## Frontmatter
@@ -24,16 +24,11 @@ Load this only for blog, Dev.to, marketing copy, or article work. The `content/`
 title, date, tags, description, status (draft|published), canonical
 ```
 
-## Directory layout (to recreate)
+## Directory layout
 
 ```
-content/blog/
-├── published/YYYY-MM-DD-slug/
-│   ├── index.md
-│   └── images/
-├── drafts/working-title/index.md
-├── _agent-guides/tone-reference.md
-├── ideas.md
+articles/
+├── YYYY-MM-DD-slug/index.md
 └── distribution.md
 ```
 

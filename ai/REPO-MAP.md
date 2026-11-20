@@ -12,13 +12,14 @@
 | `TaskFlow.xcodeproj/` | Xcode project; `PBXFileSystemSynchronizedRootGroup` auto-discovers sources |
 | `TaskFlow/` | All app source |
 | `scripts/publish-devto.mjs` | Forem API publisher (230 lines) |
-| `scripts/email_agent.py` | Microsoft Graph read + SMTP send daemon with Outlook OAuth2; runs approved email requests via `opencode run` in isolated worktrees |
+| `scripts/email_agent.py` | Microsoft Graph read + SMTP send daemon with Outlook OAuth2; runs approved email requests via `opencode run` directly in the clean `main` checkout and pushes to origin |
 | `scripts/email-agent` | Wrapper that creates `.email-agent/venv`, installs `msal`, and launches the daemon |
 | `scripts/requirements-email-agent.txt` | Python dependency for the email daemon |
 | `scripts/com.taskflow.email-agent.plist` | launchd agent for 60-second polling |
 | `.opencode/agents/email-dev.md` | Restricted opencode agent used by the email daemon |
 | `ci_scripts/` | Xcode Cloud version/tag script + release notes |
 | `.github/workflows/devto-publish.yml` | PR → Dev.to draft; merge → live publish |
+| `articles/` | Published article sources and Dev.to distribution log |
 | `package.json` | Dev dependencies only (`app-store-scraper`, `playwright`); no scripts |
 
 Never load: `.derivedData/`, `DerivedData/`, `build/`, `.env`, `.email-agent/`, `.DS_Store`. Xcode user-data and Ralph state were removed; do not re-add them.
