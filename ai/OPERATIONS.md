@@ -38,29 +38,25 @@ DEVTO_API_KEY=xxx node scripts/publish-devto.mjs <article.md> --dry-run  # previ
 
 ## Email-driven development agent
 
-Runs inbound `[dev]` emails through headless opencode in an isolated git worktree, verifies with `xcodebuild`, commits to an `email-agent/*` branch, and replies by SMTP.
+Runs inbound `[dev]` emails through headless opencode in an isolated git worktree, verifies with `xcodebuild`, commits to an `email-agent/*` branch, and replies by SMTP. Incoming mail is read with Microsoft Graph because Outlook.com IMAP OAuth is unreliable.
 
 Setup (one time):
 
-1. In Outlook.com web settings, enable **Let devices and apps use IMAP**.
-2. Put the non-secret settings in gitignored `.env` (the wrapper loads it):
+1. Put the non-secret settings in gitignored `.env` (the wrapper loads it):
 
    ```text
    EMAIL_AGENT_AUTH_MODE=oauth2
-   EMAIL_AGENT_IMAP_HOST=outlook.office365.com
-   EMAIL_AGENT_IMAP_PORT=993
    EMAIL_AGENT_SMTP_HOST=smtp-mail.outlook.com
    EMAIL_AGENT_SMTP_PORT=587
    EMAIL_AGENT_USERNAME=samsonsunny@outlook.com
    EMAIL_AGENT_ALLOWED_FROM=samsonsunny@outlook.com
    EMAIL_AGENT_SUBJECT_PREFIX=[dev]
-   EMAIL_AGENT_MAILBOX=Inbox
    EMAIL_AGENT_POLL_SECONDS=60
    ```
 
    Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
-3. Run `./scripts/email-agent --auth` once and complete the Microsoft device-code sign-in. Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
-4. Run `./scripts/email-agent --check` to verify IMAP login, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
+3. Run `./scripts/email-agent --auth` and complete both Microsoft device-code sign-ins (Graph `Mail.ReadWrite`, then SMTP `Send`). Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
+4. Run `./scripts/email-agent --check` to verify Graph and SMTP auth, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
 5. Install the launch agent:
 
    ```bash

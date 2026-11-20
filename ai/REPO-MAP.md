@@ -12,7 +12,7 @@
 | `TaskFlow.xcodeproj/` | Xcode project; `PBXFileSystemSynchronizedRootGroup` auto-discovers sources |
 | `TaskFlow/` | All app source |
 | `scripts/publish-devto.mjs` | Forem API publisher (230 lines) |
-| `scripts/email_agent.py` | IMAP/SMTP polling daemon with Outlook OAuth2; runs approved email requests via `opencode run` in isolated worktrees |
+| `scripts/email_agent.py` | Microsoft Graph read + SMTP send daemon with Outlook OAuth2; runs approved email requests via `opencode run` in isolated worktrees |
 | `scripts/email-agent` | Wrapper that creates `.email-agent/venv`, installs `msal`, and launches the daemon |
 | `scripts/requirements-email-agent.txt` | Python dependency for the email daemon |
 | `scripts/com.taskflow.email-agent.plist` | launchd agent for 60-second polling |

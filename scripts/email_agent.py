@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import contextlib
 import fcntl
 import hashlib
@@ -17,7 +16,11 @@ import ssl
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from datetime import datetime, timezone
 from email.header import decode_header, make_header
 from email.message import EmailMessage
@@ -35,10 +38,10 @@ LOCK_FILE = STATE_DIR / "agent.lock"
 WORKTREE_ROOT = STATE_DIR / "worktrees"
 DERIVED_DATA = STATE_DIR / "DerivedData"
 DEFAULT_OAUTH_CLIENT_ID = "9e5f94bc-e8a4-4e73-b8be-63364c29d753"
-OAUTH_SCOPES = (
-    "https://outlook.office.com/IMAP.AccessAsUser.All",
-    "https://outlook.office.com/SMTP.Send",
-)
+OAUTH_SCOPE_SETS = {
+    "smtp": ("https://outlook.office.com/SMTP.Send",),
+    "graph": ("https://graph.microsoft.com/Mail.ReadWrite",),
+}
 PROTECTED_PATHS = (
     ".opencode/",
     "scripts/email_agent.py",
@@ -236,21 +239,26 @@ def make_oauth_app(cfg: Config, cache: Any) -> Any:
     )
 
 
-def get_access_token(cfg: Config, allow_device_flow: bool = False) -> str | None:
+def get_access_token(
+    cfg: Config, scope_set: str = "smtp", allow_device_flow: bool = False
+) -> str | None:
     if cfg.auth_mode != "oauth2":
         return None
+    scopes = list(OAUTH_SCOPE_SETS[scope_set])
     cache = load_token_cache()
     app = make_oauth_app(cfg, cache)
     accounts = app.get_accounts(username=cfg.username) or app.get_accounts()
     for account in accounts:
-        result = app.acquire_token_silent(list(OAUTH_SCOPES), account=account)
+        result = app.acquire_token_silent(scopes, account=account)
         if isinstance(result, dict) and "access_token" in result:
             save_token_cache(cache)
             return str(result["access_token"])
     if not allow_device_flow:
-        raise AuthRequired("no cached OAuth token; run 'scripts/email-agent --auth' once")
+        raise AuthRequired(
+            f"no cached {scope_set} OAuth token; run 'scripts/email-agent --auth' once"
+        )
 
-    flow = app.initiate_device_flow(scopes=list(OAUTH_SCOPES))
+    flow = app.initiate_device_flow(scopes=scopes)
     if "user_code" not in flow:
         raise AuthRequired(f"device flow failed: {flow}")
     print(flow["message"], flush=True)
@@ -258,30 +266,139 @@ def get_access_token(cfg: Config, allow_device_flow: bool = False) -> str | None
     if not isinstance(result, dict) or "access_token" not in result:
         raise AuthRequired(f"sign-in failed: {result}")
     save_token_cache(cache)
-    log("OAuth sign-in saved")
+    log(f"OAuth sign-in saved for {scope_set}")
     return str(result["access_token"])
 
 
 def xoauth2_string(username: str, token: str) -> str:
-    raw = f"user={username}\x01auth=Bearer {token}\x01\x01"
-    return base64.b64encode(raw.encode("utf-8")).decode("ascii")
+    return f"user={username}\x01auth=Bearer {token}\x01\x01"
 
 
-def connect_imap(cfg: Config, token: str | None = None) -> imaplib.IMAP4:
-    if cfg.imap_port == 993:
-        client: imaplib.IMAP4 = imaplib.IMAP4_SSL(cfg.imap_host, cfg.imap_port)
-    else:
-        client = imaplib.IMAP4(cfg.imap_host, cfg.imap_port)
-        client.starttls(ssl.create_default_context())
-    if cfg.auth_mode == "oauth2":
-        if token is None:
-            token = get_access_token(cfg)
-        if token is None:
-            raise AuthRequired("missing OAuth token")
-        client.authenticate("XOAUTH2", lambda _: xoauth2_string(cfg.username, token))
-    else:
-        client.login(cfg.username, cfg.password)
-    return client
+class HTMLTextExtractor(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+    def text(self) -> str:
+        return "\n".join(self.parts)
+
+
+def graph_request(
+    cfg: Config, method: str, path: str, payload: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    token = get_access_token(cfg, "graph")
+    if token is None:
+        raise AuthRequired("missing Graph OAuth token")
+    url = "https://graph.microsoft.com/v1.0" + path
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        url,
+        data=data,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:1000]
+        raise RuntimeError(f"Graph {method} {path} failed {exc.code}: {detail}") from exc
+    return json.loads(raw) if raw else {}
+
+
+def fetch_graph_instructions(cfg: Config) -> list[Instruction]:
+    query = urllib.parse.urlencode(
+        {
+            "$filter": "isRead eq false",
+            "$select": "id,subject,from,body,internetMessageId",
+            "$top": "100",
+        }
+    )
+    result = graph_request(cfg, "GET", f"/me/mailFolders/Inbox/messages?{query}")
+    instructions: list[Instruction] = []
+    for item in result.get("value", []):
+        sender = ((item.get("from") or {}).get("emailAddress") or {}).get("address", "").lower()
+        subject = item.get("subject") or ""
+        body_data = item.get("body") or {}
+        body_raw = body_data.get("content") or ""
+        if str(body_data.get("contentType", "")).lower() == "html":
+            parser = HTMLTextExtractor()
+            parser.feed(body_raw)
+            body_raw = parser.text()
+        body = clean_body(body_raw)
+        message_id = item.get("internetMessageId") or item["id"]
+
+        if sender not in cfg.allowed_from:
+            log(f"ignoring Graph message from {sender!r}: sender not allowed")
+            continue
+        normalized = normalize_subject(subject)
+        if cfg.subject_prefix and not normalized.lower().startswith(cfg.subject_prefix.lower()):
+            log(f"ignoring Graph message {normalized!r}: subject prefix missing")
+            continue
+        if not body:
+            log(f"ignoring Graph message {normalized!r}: no text body")
+            continue
+
+        graph_request(
+            cfg,
+            "PATCH",
+            f"/me/messages/{urllib.parse.quote(str(item['id']))}",
+            {"isRead": True},
+        )
+        instructions.append(
+            Instruction(
+                uid=str(item["id"]),
+                message_id=message_id,
+                sender=sender,
+                subject=subject,
+                body=body,
+                references=message_id,
+                in_reply_to=message_id,
+            )
+        )
+    return instructions
+
+
+def connect_imap(
+cfg: Config, token: str | None = None, retries: int = 6) -> imaplib.IMAP4:
+    last_error: Exception | None = None
+    for attempt in range(retries):
+        client: imaplib.IMAP4 | None = None
+        try:
+            if cfg.imap_port == 993:
+                client = imaplib.IMAP4_SSL(cfg.imap_host, cfg.imap_port)
+            else:
+                client = imaplib.IMAP4(cfg.imap_host, cfg.imap_port)
+                client.starttls(ssl.create_default_context())
+            if cfg.auth_mode == "oauth2":
+                if token is None:
+                    token = get_access_token(cfg)
+                if token is None:
+                    raise AuthRequired("missing OAuth token")
+                client.authenticate("XOAUTH2", lambda *_: xoauth2_string(cfg.username, token))
+            else:
+                client.login(cfg.username, cfg.password)
+            return client
+        except imaplib.IMAP4.error as exc:
+            last_error = exc
+            if client is not None:
+                try:
+                    client.logout()
+                except Exception:
+                    pass
+            if "authenticated but not connected" in str(exc).lower() and attempt + 1 < retries:
+                log(f"IMAP session rejected, retrying ({attempt + 1}/{retries})")
+                time.sleep(1 + attempt)
+                continue
+            raise
+    raise last_error or RuntimeError("IMAP connect failed")
 
 
 def decode_header_value(value: str | None) -> str:
@@ -558,7 +675,7 @@ def send_reply(cfg: Config, instruction: Instruction, subject: str, body: str) -
             token = get_access_token(cfg)
             if token is None:
                 raise AuthRequired("missing OAuth token")
-            smtp.auth("XOAUTH2", lambda _: xoauth2_string(cfg.username, token))
+            smtp.auth("XOAUTH2", lambda *_: xoauth2_string(cfg.username, token))
         else:
             smtp.login(cfg.username, cfg.password)
         smtp.send_message(message)
@@ -620,15 +737,18 @@ def process_instruction(cfg: Config, instruction: Instruction) -> None:
 
 
 def poll_once(cfg: Config, state: State) -> int:
-    client = connect_imap(cfg)
-    try:
-        instructions = fetch_instructions(cfg, client)
-    finally:
+    if cfg.auth_mode == "oauth2":
+        instructions = fetch_graph_instructions(cfg)
+    else:
+        client = connect_imap(cfg)
         try:
-            client.close()
-        except imaplib.IMAP4.error:
-            pass
-        client.logout()
+            instructions = fetch_instructions(cfg, client)
+        finally:
+            try:
+                client.close()
+            except imaplib.IMAP4.error:
+                pass
+            client.logout()
 
     count = 0
     for instruction in instructions:
@@ -642,6 +762,14 @@ def poll_once(cfg: Config, state: State) -> int:
 
 
 def check_config(cfg: Config) -> None:
+    if cfg.auth_mode == "oauth2":
+        me = graph_request(cfg, "GET", "/me?$select=id,mail,userPrincipalName")
+        token = get_access_token(cfg, "smtp")
+        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as smtp:
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.auth("XOAUTH2", lambda *_: xoauth2_string(cfg.username, token or ""))
+        log(f"config OK; Graph + SMTP authenticated for {me.get('mail') or cfg.username}")
+        return
     client = connect_imap(cfg)
     try:
         status, data = client.select(cfg.mailbox, readonly=True)
@@ -698,7 +826,12 @@ def main() -> int:
         cfg = load_config()
         with single_instance_lock():
             if args.auth:
-                get_access_token(cfg, allow_device_flow=True)
+                for scope_set in OAUTH_SCOPE_SETS:
+                    try:
+                        get_access_token(cfg, scope_set)
+                        log(f"{scope_set} token already cached")
+                    except AuthRequired:
+                        get_access_token(cfg, scope_set, allow_device_flow=True)
                 return 0
             if args.check:
                 check_config(cfg)
