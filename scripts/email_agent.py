@@ -671,6 +671,7 @@ def send_reply(cfg: Config, instruction: Instruction, subject: str, body: str) -
     message.set_content(body)
     with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as smtp:
         smtp.starttls(context=ssl.create_default_context())
+        smtp.ehlo()
         if cfg.auth_mode == "oauth2":
             token = get_access_token(cfg)
             if token is None:
@@ -763,12 +764,13 @@ def poll_once(cfg: Config, state: State) -> int:
 
 def check_config(cfg: Config) -> None:
     if cfg.auth_mode == "oauth2":
-        me = graph_request(cfg, "GET", "/me?$select=id,mail,userPrincipalName")
+        graph_request(cfg, "GET", "/me/mailFolders/Inbox/messages?$top=1")
         token = get_access_token(cfg, "smtp")
         with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=30) as smtp:
             smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
             smtp.auth("XOAUTH2", lambda *_: xoauth2_string(cfg.username, token or ""))
-        log(f"config OK; Graph + SMTP authenticated for {me.get('mail') or cfg.username}")
+        log(f"config OK; Graph + SMTP authenticated for {cfg.username}")
         return
     client = connect_imap(cfg)
     try:
