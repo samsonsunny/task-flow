@@ -1,6 +1,6 @@
 # Repository Map
 
-61 Swift files / ~10.3k lines. Line counts are approximate and change over time; use them to decide whether to open a file or grep within it.
+60 Swift files / ~10.2k lines. Line counts are approximate and change over time; use them to decide whether to open a file or grep within it.
 
 ## Root
 
@@ -36,7 +36,7 @@ Never load: `.derivedData/`, `DerivedData/`, `build/`, `.env`, `.email-agent/`, 
 | `Features/Areas/` | 3 / 722 | `AreaTasksView.swift`, `AreaTasksViewModel.swift`, `AreaBoardView.swift` |
 | `Features/Lists/` | 5 / 1,368 | `ListView.swift`, `ListViewModel.swift`, `DetailView.swift`, `DetailViewModel.swift` |
 | `Features/Editor/` | 6 / 1,221 | `EditorView.swift`, `EditorViewModel.swift`, `Draft.swift` |
-| `Features/Settings/` | 2 / 227 | `MoreView.swift`, `MoreViewModel.swift` |
+| `Features/Settings/` | 1 / 154 | `MoreView.swift` |
 | `Views/Components/` | 8 / 789 | `TaskRowView.swift`, `BulkActionsToolbar.swift` |
 | `Models/` | 4 / 1,631 | `TaskItem.swift`, `AreaReconciler.swift` |
 | `DesignSystem/` | 4 / 179 | `Colors.swift`, `Typography.swift`, `Theme.swift`, `Radius.swift` |
@@ -101,8 +101,7 @@ Deleted as dead code: `Features/Home/`, `TimelineView.swift`, and the `Today`/`T
 | `Editor/DatePickerSheet.swift` | 135 | `TaskScheduleDatePickerSheet` |
 | `Editor/ListPickerView.swift` | 110 | `ListPickerView` |
 | `Editor/DatePickerViewModel.swift` | 55 | `TaskScheduleDatePickerViewModel`, `ExpandedPicker` |
-| `Settings/MoreView.swift` | 198 | `MoreView` — completed archive, settings |
-| `Settings/MoreViewModel.swift` | 29 | `MoreViewModel` |
+| `Settings/MoreView.swift` | 154 | `MoreView` — completed archive, settings |
 
 ### Shared UI + utilities
 

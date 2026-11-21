@@ -2,12 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct MoreView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
-
-    @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
-
-    @State private var viewModel: MoreViewModel?
 
     @AppStorage(DailyReminderKeys.enabled) private var isEnabled = false
     @AppStorage(DailyReminderKeys.hour) private var hour = 7
@@ -23,25 +18,6 @@ struct MoreView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 Form {
-                    Section {
-                        ForEach(viewModel?.domains ?? []) { domain in
-                            NavigationLink {
-                                ListsView(groupID: domain.persistentModelID)
-                                    .navigationBarTitleDisplayMode(.inline)
-                            } label: {
-                                Label(
-                                    areaDisplayName(domain.name),
-                                    systemImage: domainIcon(for: domain)
-                                )
-                            }
-                        }
-                    } header: {
-                        Text("Domains")
-                    }
-                    .id("moreTop")
-
-
-
                 Section {
                     Toggle("Daily Morning Reminder", isOn: Binding(
                         get: { isEnabled },
@@ -77,6 +53,7 @@ struct MoreView: View {
                         Text("A daily notification will remind you to check your tasks.")
                     }
                 }
+                .id("moreTop")
 
                 Section {
                     Picker("Appearance", selection: $appearance) {
@@ -128,27 +105,6 @@ struct MoreView: View {
             }
             }
         }
-        .onAppear(perform: bootstrap)
-        .onChange(of: groups) { _, _ in refresh() }
-    }
-
-    private func domainIcon(for group: ReminderListGroup) -> String {
-        switch group.name {
-        case AreaNames.work: return "briefcase"
-        case AreaNames.personal: return "person.crop.circle"
-        default: return "folder"
-        }
-    }
-
-    private func bootstrap() {
-        if viewModel == nil {
-            viewModel = MoreViewModel(modelContext: modelContext)
-        }
-        refresh()
-    }
-
-    private func refresh() {
-        viewModel?.update(groups: groups)
     }
 
     private var iCloudStatus: String {
