@@ -1,6 +1,27 @@
 import SwiftUI
 import SwiftData
 
+/// The two fixed domains surfaced as Today sections. Layout-only: tasks themselves stay
+/// owned by the ViewModel and are split by their list's group name.
+private enum TodayDomain: String {
+    case work
+    case personal
+
+    var title: String {
+        switch self {
+        case .work: return "Work"
+        case .personal: return "Personal"
+        }
+    }
+
+    var areaName: String {
+        switch self {
+        case .work: return AreaNames.work
+        case .personal: return AreaNames.personal
+        }
+    }
+}
+
 struct TodayTaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
@@ -12,6 +33,17 @@ struct TodayTaskListView: View {
     @State private var editingTask: TaskItem?
     @State private var newTaskConfig: NewTaskSheetConfig?
     @State private var lastHandledTodayResetID = 0
+    /// Sections a person explicitly expanded with "View all". UI-only state.
+    @State private var expandedDomains: Set<TodayDomain> = []
+
+    // Layout estimates used to size each section from the space actually available.
+    // They are row/header metrics, not task limits; the visible count is derived from
+    // the measured viewport and grows on larger displays.
+    private static let estimatedRowHeight: CGFloat = 88
+    private static let sectionHeaderHeight: CGFloat = 36
+    private static let viewAllRowHeight: CGFloat = 40
+    private static let sectionSpacing: CGFloat = 20
+    private static let bottomReserve: CGFloat = 120
 
     private let embedInNavigationStack: Bool
 
@@ -81,36 +113,54 @@ struct TodayTaskListView: View {
         lists.first(where: { $0.isBucket })?.persistentModelID ?? lists.first?.persistentModelID
     }
 
-    private func isWorkDomain(_ name: String?) -> Bool {
-        name == AreaNames.work
+    private func tasks(for domain: TodayDomain, from all: [TaskItem]) -> [TaskItem] {
+        all.filter { task in
+            let name = task.reminderList?.group?.name
+            switch domain {
+            case .work: return name == AreaNames.work
+            case .personal: return name == AreaNames.personal || name == "Home"
+            }
+        }
     }
 
-    private func isPersonalDomain(_ name: String?) -> Bool {
-        name == AreaNames.personal || name == "Home"
+    /// Each section creates into its own domain's Inbox, never the other domain's.
+    private func inboxListID(for domain: TodayDomain) -> ReminderList.ID? {
+        guard let group = groups.first(where: { $0.name == domain.areaName }) else { return nil }
+        return group.inboxBucket?.persistentModelID
+    }
+
+    private func addTask(for domain: TodayDomain) {
+        newTaskConfig = NewTaskSheetConfig(
+            initialDate: calendar.startOfDay(for: Date()),
+            initialListID: inboxListID(for: domain)
+        )
+    }
+
+    /// Rows that fit in one of the two sections at the measured viewport height. Derived
+    /// from space, not a hard-coded count, so larger displays show more of the section.
+    private func rowCapacity(viewportHeight: CGFloat) -> Int {
+        let sectionBudget = max(0, (viewportHeight - Self.bottomReserve - Self.sectionSpacing) / 2)
+        let usable = sectionBudget - Self.sectionHeaderHeight - Self.viewAllRowHeight
+        return max(1, Int(usable / Self.estimatedRowHeight))
     }
 
     @ViewBuilder
     private var content: some View {
-        let tasks = viewModel?.visibleTasks ?? []
-        let workTasks = tasks.filter { isWorkDomain($0.reminderList?.group?.name) }
-        let personalTasks = tasks.filter { isPersonalDomain($0.reminderList?.group?.name) }
-
-        if workTasks.isEmpty && personalTasks.isEmpty {
-            ContentUnavailableView(
-                "No tasks for today",
-                systemImage: "checklist",
-                description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
+        let visible = viewModel?.visibleTasks ?? []
+        GeometryReader { proxy in
+            let capacity = rowCapacity(viewportHeight: proxy.size.height)
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
-                    if !workTasks.isEmpty {
-                        taskSection(title: "Work", tasks: workTasks)
+                LazyVStack(alignment: .leading, spacing: Self.sectionSpacing) {
+                    if visible.isEmpty {
+                        ContentUnavailableView(
+                            "No tasks for today",
+                            systemImage: "checklist",
+                            description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
+                        )
+                        .frame(maxWidth: .infinity)
                     }
-                    if !personalTasks.isEmpty {
-                        taskSection(title: "Personal", tasks: personalTasks)
-                    }
+                    domainSection(.work, tasks: tasks(for: .work, from: visible), capacity: capacity)
+                    domainSection(.personal, tasks: tasks(for: .personal, from: visible), capacity: capacity)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -122,32 +172,58 @@ struct TodayTaskListView: View {
     }
 
     @ViewBuilder
-    private func taskSection(title: String, tasks: [TaskItem]) -> some View {
+    private func domainSection(_ domain: TodayDomain, tasks: [TaskItem], capacity: Int) -> some View {
+        let isExpanded = expandedDomains.contains(domain)
+        let shown = isExpanded ? tasks : Array(tasks.prefix(capacity))
+        let hiddenCount = tasks.count - shown.count
+
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-                .padding(.horizontal, 4)
+            HStack(spacing: 8) {
+                Text(domain.title)
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                Spacer(minLength: 0)
+                addTaskButton(for: domain)
+            }
+            .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
-                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                    TaskRowView(
-                        task: task,
-                        isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: {
-                            Haptics.impact(.light)
-                            viewModel?.toggleCompletion(for: task)
-                        },
-                        onDelete: { viewModel?.delete(task) },
-                        onTap: { editingTask = task },
-                        showsDueDate: viewModel?.isOverdue(task) == true,
-                        showsListName: true,
-                        showsRowBackground: false
-                    )
+                if shown.isEmpty {
+                    Text("Nothing due today")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.colors.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 18)
+                } else {
+                    taskRows(shown, addsTrailingDivider: hiddenCount > 0)
+                }
 
-                    if index < tasks.count - 1 {
-                        Divider()
-                            .padding(.leading, 54)
+                if hiddenCount > 0 {
+                    Divider()
+                        .padding(.leading, 54)
+                    disclosureButton(
+                        title: "View all",
+                        systemImage: "chevron.down",
+                        identifier: "today-view-all-\(domain.rawValue)",
+                        domain: domain
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            _ = expandedDomains.insert(domain)
+                        }
+                    }
+                } else if isExpanded && tasks.count > capacity {
+                    Divider()
+                        .padding(.leading, 54)
+                    disclosureButton(
+                        title: "Show less",
+                        systemImage: "chevron.up",
+                        identifier: "today-show-less-\(domain.rawValue)",
+                        domain: domain
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            _ = expandedDomains.remove(domain)
+                        }
                     }
                 }
             }
@@ -157,6 +233,71 @@ struct TodayTaskListView: View {
                     .fill(Color(.secondarySystemGroupedBackground))
             )
         }
+        .accessibilityIdentifier("today-section-\(domain.rawValue)")
+    }
+
+    @ViewBuilder
+    private func taskRows(_ rows: [TaskItem], addsTrailingDivider: Bool) -> some View {
+        ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
+            TaskRowView(
+                task: task,
+                isCompletedVisualState: task.isCompleted ?? false,
+                onToggleCompletion: {
+                    Haptics.impact(.light)
+                    viewModel?.toggleCompletion(for: task)
+                },
+                onDelete: { viewModel?.delete(task) },
+                onTap: { editingTask = task },
+                showsDueDate: viewModel?.isOverdue(task) == true,
+                showsListName: true,
+                showsRowBackground: false
+            )
+
+            if index < rows.count - 1 || addsTrailingDivider {
+                Divider()
+                    .padding(.leading, 54)
+            }
+        }
+    }
+
+    private func addTaskButton(for domain: TodayDomain) -> some View {
+        Button {
+            addTask(for: domain)
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(AppTheme.colors.tint)
+                .frame(width: 28, height: 28)
+                .background(AppTheme.colors.tint.opacity(0.12), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add \(domain.title) task")
+        .accessibilityIdentifier("today-add-\(domain.rawValue)")
+    }
+
+    private func disclosureButton(
+        title: String,
+        systemImage: String,
+        identifier: String,
+        domain: TodayDomain,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title)
+                Spacer(minLength: 0)
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.colors.tint)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) \(domain.title) tasks")
+        .accessibilityIdentifier(identifier)
     }
 
     private func bootstrap() {
