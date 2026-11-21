@@ -18,6 +18,7 @@ Load `ai/INDEX.md` before navigating, then open **one** doc from the router belo
 - **CloudKit:** any new field, relationship, or rename on an existing `@Model` requires a strictly higher `CURRENT_PROJECT_VERSION`. Details: `ai/CONVENTIONS.md`.
 - **Naming:** "Wednesday Calendar" in customer-facing copy; "TaskFlow" is internal only.
 - Never commit `.derivedData/`, `DerivedData/`, `build/`, `.ralph/runs/`, or `.env`.
+- **Git:** rebase onto latest `origin/main` before making changes; keep pushes fast-forward. Never force-push `main`.
 
 ## Context router
 

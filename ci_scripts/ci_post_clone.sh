@@ -21,6 +21,8 @@ git config user.email "ci@taskflow.app"
 # Switch to HTTPS with PAT for push access (set GITHUB_TOKEN in Xcode Cloud env vars)
 git remote set-url origin "https://samsonsunny:${GITHUB_TOKEN}@github.com/samsonsunny/task-flow.git"
 
+git pull --rebase origin main
+
 # Today = release version (e.g. July 8 → 26.7.8)
 RELEASE=$(date '+%y.%-m.%-d')
 
@@ -32,8 +34,6 @@ if [ "$CURRENT" != "$RELEASE" ]; then
   git add TaskFlow.xcodeproj/project.pbxproj
   git commit -m "Set version to $RELEASE"
 fi
-
-git pull --rebase origin main
 
 # Push main first as its own step — never block it on the tag.
 git push origin main

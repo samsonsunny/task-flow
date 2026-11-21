@@ -17,8 +17,9 @@ xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow \
 ## Git / release
 
 - Trunk-based: `main` is the only permanent branch; tags `vYY.M.DD` mark daily releases.
+- Rebase onto latest `origin/main` before making changes so pushes stay fast-forward; never force-push `main`.
 - Versions are release dates (`YY.M.DD`). Build daily for the same day's release.
-- `ci_scripts/ci_post_clone.sh` sets today's version, commits, tags, pushes.
+- `ci_scripts/ci_post_clone.sh` rebases first, then sets today's version, commits, tags, pushes.
 - Xcode Cloud: CI builds/tests on `main` pushes; Daily Release tags and distributes to App Store Connect.
 - Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
 - Never commit `.derivedData/`, `DerivedData/`, `build/`, `.ralph/runs/`, `.env`, or `.xcuserdata`. Derived data is gitignored and untracked as of `5c32541`.
