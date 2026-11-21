@@ -25,7 +25,7 @@ from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.parser import BytesParser
 from email.policy import default as email_policy
-from email.utils import parseaddr
+from email.utils import make_msgid, parseaddr
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +36,7 @@ TOKEN_CACHE_FILE = STATE_DIR / "msal_cache.json"
 LOCK_FILE = STATE_DIR / "agent.lock"
 DERIVED_DATA = STATE_DIR / "DerivedData"
 DEFAULT_OAUTH_CLIENT_ID = "9e5f94bc-e8a4-4e73-b8be-63364c29d753"
+GENERATED_HEADER = "X-Email-Agent-Generated"
 OAUTH_SCOPE_SETS = {
     "smtp": ("https://outlook.office.com/SMTP.Send",),
     "graph": ("https://graph.microsoft.com/Mail.ReadWrite",),
@@ -101,11 +102,13 @@ class Instruction:
     body: str
     references: str
     in_reply_to: str
+    agent_generated: bool = False
 
 
 @dataclass
 class State:
     processed: dict[str, str] = field(default_factory=dict)
+    generated: dict[str, str] = field(default_factory=dict)
 
 
 def load_dotenv_file() -> None:
@@ -212,9 +215,16 @@ def load_state() -> State:
         return State()
     try:
         raw = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            return State()
+        state = State()
         processed = raw.get("processed", {})
+        generated = raw.get("generated", {})
         if isinstance(processed, dict):
-            return State(processed={str(k): str(v) for k, v in processed.items()})
+            state.processed = {str(k): str(v) for k, v in processed.items()}
+        if isinstance(generated, dict):
+            state.generated = {str(k): str(v) for k, v in generated.items()}
+        return state
     except (json.JSONDecodeError, OSError) as exc:
         log(f"state file unreadable, starting fresh: {exc}")
     return State()
@@ -222,10 +232,13 @@ def load_state() -> State:
 
 def save_state(state: State) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    items = list(state.processed.items())
-    state.processed = dict(items[-1000:])
+    processed_items = list(state.processed.items())
+    generated_items = list(state.generated.items())
+    state.processed = dict(processed_items[-1000:])
+    state.generated = dict(generated_items[-1000:])
     tmp = STATE_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"processed": state.processed}, indent=2), encoding="utf-8")
+    payload = {"processed": state.processed, "generated": state.generated}
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     tmp.replace(STATE_FILE)
 
 
@@ -336,7 +349,7 @@ def fetch_graph_instructions(cfg: Config) -> list[Instruction]:
     query = urllib.parse.urlencode(
         {
             "$filter": "isRead eq false",
-            "$select": "id,subject,from,body,internetMessageId",
+            "$select": "id,subject,from,body,internetMessageId,internetMessageHeaders",
             "$top": "100",
         }
     )
@@ -353,6 +366,12 @@ def fetch_graph_instructions(cfg: Config) -> list[Instruction]:
             body_raw = parser.text()
         body = clean_body(body_raw)
         message_id = item.get("internetMessageId") or item["id"]
+        headers = {
+            str(header.get("name", "")).lower(): str(header.get("value", ""))
+            for header in (item.get("internetMessageHeaders") or [])
+            if isinstance(header, dict)
+        }
+        agent_generated = is_agent_generated_value(headers.get(GENERATED_HEADER.lower()))
 
         if sender not in cfg.allowed_from:
             log(f"ignoring Graph message from {sender!r}: sender not allowed")
@@ -380,6 +399,7 @@ def fetch_graph_instructions(cfg: Config) -> list[Instruction]:
                 body=body,
                 references=message_id,
                 in_reply_to=message_id,
+                agent_generated=agent_generated,
             )
         )
     return instructions
@@ -462,6 +482,14 @@ def clean_body(raw: str) -> str:
     return "\n".join(lines).strip()
 
 
+def is_reply_subject(subject: str) -> bool:
+    return bool(re.match(r"^\s*(re|fwd|fw)\s*:", subject, flags=re.IGNORECASE))
+
+
+def is_agent_generated_value(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"true", "1", "yes"}
+
+
 def normalize_subject(subject: str) -> str:
     previous = None
     while previous != subject:
@@ -475,6 +503,9 @@ def parse_instruction(uid: str, raw: bytes) -> Instruction | None:
     sender = parseaddr(decode_header_value(message.get("From")))[1].strip().lower()
     subject = decode_header_value(message.get("Subject"))
     body = clean_body(extract_body(message))
+    agent_generated = is_agent_generated_value(
+        decode_header_value(message.get(GENERATED_HEADER))
+    )
     return Instruction(
         uid=uid,
         message_id=(message.get("Message-ID") or f"uid-{uid}").strip(),
@@ -483,6 +514,7 @@ def parse_instruction(uid: str, raw: bytes) -> Instruction | None:
         body=body,
         references=(message.get("References") or "").strip(),
         in_reply_to=(message.get("Message-ID") or "").strip(),
+        agent_generated=agent_generated,
     )
 
 
@@ -593,17 +625,21 @@ REQUEST END
         "--agent", "email-dev",
         "--auto",
         "--format", "json",
+        "--dir", str(cwd),
         "--title", f"email: {normalize_subject(instruction.subject)[:80]}",
     ]
     if cfg.model:
         command.extend(["--model", cfg.model])
     command.append(prompt)
+    env = os.environ.copy()
+    env["PWD"] = str(cwd)
     for attempt in range(1, cfg.agent_attempts + 1):
         before = changed_files(cwd)
         try:
             result = subprocess.run(
                 command,
                 cwd=cwd,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=cfg.agent_timeout,
@@ -694,8 +730,13 @@ def push_changes(cfg: Config) -> str:
     return (result.stdout + "\n" + result.stderr).strip()
 
 
-def send_reply(cfg: Config, instruction: Instruction, subject: str, body: str) -> None:
+def send_reply(
+    cfg: Config, state: State, instruction: Instruction, subject: str, body: str
+) -> None:
     message = EmailMessage()
+    message_id = make_msgid(domain="email-agent.local")
+    message["Message-ID"] = message_id
+    message[GENERATED_HEADER] = "true"
     message["Subject"] = subject
     message["From"] = cfg.username
     message["To"] = instruction.sender
@@ -717,9 +758,11 @@ def send_reply(cfg: Config, instruction: Instruction, subject: str, body: str) -
         else:
             smtp.login(cfg.username, cfg.password)
         smtp.send_message(message)
+        state.generated[message_id] = datetime.now(timezone.utc).isoformat()
+        save_state(state)
 
 
-def process_instruction(cfg: Config, instruction: Instruction) -> None:
+def process_instruction(cfg: Config, state: State, instruction: Instruction) -> None:
     subject = normalize_subject(instruction.subject)
     log(f"processing {subject!r} from {instruction.sender}")
     try:
@@ -760,13 +803,14 @@ def process_instruction(cfg: Config, instruction: Instruction) -> None:
             reply.extend(["", "Files changed:", *[f"- {name}" for name in files]])
         if push_output:
             reply.extend(["", "Push output:", push_output])
-        send_reply(cfg, instruction, f"Re: {subject}", "\n".join(reply))
+        send_reply(cfg, state, instruction, f"Re: {subject}", "\n".join(reply))
         log(f"completed {subject!r} on {cfg.base_branch}")
     except Exception as exc:
         log(f"failed {subject!r}: {exc}")
         try:
             send_reply(
                 cfg,
+                state,
                 instruction,
                 f"Re: {subject}",
                 "\n".join(
@@ -799,11 +843,17 @@ def poll_once(cfg: Config, state: State) -> int:
 
     count = 0
     for instruction in instructions:
+        if instruction.agent_generated or instruction.message_id in state.generated:
+            log(f"ignoring agent-generated message {instruction.message_id!r}")
+            continue
+        if is_reply_subject(instruction.subject):
+            log(f"ignoring reply {normalize_subject(instruction.subject)!r}")
+            continue
         if instruction.message_id in state.processed:
             continue
         state.processed[instruction.message_id] = datetime.now(timezone.utc).isoformat()
         save_state(state)
-        process_instruction(cfg, instruction)
+        process_instruction(cfg, state, instruction)
         count += 1
     return count
 

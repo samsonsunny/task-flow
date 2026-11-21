@@ -45,6 +45,7 @@ Prerequisites:
 - The repo must be in a non-TCC-protected path such as `~/Projects/TaskFlowApp`; a LaunchAgent cannot read scripts under `~/Desktop`.
 - You must be logged in to the macOS user session. The screen may be locked; after logout/restart the job stops until the next login.
 - The plist must include `/Users/sam/.opencode/bin` in `PATH`; launchd's default PATH omits it.
+- The daemon passes `--dir` and `PWD` explicitly; launchd starts with `PWD=/`, which otherwise makes opencode create the session in the global `/` project instead of the repo.
 - Git push must work non-interactively from launchd via the inherited `SSH_AUTH_SOCK`.
 
 Setup (one time):
@@ -64,6 +65,8 @@ Setup (one time):
 
    Optional: `EMAIL_AGENT_AGENT_ATTEMPTS` (default `3`) and `EMAIL_AGENT_AGENT_RETRY_DELAY` (default `5` seconds) control retries for transient opencode server errors. Retries only happen when the failed attempt left no file changes.
 
+   Replies (`Re:`/`Fwd:`) and messages tagged `X-Email-Agent-Generated: true` are ignored, including the agent's own replies. Outbound Message-IDs are recorded in `.email-agent/state.json` so a delivery copy cannot be reprocessed. Send a fresh `[dev]` email rather than replying to an agent message.
+
 2. Outlook.com requires OAuth2; basic auth/app passwords will not work. `EMAIL_AGENT_OAUTH_CLIENT_ID` defaults to Thunderbird's public client ID and can be overridden with your own Entra app registration.
 3. Run `./scripts/email-agent --auth` and complete both Microsoft device-code sign-ins (Graph `Mail.ReadWrite`, then SMTP `Send`). Tokens are cached in `.email-agent/msal_cache.json` (mode 600, gitignored) and refreshed silently.
 4. Run `./scripts/email-agent --check` to verify Graph and SMTP auth, then `./scripts/email-agent --once` for a single poll or no flag for a long-running daemon.
@@ -77,7 +80,7 @@ Setup (one time):
 
 6. Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
 
-Send email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. On success it replies with target branch, commit, push result, build result, and changed files.
+Send a new email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. On success it replies with target branch, commit, push result, build result, and changed files.
 
 
 ## CI workflow (`.github/workflows/devto-publish.yml`)
