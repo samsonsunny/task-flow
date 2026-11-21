@@ -172,6 +172,58 @@ final class AreaTasksViewModel {
         }
     }
 
+    // MARK: - Scheduling
+
+    /// Applies a schedule preset without touching any other task property. The context menu
+    /// delegates here so date changes follow the same save/notification path as list details.
+    func rescheduleTask(_ task: TaskItem, to action: DueDateAction) {
+        guard action != .custom else { return }
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        let calendar = Calendar.current
+        let now = Date()
+        switch action {
+        case .none:
+            task.dueDate = nil
+        case .today:
+            task.dueDate = calendar.startOfDay(for: now)
+        case .tomorrow:
+            task.dueDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+        case .thisWeekend:
+            task.dueDate = ReminderSegmentViewModel.nextSaturday(from: now)
+        case .nextWeek:
+            task.dueDate = ReminderSegmentViewModel.nextMonday(from: now)
+        case .custom:
+            break
+        }
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
+        recompute()
+    }
+
+    /// Commits the date picked by the "Choose Date…" sheet.
+    func scheduleTask(_ task: TaskItem, dueDate: Date?, hasTime: Bool) {
+        if let taskId = task.taskId {
+            NotificationService.shared.cancel(taskId: taskId)
+        }
+        if let date = dueDate {
+            if hasTime {
+                task.dueDate = date
+                task.hasTime = true
+                NotificationService.shared.schedule(for: task)
+            } else {
+                task.dueDate = Calendar.current.startOfDay(for: date)
+                task.hasTime = false
+            }
+        } else {
+            task.dueDate = nil
+        }
+        try? modelContext.save()
+        BadgeService.update(modelContext: modelContext)
+        recompute()
+    }
+
     func delete(_ task: TaskItem) {
         if let taskId = task.taskId {
             NotificationService.shared.cancel(taskId: taskId)

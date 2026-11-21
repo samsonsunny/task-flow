@@ -13,6 +13,7 @@ struct ScheduledTasksView: View {
     @State private var viewModel: TodayViewModel?
     @State private var editingTask: TaskItem?
     @State private var newTaskConfig: NewTaskSheetConfig?
+    @State private var scheduleConfigTask: TaskItem?
 
     private let onShowToday: (() -> Void)?
 
@@ -87,6 +88,19 @@ struct ScheduledTasksView: View {
             .sheet(item: $newTaskConfig) { config in
                 ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
             }
+            .sheet(item: $scheduleConfigTask) { task in
+                TaskScheduleDatePickerSheet(
+                    isPresented: Binding(
+                        get: { scheduleConfigTask != nil },
+                        set: { if !$0 { scheduleConfigTask = nil } }
+                    ),
+                    initialDueDate: task.dueDate,
+                    initialFocus: task.dueDate == nil ? .date : .time,
+                    onCommit: { dueDate, hasTime in
+                        viewModel?.scheduleTask(task, dueDate: dueDate, hasTime: hasTime)
+                    }
+                )
+            }
     }
 
     private var content: some View {
@@ -95,6 +109,13 @@ struct ScheduledTasksView: View {
             selectedDate: $selectedDate,
             scrollRequestToken: dayTapToken,
             onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+            onDueDateAction: { task, action in
+                if action == .custom {
+                    scheduleConfigTask = task
+                } else {
+                    viewModel?.rescheduleTask(task, to: action)
+                }
+            },
             onDelete: { viewModel?.delete($0) },
             onTapTask: { editingTask = $0 },
             onRefresh: refresh

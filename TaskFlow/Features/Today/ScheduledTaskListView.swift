@@ -20,6 +20,7 @@ struct ScheduledTaskListView: View {
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
     let onToggleCompletion: (TaskItem) -> Void
+    let onDueDateAction: (TaskItem, DueDateAction) -> Void
     let onDelete: (TaskItem) -> Void
     let onTapTask: (TaskItem) -> Void
     let onRefresh: () -> Void
@@ -173,6 +174,7 @@ struct ScheduledTaskListView: View {
                             Haptics.impact(.light)
                             onToggleCompletion(task)
                         },
+                        onDueDateAction: { onDueDateAction(task, $0) },
                         onDelete: { onDelete(task) },
                         onTap: { onTapTask(task) },
                         showsDueDate: false,

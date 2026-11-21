@@ -88,24 +88,37 @@ struct TaskRowView: View, Equatable {
             .contextMenu {
                 if !isSelecting {
                     if let onDueDateAction {
-                        Menu("Deadline") {
-                            if activeDueDateItem == .none {
-                                Button {
-                                    onDueDateAction(.none)
-                                } label: {
-                                    Label("None", systemImage: "checkmark")
-                                }
-                            } else {
-                                Button("None") {
-                                    onDueDateAction(.none)
-                                }
+                        // Schedule actions are context-aware: a task never gets an action that
+                        // would re-apply the schedule it already has.
+                        if !isScheduledForToday {
+                            Button {
+                                onDueDateAction(.today)
+                            } label: {
+                                Label("Move to Today", systemImage: "calendar")
                             }
-                            Divider()
-                            presetButton("Today", action: .today)
-                            presetButton("Tomorrow", action: .tomorrow)
+                        }
+                        if !isScheduledForTomorrow {
+                            Button {
+                                onDueDateAction(.tomorrow)
+                            } label: {
+                                Label("Move to Tomorrow", systemImage: "calendar.badge.plus")
+                            }
+                        }
+                        Button {
+                            onDueDateAction(.custom)
+                        } label: {
+                            Label("Choose Date…", systemImage: "calendar.badge.clock")
+                        }
+                        if isScheduled {
+                            Button {
+                                onDueDateAction(.none)
+                            } label: {
+                                Label("Unschedule", systemImage: "calendar.badge.minus")
+                            }
+                        }
+                        Menu("Other Dates") {
                             presetButton("This Weekend", action: .thisWeekend)
                             presetButton("Next Week", action: .nextWeek)
-                            presetButton("Custom…", action: .custom)
                         }
                     }
                     if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
@@ -425,6 +438,20 @@ struct TaskRowView: View, Equatable {
         formatter.timeStyle = .short
         return formatter
     }()
+
+    private var isScheduled: Bool {
+        task.dueDate != nil
+    }
+
+    private var isScheduledForToday: Bool {
+        guard let dueDate = task.dueDate else { return false }
+        return Calendar.current.isDateInToday(dueDate)
+    }
+
+    private var isScheduledForTomorrow: Bool {
+        guard let dueDate = task.dueDate else { return false }
+        return Calendar.current.isDateInTomorrow(dueDate)
+    }
 
     private var activeDueDateItem: DueDateAction? {
         guard let dueDate = task.dueDate else { return .none }

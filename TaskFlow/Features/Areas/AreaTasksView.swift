@@ -67,6 +67,7 @@ struct AreaTasksView: View {
     @State private var viewModel: AreaTasksViewModel?
     @State private var editingTask: TaskItem?
     @State private var newTaskConfig: NewTaskSheetConfig?
+    @State private var scheduleConfigTask: TaskItem?
 
     private var displayModeBinding: Binding<AreaDisplayMode> {
         Binding(
@@ -145,6 +146,19 @@ struct AreaTasksView: View {
         .sheet(item: $newTaskConfig) { config in
             ReminderEditorView(initialDate: config.initialDate, initialListID: config.initialListID)
         }
+        .sheet(item: $scheduleConfigTask) { task in
+            TaskScheduleDatePickerSheet(
+                isPresented: Binding(
+                    get: { scheduleConfigTask != nil },
+                    set: { if !$0 { scheduleConfigTask = nil } }
+                ),
+                initialDueDate: task.dueDate,
+                initialFocus: task.dueDate == nil ? .date : .time,
+                onCommit: { dueDate, hasTime in
+                    viewModel?.scheduleTask(task, dueDate: dueDate, hasTime: hasTime)
+                }
+            )
+        }
     }
 
     /// New tasks land in this area's Inbox bucket.
@@ -195,6 +209,13 @@ struct AreaTasksView: View {
                                     onToggleCompletion: {
                                         Haptics.impact(.light)
                                         viewModel?.toggleCompletion(for: task)
+                                    },
+                                    onDueDateAction: { action in
+                                        if action == .custom {
+                                            scheduleConfigTask = task
+                                        } else {
+                                            viewModel?.rescheduleTask(task, to: action)
+                                        }
                                     },
                                     onDelete: { viewModel?.delete(task) },
                                     onTap: { editingTask = task },
