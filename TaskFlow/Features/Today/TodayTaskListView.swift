@@ -34,17 +34,13 @@ struct TodayTaskListView: View {
     @State private var newTaskConfig: NewTaskSheetConfig?
     @State private var scheduleConfigTask: TaskItem?
     @State private var lastHandledTodayResetID = 0
-    /// Sections a person explicitly expanded with "View all". UI-only state.
+    /// Sections a person expanded with "More". UI-only state: a section stays expanded
+    /// for the current page state, and there is no collapse control.
     @State private var expandedDomains: Set<TodayDomain> = []
 
-    // Layout estimates used to size each section from the space actually available.
-    // They are row/header metrics, not task limits; the visible count is derived from
-    // the measured viewport and grows on larger displays.
-    private static let estimatedRowHeight: CGFloat = 88
-    private static let sectionHeaderHeight: CGFloat = 36
-    private static let viewAllRowHeight: CGFloat = 40
+    /// Rows shown per domain before its "More" control reveals the rest.
+    private static let initialTaskLimit = 5
     private static let sectionSpacing: CGFloat = 20
-    private static let bottomReserve: CGFloat = 120
 
     private let embedInNavigationStack: Bool
 
@@ -150,46 +146,35 @@ struct TodayTaskListView: View {
         )
     }
 
-    /// Rows that fit in one of the two sections at the measured viewport height. Derived
-    /// from space, not a hard-coded count, so larger displays show more of the section.
-    private func rowCapacity(viewportHeight: CGFloat) -> Int {
-        let sectionBudget = max(0, (viewportHeight - Self.bottomReserve - Self.sectionSpacing) / 2)
-        let usable = sectionBudget - Self.sectionHeaderHeight - Self.viewAllRowHeight
-        return max(1, Int(usable / Self.estimatedRowHeight))
-    }
-
     @ViewBuilder
     private var content: some View {
         let visible = viewModel?.visibleTasks ?? []
-        GeometryReader { proxy in
-            let capacity = rowCapacity(viewportHeight: proxy.size.height)
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: Self.sectionSpacing) {
-                    if visible.isEmpty {
-                        ContentUnavailableView(
-                            "No tasks for today",
-                            systemImage: "checklist",
-                            description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    domainSection(.work, tasks: tasks(for: .work, from: visible), capacity: capacity)
-                    domainSection(.personal, tasks: tasks(for: .personal, from: visible), capacity: capacity)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Self.sectionSpacing) {
+                if visible.isEmpty {
+                    ContentUnavailableView(
+                        "No tasks for today",
+                        systemImage: "checklist",
+                        description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
+                    )
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 100)
+                domainSection(.work, tasks: tasks(for: .work, from: visible))
+                domainSection(.personal, tasks: tasks(for: .personal, from: visible))
             }
-            .scrollIndicators(.hidden)
-            .refreshable { refreshViewModel() }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 100)
         }
+        .scrollIndicators(.hidden)
+        .refreshable { refreshViewModel() }
     }
 
     @ViewBuilder
-    private func domainSection(_ domain: TodayDomain, tasks: [TaskItem], capacity: Int) -> some View {
+    private func domainSection(_ domain: TodayDomain, tasks: [TaskItem]) -> some View {
         let isExpanded = expandedDomains.contains(domain)
-        let shown = isExpanded ? tasks : Array(tasks.prefix(capacity))
-        let hiddenCount = tasks.count - shown.count
+        let shown = isExpanded ? tasks : Array(tasks.prefix(Self.initialTaskLimit))
+        let hasMore = shown.count < tasks.count
 
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -210,35 +195,12 @@ struct TodayTaskListView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 18)
                 } else {
-                    taskRows(shown, addsTrailingDivider: hiddenCount > 0)
-                }
-
-                if hiddenCount > 0 {
-                    Divider()
-                        .padding(.leading, 54)
-                    disclosureButton(
-                        title: "View all",
-                        systemImage: "chevron.down",
-                        identifier: "today-view-all-\(domain.rawValue)",
-                        domain: domain
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            _ = expandedDomains.insert(domain)
-                        }
-                    }
-                } else if isExpanded && tasks.count > capacity {
-                    Divider()
-                        .padding(.leading, 54)
-                    disclosureButton(
-                        title: "Show less",
-                        systemImage: "chevron.up",
-                        identifier: "today-show-less-\(domain.rawValue)",
-                        domain: domain
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            _ = expandedDomains.remove(domain)
-                        }
-                    }
+                    taskRows(
+                        shown,
+                        domain: domain,
+                        hasMore: hasMore,
+                        onMore: { expand(domain) }
+                    )
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
@@ -251,33 +213,72 @@ struct TodayTaskListView: View {
     }
 
     @ViewBuilder
-    private func taskRows(_ rows: [TaskItem], addsTrailingDivider: Bool) -> some View {
+    private func taskRows(
+        _ rows: [TaskItem],
+        domain: TodayDomain,
+        hasMore: Bool,
+        onMore: @escaping () -> Void
+    ) -> some View {
         ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
-            TaskRowView(
-                task: task,
-                isCompletedVisualState: task.isCompleted ?? false,
-                onToggleCompletion: {
-                    Haptics.impact(.light)
-                    viewModel?.toggleCompletion(for: task)
-                },
-                onDueDateAction: { action in
-                    if action == .custom {
-                        scheduleConfigTask = task
-                    } else {
-                        viewModel?.rescheduleTask(task, to: action)
-                    }
-                },
-                onDelete: { viewModel?.delete(task) },
-                onTap: { editingTask = task },
-                showsDueDate: viewModel?.isOverdue(task) == true,
-                showsListName: true,
-                showsRowBackground: false
-            )
+            // The "More" control is an overlay on the last row, not its own row. It only
+            // occupies its own frame, so the row's completion, tap and menu gestures stay
+            // available everywhere else.
+            ZStack(alignment: .bottomTrailing) {
+                TaskRowView(
+                    task: task,
+                    isCompletedVisualState: task.isCompleted ?? false,
+                    onToggleCompletion: {
+                        Haptics.impact(.light)
+                        viewModel?.toggleCompletion(for: task)
+                    },
+                    onDueDateAction: { action in
+                        if action == .custom {
+                            scheduleConfigTask = task
+                        } else {
+                            viewModel?.rescheduleTask(task, to: action)
+                        }
+                    },
+                    onDelete: { viewModel?.delete(task) },
+                    onTap: { editingTask = task },
+                    showsDueDate: viewModel?.isOverdue(task) == true,
+                    showsListName: true,
+                    showsRowBackground: false
+                )
 
-            if index < rows.count - 1 || addsTrailingDivider {
+                if hasMore && index == rows.count - 1 {
+                    moreControl(domain: domain, action: onMore)
+                }
+            }
+
+            if index < rows.count - 1 {
                 Divider()
                     .padding(.leading, 54)
             }
+        }
+    }
+
+    private func moreControl(domain: TodayDomain, action: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.impact(.light)
+            action()
+        } label: {
+            Text("More")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.colors.tint)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.regularMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, 12)
+        .padding(.bottom, 8)
+        .accessibilityLabel("More \(domain.title) tasks")
+        .accessibilityIdentifier("today-more-\(domain.rawValue)")
+    }
+
+    private func expand(_ domain: TodayDomain) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            _ = expandedDomains.insert(domain)
         }
     }
 
@@ -294,31 +295,6 @@ struct TodayTaskListView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Add \(domain.title) task")
         .accessibilityIdentifier("today-add-\(domain.rawValue)")
-    }
-
-    private func disclosureButton(
-        title: String,
-        systemImage: String,
-        identifier: String,
-        domain: TodayDomain,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Text(title)
-                Spacer(minLength: 0)
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.colors.tint)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(title) \(domain.title) tasks")
-        .accessibilityIdentifier(identifier)
     }
 
     private func bootstrap() {
