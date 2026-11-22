@@ -730,12 +730,10 @@ def set_marketing_version(cwd: Path) -> str | None:
     return version
 
 
-def commit_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
-    files = changed_files(cwd)
-    if not files:
+def commit_with_message(cfg: Config, cwd: Path, message: str) -> str | None:
+    if not changed_files(cwd):
         return None
     git(["add", "-A"], cwd)
-    message = f"email: {normalize_subject(subject)[:72]}"
     git(
         [
             "-c", f"user.name={cfg.git_name}",
@@ -745,6 +743,15 @@ def commit_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
         cwd,
     )
     return git(["rev-parse", "--short", "HEAD"], cwd).stdout.strip()
+
+
+def commit_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
+    return commit_with_message(cfg, cwd, f"email: {normalize_subject(subject)[:72]}")
+
+
+def commit_pending_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
+    message = f"wip: pending changes before {normalize_subject(subject)[:44]}"
+    return commit_with_message(cfg, cwd, message)
 
 
 def sync_with_remote(cfg: Config, cwd: Path) -> None:
@@ -818,7 +825,15 @@ def process_instruction(cfg: Config, state: State, instruction: Instruction) -> 
             )
         dirty = git(["status", "--porcelain"], REPO_ROOT).stdout.strip()
         if dirty:
-            raise RuntimeError("working tree is not clean; refusing direct-to-main run")
+            version = set_marketing_version(REPO_ROOT)
+            if version:
+                log(f"set MARKETING_VERSION to {version}")
+            build_ok, build_output = run_build(cfg, REPO_ROOT)
+            if not build_ok:
+                raise RuntimeError(f"pending changes failed build:\n{build_output}")
+            pending_commit = commit_pending_changes(cfg, REPO_ROOT, subject)
+            push_output = push_changes(cfg)
+            log(f"pushed pending changes {pending_commit}: {push_output.strip()}")
         sync_with_remote(cfg, REPO_ROOT)
 
         summary = run_opencode(cfg, REPO_ROOT, instruction)

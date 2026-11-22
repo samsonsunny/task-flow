@@ -81,7 +81,7 @@ Setup (one time):
 
 6. Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
 
-Send a new email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. The agent fetches and rebases onto `origin/main` before starting work and again before building; a rejected push triggers one fetch/rebase/retry. It never force-pushes. Before committing, it sets every `MARKETING_VERSION` to today's `YY.M.DD`. On success it replies with target branch, commit, push result, build result, and changed files.
+Send a new email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main`; if it has pending changes, the agent sets `MARKETING_VERSION` to today's `YY.M.DD`, builds, commits them separately as `wip: pending changes before <request>`, and pushes before working on the request. The agent fetches and rebases onto `origin/main` before starting work and again before building; a rejected push triggers one fetch/rebase/retry. It never force-pushes. On success it replies with target branch, commit, push result, build result, and changed files.
 
 
 ## CI workflow (`.github/workflows/devto-publish.yml`)
