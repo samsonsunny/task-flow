@@ -63,45 +63,29 @@ See `ai/OPERATIONS.md` for test, CI, release, and content publishing commands.
 Trunk-based development with a single permanent branch:
 
 - **`main`** — only branch. All development lands here directly.
-- **Tags** (`v26.7.15`) mark daily releases. Force pushes and deletions are blocked on `main`.
+- **Tags** (`v26.11.21`) mark released versions and are applied manually. Force pushes and deletions are blocked on `main`.
 
 ## Versioning
 
-Versions are **release dates** in `YY.M.DD` format (e.g. `26.7.15` = release on July 15).
+The version is whatever is committed in `MARKETING_VERSION` inside `TaskFlow.xcodeproj/project.pbxproj` (currently `26.11.21`).
 
-- Build runs **daily** and uses the **trigger date** as its version
-- `ci_post_clone.sh` updates `main` to that date before building
-- No post-build version bump
+- Email-agent commits set `MARKETING_VERSION` to today's `YY.M.DD` before committing
+- Manual daily commits should do the same
+- CI never edits, commits, tags, or pushes a version change
+- Daily builds reuse the committed version
 
 ## Xcode Cloud Workflows
 
 | Workflow | Trigger | What it does |
 |---|---|---|
 | **CI** | Branch changes on `main` | Builds + tests on every push |
-| **Daily Release** | Schedule — daily | Builds, tags, and distributes to App Store Connect |
+| **Daily Release** | Schedule — daily | Builds and distributes the committed version; no tag or push |
 
 Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
 
-## Auto-Release Flow (ci_scripts)
+## Release Scripts (`ci_scripts`)
 
-One script automates the daily release — no manual version bumps needed.
-
-### Before build (`ci_post_clone.sh`)
-
-Sets the project to **today's date** (e.g. July 8 → `26.7.8`), commits it, tags `v26.7.8`, and pushes. The build then uses this version.
-
-### Example
-
-| Date | Step | main version | Tag |
-|---|---|---|---|
-| July 8 | Clone before build | `26.7.8` | — |
-| | `ci_post_clone.sh` | `26.7.8` (committed) | `v26.7.8` |
-| | Xcode Cloud builds with `26.7.8` | | |
-| July 9 | Clone before build | `26.7.9` | — |
-| | `ci_post_clone.sh` | `26.7.9` (committed) | `v26.7.9` |
-| ... | repeats daily | | |
-
-No manual version bumps. Each day's build uses its own date as the release version.
+`ci_post_clone.sh` is intentionally a no-op. Version and tag changes are manual, so builds never mutate `main` behind your local checkout.
 
 ## Notes
 

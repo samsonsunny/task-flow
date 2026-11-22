@@ -16,11 +16,11 @@ xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow \
 
 ## Git / release
 
-- Trunk-based: `main` is the only permanent branch; tags `vYY.M.DD` mark daily releases.
+- Trunk-based: `main` is the only permanent branch; tags `vYY.M.DD` mark released versions and are applied manually.
 - Rebase onto latest `origin/main` before making changes so pushes stay fast-forward; never force-push `main`.
-- Versions are release dates (`YY.M.DD`). Build daily for the same day's release.
-- `ci_scripts/ci_post_clone.sh` rebases first, then sets today's version, commits, tags, pushes.
-- Xcode Cloud: CI builds/tests on `main` pushes; Daily Release tags and distributes to App Store Connect.
+- `MARKETING_VERSION` in `TaskFlow.xcodeproj/project.pbxproj` is the source of truth. Email-agent commits set it to today's `YY.M.DD` before committing; manual daily commits should do the same. CI never changes it.
+- `ci_scripts/ci_post_clone.sh` is a no-op: no version bump, commit, tag, or push.
+- Xcode Cloud: CI builds/tests on `main` pushes; Daily Release builds and distributes the committed version without tagging or pushing.
 - Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
 - Never commit `.derivedData/`, `DerivedData/`, `build/`, `.ralph/runs/`, `.env`, or `.xcuserdata`. Derived data is gitignored and untracked as of `5c32541`.
 
@@ -81,7 +81,7 @@ Setup (one time):
 
 6. Unload with `launchctl bootout gui/$UID ~/Library/LaunchAgents/com.taskflow.email-agent.plist`. Logs: `.email-agent/logs/`. State, tokens, and derived data live under gitignored `.email-agent/`.
 
-Send a new email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. On success it replies with target branch, commit, push result, build result, and changed files.
+Send a new email from `samsonsunny@outlook.com` to the same address with subject `[dev] <request>` and a plain-text body. The checkout must be on `main` with a clean working tree; otherwise the agent replies with the reason and makes no changes. Before committing, the agent sets every `MARKETING_VERSION` to today's `YY.M.DD`. On success it replies with target branch, commit, push result, build result, and changed files.
 
 
 ## CI workflow (`.github/workflows/devto-publish.yml`)

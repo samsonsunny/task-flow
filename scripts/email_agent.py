@@ -708,6 +708,22 @@ def changed_files(cwd: Path) -> list[str]:
     return [line[3:] for line in result.stdout.splitlines() if line.strip()]
 
 
+def set_marketing_version(cwd: Path) -> str | None:
+    project = cwd / "TaskFlow.xcodeproj/project.pbxproj"
+    text = project.read_text()
+    now = datetime.now()
+    version = f"{now.year % 100}.{now.month}.{now.day}"
+    updated = re.sub(
+        r"(MARKETING_VERSION = )\d+\.\d+\.\d+(;)",
+        rf"\g<1>{version}\2",
+        text,
+    )
+    if updated == text:
+        return None
+    project.write_text(updated)
+    return version
+
+
 def commit_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
     files = changed_files(cwd)
     if not files:
@@ -776,6 +792,9 @@ def process_instruction(cfg: Config, state: State, instruction: Instruction) -> 
             raise RuntimeError("working tree is not clean; refusing direct-to-main run")
 
         summary = run_opencode(cfg, REPO_ROOT, instruction)
+        version = set_marketing_version(REPO_ROOT)
+        if version:
+            log(f"set MARKETING_VERSION to {version}")
         files = changed_files(REPO_ROOT)
         protected = [
             name for name in files if any(name.startswith(path) for path in PROTECTED_PATHS)
