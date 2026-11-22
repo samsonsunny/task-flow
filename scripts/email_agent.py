@@ -556,10 +556,16 @@ def fetch_instructions(cfg: Config, client: imaplib.IMAP4) -> list[Instruction]:
     return instructions
 
 
+def git_result(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+
+
 def git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", *args], cwd=cwd, capture_output=True, text=True, check=True
-    )
+    result = git_result(args, cwd)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()[-2000:]
+        raise RuntimeError(f"git {' '.join(args)} failed: {detail}")
+    return result
 
 
 def extract_agent_text(stdout: str) -> str:
@@ -741,8 +747,31 @@ def commit_changes(cfg: Config, cwd: Path, subject: str) -> str | None:
     return git(["rev-parse", "--short", "HEAD"], cwd).stdout.strip()
 
 
+def sync_with_remote(cfg: Config, cwd: Path) -> None:
+    target = f"{cfg.remote}/{cfg.base_branch}"
+    git(["fetch", cfg.remote], cwd)
+    result = git_result(["rebase", "--autostash", target], cwd)
+    if result.returncode == 0:
+        return
+    with contextlib.suppress(RuntimeError):
+        git(["rebase", "--abort"], cwd)
+    detail = (result.stderr or result.stdout).strip()[-2000:]
+    raise RuntimeError(f"rebase onto {target} failed: {detail}")
+
+
 def push_changes(cfg: Config) -> str:
-    result = git(["push", cfg.remote, f"HEAD:refs/heads/{cfg.base_branch}"], REPO_ROOT)
+    refspec = f"HEAD:refs/heads/{cfg.base_branch}"
+    try:
+        result = git(["push", cfg.remote, refspec], REPO_ROOT)
+    except RuntimeError as exc:
+        detail = str(exc).lower()
+        if not any(
+            marker in detail
+            for marker in ("fetch first", "non-fast-forward", "rejected")
+        ):
+            raise
+        sync_with_remote(cfg, REPO_ROOT)
+        result = git(["push", cfg.remote, refspec], REPO_ROOT)
     return (result.stdout + "\n" + result.stderr).strip()
 
 
@@ -790,11 +819,13 @@ def process_instruction(cfg: Config, state: State, instruction: Instruction) -> 
         dirty = git(["status", "--porcelain"], REPO_ROOT).stdout.strip()
         if dirty:
             raise RuntimeError("working tree is not clean; refusing direct-to-main run")
+        sync_with_remote(cfg, REPO_ROOT)
 
         summary = run_opencode(cfg, REPO_ROOT, instruction)
         version = set_marketing_version(REPO_ROOT)
         if version:
             log(f"set MARKETING_VERSION to {version}")
+        sync_with_remote(cfg, REPO_ROOT)
         files = changed_files(REPO_ROOT)
         protected = [
             name for name in files if any(name.startswith(path) for path in PROTECTED_PATHS)
