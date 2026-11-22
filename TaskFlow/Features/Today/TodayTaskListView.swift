@@ -41,6 +41,8 @@ struct TodayTaskListView: View {
     /// Rows shown per domain before its "More" control reveals the rest.
     private static let initialTaskLimit = 5
     private static let sectionSpacing: CGFloat = 20
+    /// Vertical room reserved inside the last row for the overlaid "More" control.
+    private static let moreControlHeight: CGFloat = 34
 
     private let embedInNavigationStack: Bool
 
@@ -220,9 +222,10 @@ struct TodayTaskListView: View {
         onMore: @escaping () -> Void
     ) -> some View {
         ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
-            // The "More" control is an overlay on the last row, not its own row. It only
-            // occupies its own frame, so the row's completion, tap and menu gestures stay
-            // available everywhere else.
+            let showsMore = hasMore && index == rows.count - 1
+            // The "More" control is an overlay on the last row, not its own row. Reserving
+            // space inside that row keeps the control clear of the row's completion, tap
+            // and context-menu targets.
             ZStack(alignment: .bottomTrailing) {
                 TaskRowView(
                     task: task,
@@ -244,8 +247,9 @@ struct TodayTaskListView: View {
                     showsListName: true,
                     showsRowBackground: false
                 )
+                .padding(.bottom, showsMore ? Self.moreControlHeight : 0)
 
-                if hasMore && index == rows.count - 1 {
+                if showsMore {
                     moreControl(domain: domain, action: onMore)
                 }
             }
@@ -271,7 +275,6 @@ struct TodayTaskListView: View {
         }
         .buttonStyle(.plain)
         .padding(.trailing, 12)
-        .padding(.bottom, 8)
         .accessibilityLabel("More \(domain.title) tasks")
         .accessibilityIdentifier("today-more-\(domain.rawValue)")
     }
