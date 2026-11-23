@@ -34,15 +34,8 @@ struct TodayTaskListView: View {
     @State private var newTaskConfig: NewTaskSheetConfig?
     @State private var scheduleConfigTask: TaskItem?
     @State private var lastHandledTodayResetID = 0
-    /// Sections a person expanded with "More". UI-only state: a section stays expanded
-    /// for the current page state, and there is no collapse control.
-    @State private var expandedDomains: Set<TodayDomain> = []
 
-    /// Rows shown per domain before its "More" control reveals the rest.
-    private static let initialTaskLimit = 5
     private static let sectionSpacing: CGFloat = 20
-    /// Vertical room reserved inside the last row for the overlaid "More" control.
-    private static let moreControlHeight: CGFloat = 34
 
     private let embedInNavigationStack: Bool
 
@@ -174,10 +167,6 @@ struct TodayTaskListView: View {
 
     @ViewBuilder
     private func domainSection(_ domain: TodayDomain, tasks: [TaskItem]) -> some View {
-        let isExpanded = expandedDomains.contains(domain)
-        let shown = isExpanded ? tasks : Array(tasks.prefix(Self.initialTaskLimit))
-        let hasMore = shown.count < tasks.count
-
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(domain.title)
@@ -189,7 +178,7 @@ struct TodayTaskListView: View {
             .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
-                if shown.isEmpty {
+                if tasks.isEmpty {
                     Text("Nothing due today")
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.colors.textTertiary)
@@ -197,12 +186,7 @@ struct TodayTaskListView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 18)
                 } else {
-                    taskRows(
-                        shown,
-                        domain: domain,
-                        hasMore: hasMore,
-                        onMore: { expand(domain) }
-                    )
+                    taskRows(tasks)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
@@ -215,73 +199,33 @@ struct TodayTaskListView: View {
     }
 
     @ViewBuilder
-    private func taskRows(
-        _ rows: [TaskItem],
-        domain: TodayDomain,
-        hasMore: Bool,
-        onMore: @escaping () -> Void
-    ) -> some View {
+    private func taskRows(_ rows: [TaskItem]) -> some View {
         ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
-            let showsMore = hasMore && index == rows.count - 1
-            // The "More" control is an overlay on the last row, not its own row. Reserving
-            // space inside that row keeps the control clear of the row's completion, tap
-            // and context-menu targets.
-            ZStack(alignment: .bottomTrailing) {
-                TaskRowView(
-                    task: task,
-                    isCompletedVisualState: task.isCompleted ?? false,
-                    onToggleCompletion: {
-                        Haptics.impact(.light)
-                        viewModel?.toggleCompletion(for: task)
-                    },
-                    onDueDateAction: { action in
-                        if action == .custom {
-                            scheduleConfigTask = task
-                        } else {
-                            viewModel?.rescheduleTask(task, to: action)
-                        }
-                    },
-                    onDelete: { viewModel?.delete(task) },
-                    onTap: { editingTask = task },
-                    showsDueDate: viewModel?.isOverdue(task) == true,
-                    showsListName: true,
-                    showsRowBackground: false
-                )
-                .padding(.bottom, showsMore ? Self.moreControlHeight : 0)
-
-                if showsMore {
-                    moreControl(domain: domain, action: onMore)
-                }
-            }
+            TaskRowView(
+                task: task,
+                isCompletedVisualState: task.isCompleted ?? false,
+                onToggleCompletion: {
+                    Haptics.impact(.light)
+                    viewModel?.toggleCompletion(for: task)
+                },
+                onDueDateAction: { action in
+                    if action == .custom {
+                        scheduleConfigTask = task
+                    } else {
+                        viewModel?.rescheduleTask(task, to: action)
+                    }
+                },
+                onDelete: { viewModel?.delete(task) },
+                onTap: { editingTask = task },
+                showsDueDate: viewModel?.isOverdue(task) == true,
+                showsListName: true,
+                showsRowBackground: false
+            )
 
             if index < rows.count - 1 {
                 Divider()
                     .padding(.leading, 54)
             }
-        }
-    }
-
-    private func moreControl(domain: TodayDomain, action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.impact(.light)
-            action()
-        } label: {
-            Text("More")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.colors.tint)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(.regularMaterial, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 12)
-        .accessibilityLabel("More \(domain.title) tasks")
-        .accessibilityIdentifier("today-more-\(domain.rawValue)")
-    }
-
-    private func expand(_ domain: TodayDomain) {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            _ = expandedDomains.insert(domain)
         }
     }
 

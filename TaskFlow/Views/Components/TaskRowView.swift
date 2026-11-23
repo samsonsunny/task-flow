@@ -88,37 +88,24 @@ struct TaskRowView: View, Equatable {
             .contextMenu {
                 if !isSelecting {
                     if let onDueDateAction {
-                        // Schedule actions are context-aware: a task never gets an action that
-                        // would re-apply the schedule it already has.
-                        if !isScheduledForToday {
-                            Button {
-                                onDueDateAction(.today)
-                            } label: {
-                                Label("Move to Today", systemImage: "calendar")
+                        Menu {
+                            // Schedule actions are context-aware: a task never gets an action that
+                            // would re-apply the schedule it already has.
+                            if !isScheduledForToday {
+                                Button("Today") {
+                                    onDueDateAction(.today)
+                                }
                             }
-                        }
-                        if !isScheduledForTomorrow {
-                            Button {
-                                onDueDateAction(.tomorrow)
-                            } label: {
-                                Label("Move to Tomorrow", systemImage: "calendar.badge.plus")
+                            if !isScheduledForTomorrow {
+                                Button("Tomorrow") {
+                                    onDueDateAction(.tomorrow)
+                                }
                             }
-                        }
-                        Button {
-                            onDueDateAction(.custom)
+                            Button("Choose a Date…") {
+                                onDueDateAction(.custom)
+                            }
                         } label: {
-                            Label("Choose Date…", systemImage: "calendar.badge.clock")
-                        }
-                        if isScheduled {
-                            Button {
-                                onDueDateAction(.none)
-                            } label: {
-                                Label("Unschedule", systemImage: "calendar.badge.minus")
-                            }
-                        }
-                        Menu("Other Dates") {
-                            presetButton("This Weekend", action: .thisWeekend)
-                            presetButton("Next Week", action: .nextWeek)
+                            Label("Reschedule", systemImage: "calendar")
                         }
                     }
                     if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
@@ -439,10 +426,6 @@ struct TaskRowView: View, Equatable {
         return formatter
     }()
 
-    private var isScheduled: Bool {
-        task.dueDate != nil
-    }
-
     private var isScheduledForToday: Bool {
         guard let dueDate = task.dueDate else { return false }
         return Calendar.current.isDateInToday(dueDate)
@@ -453,32 +436,4 @@ struct TaskRowView: View, Equatable {
         return Calendar.current.isDateInTomorrow(dueDate)
     }
 
-    private var activeDueDateItem: DueDateAction? {
-        guard let dueDate = task.dueDate else { return .none }
-        let calendar = Calendar.current
-        let now = Date()
-        let taskDay = calendar.startOfDay(for: dueDate)
-        let candidates: [(DueDateAction, Date)] = [
-            (.today, calendar.startOfDay(for: now)),
-            (.tomorrow, calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))!),
-            (.thisWeekend, ReminderSegmentViewModel.nextSaturday(from: now)),
-            (.nextWeek, ReminderSegmentViewModel.nextMonday(from: now)),
-        ]
-        if let match = candidates.first(where: { calendar.isDate(taskDay, inSameDayAs: $0.1) }) {
-            return match.0
-        }
-        return .custom
-    }
-
-    private func presetButton(_ title: String, action: DueDateAction) -> some View {
-        Button {
-            onDueDateAction?(action)
-        } label: {
-            if activeDueDateItem == action {
-                Label(title, systemImage: "checkmark")
-            } else {
-                Text(title)
-            }
-        }
-    }
 }
