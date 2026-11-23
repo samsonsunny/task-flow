@@ -69,6 +69,7 @@ final class TodayViewModel {
 
     private(set) var sections: [TodaySection] = []
     private(set) var visibleTasks: [TaskItem] = []
+    private(set) var hasCompletedTasksToday = false
     private(set) var filterOptions: [TodayFilterOption] = [.all]
     private(set) var areaFilter: TodayAreaFilter = .all
     private(set) var pendingUndo: CompletionUndo?
@@ -113,7 +114,12 @@ final class TodayViewModel {
         self.now = now
         rebuildFilterOptions()
 
-        let todayStart = Calendar.current.startOfDay(for: now)
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: now)
+        hasCompletedTasksToday = allTasks.contains { task in
+            guard task.isCompleted == true, let completionDate = task.completionDate else { return false }
+            return calendar.isDate(completionDate, inSameDayAs: now)
+        }
         visibleTasks = allTasks
             .filter { matchesAreaFilter($0) }
             .filter { isDueTodayOrOverdue($0, todayStart: todayStart) }

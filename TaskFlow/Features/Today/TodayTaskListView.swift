@@ -147,15 +147,11 @@ struct TodayTaskListView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Self.sectionSpacing) {
                 if visible.isEmpty {
-                    ContentUnavailableView(
-                        "No tasks for today",
-                        systemImage: "checklist",
-                        description: Text("Due-today and overdue tasks from Work and Personal will appear here.")
-                    )
-                    .frame(maxWidth: .infinity)
+                    emptyState
+                } else {
+                    domainSection(.work, tasks: tasks(for: .work, from: visible))
+                    domainSection(.personal, tasks: tasks(for: .personal, from: visible))
                 }
-                domainSection(.work, tasks: tasks(for: .work, from: visible))
-                domainSection(.personal, tasks: tasks(for: .personal, from: visible))
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
@@ -163,6 +159,26 @@ struct TodayTaskListView: View {
         }
         .scrollIndicators(.hidden)
         .refreshable { refreshViewModel() }
+    }
+
+    private var emptyState: some View {
+        let accomplished = viewModel?.hasCompletedTasksToday == true
+
+        return ContentUnavailableView {
+            Label {
+                Text(accomplished ? "You're all caught up." : "What's on your mind?")
+            } icon: {
+                Image(systemName: accomplished ? "checkmark.circle" : "note.text")
+                    .font(.system(size: 26, weight: .regular))
+                    .foregroundStyle(AppTheme.colors.textTertiary)
+            }
+        } description: {
+            Text(accomplished
+                ? "You've completed everything you planned."
+                : "Capture something you'd like to get done today.")
+                .foregroundStyle(AppTheme.colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 320, alignment: .center)
     }
 
     @ViewBuilder
