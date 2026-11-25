@@ -108,17 +108,23 @@ struct ScheduledTasksView: View {
             sections: monthSections,
             selectedDate: $selectedDate,
             scrollRequestToken: dayTapToken,
-            onToggleCompletion: { viewModel?.toggleCompletion(for: $0) },
-            onDueDateAction: { task, action in
+            actions: rowActions,
+            onRefresh: refresh
+        )
+    }
+
+    private var rowActions: TaskRowActions {
+        TaskRowActions(
+            toggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+            reschedule: { task, action in
                 if action == .custom {
                     scheduleConfigTask = task
                 } else {
                     viewModel?.rescheduleTask(task, to: action)
                 }
             },
-            onDelete: { viewModel?.delete($0) },
-            onTapTask: { editingTask = $0 },
-            onRefresh: refresh
+            delete: { viewModel?.delete($0) },
+            open: { editingTask = $0 }
         )
     }
 

@@ -3,9 +3,7 @@ import SwiftData
 
 struct TodayTaskList: View {
     let tasks: [TaskItem]
-    let onToggleCompletion: (TaskItem) -> Void
-    let onDelete: (TaskItem) -> Void
-    let onTap: (TaskItem) -> Void
+    let actions: TaskRowActions
     let onRefresh: () -> Void
 
     var body: some View {
@@ -24,14 +22,10 @@ struct TodayTaskList: View {
                 }()
                 TaskRowView(
                     task: task,
-                    isCompletedVisualState: task.isCompleted ?? false,
-                    onToggleCompletion: { onToggleCompletion(task) },
-                    onDelete: { onDelete(task) },
-                    onTap: { onTap(task) },
+                    actions: actions,
                     showsDueDate: isOverdueTask,
                     showsListName: true,
-                    showsGroupName: false,
-                    groupNameOverride: nil
+                    enablesFallbackSwipe: true
                 )
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))

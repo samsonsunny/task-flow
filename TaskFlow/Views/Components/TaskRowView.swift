@@ -18,6 +18,28 @@ enum DueDateAction {
     case custom
 }
 
+/// The interactions every task row surface shares. Views supply the ViewModel calls; the
+/// row owns the haptics and the mapping from a task to its row actions so Today, Agenda,
+/// Calendar, Work and Personal cannot drift apart.
+struct TaskRowActions {
+    let toggleCompletion: (TaskItem) -> Void
+    let reschedule: ((TaskItem, DueDateAction) -> Void)?
+    let delete: (TaskItem) -> Void
+    let open: (TaskItem) -> Void
+
+    init(
+        toggleCompletion: @escaping (TaskItem) -> Void,
+        reschedule: ((TaskItem, DueDateAction) -> Void)? = nil,
+        delete: @escaping (TaskItem) -> Void,
+        open: @escaping (TaskItem) -> Void
+    ) {
+        self.toggleCompletion = toggleCompletion
+        self.reschedule = reschedule
+        self.delete = delete
+        self.open = open
+    }
+}
+
 struct TaskRowView: View, Equatable {
     let task: TaskItem
     var isCompletedVisualState: Bool = false
@@ -43,6 +65,14 @@ struct TaskRowView: View, Equatable {
     var onSelectToggle: (() -> Void)? = nil
     var isExpanded: Bool = false
     var onToggleExpand: (() -> Void)? = nil
+    /// ScrollView-based surfaces need their own swipe coordinator on iOS 26; `List` hosts
+    /// the native one and must keep using it.
+    var enablesFallbackSwipe = false
+
+    @State private var swipeOffset: CGFloat = 0
+    @State private var isSwipeRevealed = false
+
+    private static let swipeActionWidth: CGFloat = 80
 
     private static let cachedDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -57,17 +87,38 @@ struct TaskRowView: View, Equatable {
             && lhs.subtaskSummary == rhs.subtaskSummary
             && lhs.isSelecting == rhs.isSelecting
             && lhs.isSelected == rhs.isSelected
+            && lhs.isExpanded == rhs.isExpanded
+            && lhs.showsDueDate == rhs.showsDueDate
+            && lhs.showsListName == rhs.showsListName
+            && lhs.showsGroupName == rhs.showsGroupName
+            && lhs.groupNameOverride == rhs.groupNameOverride
+            && (lhs.onDelete != nil) == (rhs.onDelete != nil)
+            && (lhs.onDueDateAction != nil) == (rhs.onDueDateAction != nil)
+            && (lhs.onSelectToggle != nil) == (rhs.onSelectToggle != nil)
+            && (lhs.onToggleExpand != nil) == (rhs.onToggleExpand != nil)
+            && lhs.enablesFallbackSwipe == rhs.enablesFallbackSwipe
     }
     
     var body: some View {
         contentWithContextMenu
     }
 
+    @ViewBuilder
     private var gestureContent: some View {
+        if enablesFallbackSwipe {
+            fallbackSwipeContent
+        } else {
+            nativeSwipeContent
+        }
+    }
+
+    private var rowBackground: some View {
+        isSelected ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
+    }
+
+    private var nativeSwipeContent: some View {
         rowContent
-            .background(
-                isSelected ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
-            )
+            .background(rowBackground)
             .animation(.easeInOut(duration: 0.18), value: isSelected)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 if let onDelete, !isSelecting {
@@ -88,6 +139,69 @@ struct TaskRowView: View, Equatable {
                     .tint(AppTheme.colors.tint)
                 }
             }
+    }
+
+    /// SwiftUI only hosts `.swipeActions` in a `List` before iOS 27. Scroll-based surfaces
+    /// use this equivalent trailing delete action through the same shared row component.
+    private var fallbackSwipeContent: some View {
+        ZStack(alignment: .trailing) {
+            if canSwipeToDelete {
+                Button {
+                    closeSwipe()
+                    onDelete?()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(AppFont.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: Self.swipeActionWidth, height: .infinity)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(AppTheme.colors.error)
+                .opacity(isSwipeRevealed || swipeOffset < 0 ? 1 : 0)
+                .accessibilityLabel("Delete")
+            }
+
+            rowContent
+                .background(rowBackground)
+                .animation(.easeInOut(duration: 0.18), value: isSelected)
+                .offset(x: swipeOffset)
+                .simultaneousGesture(swipeGesture)
+        }
+        .clipped()
+    }
+
+    private var canSwipeToDelete: Bool {
+        onDelete != nil && !isSelecting
+    }
+
+    private var swipeGesture: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { value in
+                guard canSwipeToDelete,
+                      abs(value.translation.width) > abs(value.translation.height)
+                else { return }
+                let base: CGFloat = isSwipeRevealed ? -Self.swipeActionWidth : 0
+                swipeOffset = max(-Self.swipeActionWidth, min(0, base + value.translation.width))
+            }
+            .onEnded { value in
+                guard canSwipeToDelete else { return }
+                let predicted = value.predictedEndTranslation.width
+                let shouldReveal = isSwipeRevealed
+                    ? predicted > -Self.swipeActionWidth / 2
+                    : predicted < -Self.swipeActionWidth / 2
+                withAnimation(.easeOut(duration: 0.2)) {
+                    swipeOffset = shouldReveal ? -Self.swipeActionWidth : 0
+                }
+                isSwipeRevealed = shouldReveal
+            }
+    }
+
+    private func closeSwipe() {
+        isSwipeRevealed = false
+        withAnimation(.easeOut(duration: 0.2)) {
+            swipeOffset = 0
+        }
     }
 
     /// An empty context menu still claims the long-press gesture, which would compete with
@@ -455,4 +569,34 @@ struct TaskRowView: View, Equatable {
         return Calendar.current.isDateInTomorrow(dueDate)
     }
 
+}
+
+extension TaskRowView {
+    /// Shared wiring for task rows on Today, Agenda, Calendar, Work and Personal. Keeping
+    /// this in the row component means one place owns completion haptics, swipe-to-delete,
+    /// rescheduling and the open-task interaction for every surface.
+    init(
+        task: TaskItem,
+        actions: TaskRowActions,
+        showsDueDate: Bool,
+        showsListName: Bool = true,
+        enablesFallbackSwipe: Bool = false
+    ) {
+        self.init(
+            task: task,
+            isCompletedVisualState: task.isCompleted ?? false,
+            onToggleCompletion: {
+                Haptics.impact(.light)
+                actions.toggleCompletion(task)
+            },
+            onDueDateAction: actions.reschedule.map { reschedule in
+                { action in reschedule(task, action) }
+            },
+            onDelete: { actions.delete(task) },
+            onTap: { actions.open(task) },
+            showsDueDate: showsDueDate,
+            showsListName: showsListName,
+            enablesFallbackSwipe: enablesFallbackSwipe
+        )
+    }
 }

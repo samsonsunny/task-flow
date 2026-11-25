@@ -19,10 +19,7 @@ struct ScheduledTaskListView: View {
     let sections: [ScheduledDaySection]
     @Binding var selectedDate: Date
     let scrollRequestToken: Int
-    let onToggleCompletion: (TaskItem) -> Void
-    let onDueDateAction: (TaskItem, DueDateAction) -> Void
-    let onDelete: (TaskItem) -> Void
-    let onTapTask: (TaskItem) -> Void
+    let actions: TaskRowActions
     let onRefresh: () -> Void
 
     @State private var sectionTops: [Date: CGFloat] = [:]
@@ -169,16 +166,9 @@ struct ScheduledTaskListView: View {
                 ForEach(Array(section.tasks.enumerated()), id: \.element.id) { index, task in
                     TaskRowView(
                         task: task,
-                        isCompletedVisualState: task.isCompleted ?? false,
-                        onToggleCompletion: {
-                            Haptics.impact(.light)
-                            onToggleCompletion(task)
-                        },
-                        onDueDateAction: { onDueDateAction(task, $0) },
-                        onDelete: { onDelete(task) },
-                        onTap: { onTapTask(task) },
+                        actions: actions,
                         showsDueDate: false,
-                        showsListName: true
+                        enablesFallbackSwipe: true
                     )
 
                     if index < section.tasks.count - 1 {

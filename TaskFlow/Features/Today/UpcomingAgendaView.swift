@@ -27,9 +27,7 @@ struct UpcomingAgendaView: View {
     let dayTapDate: Date
     let scrollController: ScrollAnimationController
     let onAddTask: (Date) -> Void
-    let onToggleCompletion: (TaskItem) -> Void
-    let onDelete: (TaskItem) -> Void
-    let onTapTask: (TaskItem) -> Void
+    let actions: TaskRowActions
     let onRefresh: () -> Void
 
     @State private var sectionTops: [Date: CGFloat] = [:]
@@ -50,9 +48,7 @@ struct UpcomingAgendaView: View {
         dayTapDate: Date,
         scrollController: ScrollAnimationController,
         onAddTask: @escaping (Date) -> Void,
-        onToggleCompletion: @escaping (TaskItem) -> Void,
-        onDelete: @escaping (TaskItem) -> Void,
-        onTapTask: @escaping (TaskItem) -> Void,
+        actions: TaskRowActions,
         onRefresh: @escaping () -> Void
     ) {
         self.sections = sections
@@ -63,9 +59,7 @@ struct UpcomingAgendaView: View {
         self.dayTapDate = dayTapDate
         self.scrollController = scrollController
         self.onAddTask = onAddTask
-        self.onToggleCompletion = onToggleCompletion
-        self.onDelete = onDelete
-        self.onTapTask = onTapTask
+        self.actions = actions
         self.onRefresh = onRefresh
     }
 
@@ -286,15 +280,9 @@ struct UpcomingAgendaView: View {
                         }()
                         TaskRowView(
                             task: task,
-                            isCompletedVisualState: task.isCompleted ?? false,
-                            onToggleCompletion: {
-                                Haptics.impact(.light)
-                                onToggleCompletion(task)
-                            },
-                            onDelete: { onDelete(task) },
-                            onTap: { onTapTask(task) },
+                            actions: actions,
                             showsDueDate: isOverdueTask,
-                            showsListName: true
+                            enablesFallbackSwipe: true
                         )
 
                         if index < section.tasks.count - 1 {

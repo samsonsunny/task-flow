@@ -91,6 +91,21 @@ struct AreaTasksView: View {
         )?.persistentModelID
     }
 
+    private var rowActions: TaskRowActions {
+        TaskRowActions(
+            toggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+            reschedule: { task, action in
+                if action == .custom {
+                    scheduleConfigTask = task
+                } else {
+                    viewModel?.rescheduleTask(task, to: action)
+                }
+            },
+            delete: { viewModel?.delete($0) },
+            open: { editingTask = $0 }
+        )
+    }
+
     @ViewBuilder
     private var listContent: some View {
         Group {
@@ -148,22 +163,8 @@ struct AreaTasksView: View {
     private func taskRow(_ task: TaskItem, isFirst: Bool) -> some View {
         TaskRowView(
             task: task,
-            isCompletedVisualState: task.isCompleted ?? false,
-            onToggleCompletion: {
-                Haptics.impact(.light)
-                viewModel?.toggleCompletion(for: task)
-            },
-            onDueDateAction: { action in
-                if action == .custom {
-                    scheduleConfigTask = task
-                } else {
-                    viewModel?.rescheduleTask(task, to: action)
-                }
-            },
-            onDelete: { viewModel?.delete(task) },
-            onTap: { editingTask = task },
-            showsDueDate: true,
-            showsListName: true
+            actions: rowActions,
+            showsDueDate: true
         )
         .overlay(alignment: .bottom) {
             Divider()

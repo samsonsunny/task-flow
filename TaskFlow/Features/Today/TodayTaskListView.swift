@@ -141,6 +141,21 @@ struct TodayTaskListView: View {
         )
     }
 
+    private var rowActions: TaskRowActions {
+        TaskRowActions(
+            toggleCompletion: { viewModel?.toggleCompletion(for: $0) },
+            reschedule: { task, action in
+                if action == .custom {
+                    scheduleConfigTask = task
+                } else {
+                    viewModel?.rescheduleTask(task, to: action)
+                }
+            },
+            delete: { viewModel?.delete($0) },
+            open: { editingTask = $0 }
+        )
+    }
+
     @ViewBuilder
     private var content: some View {
         let visible = viewModel?.visibleTasks ?? []
@@ -219,22 +234,9 @@ struct TodayTaskListView: View {
         ForEach(Array(rows.enumerated()), id: \.element.id) { index, task in
             TaskRowView(
                 task: task,
-                isCompletedVisualState: task.isCompleted ?? false,
-                onToggleCompletion: {
-                    Haptics.impact(.light)
-                    viewModel?.toggleCompletion(for: task)
-                },
-                onDueDateAction: { action in
-                    if action == .custom {
-                        scheduleConfigTask = task
-                    } else {
-                        viewModel?.rescheduleTask(task, to: action)
-                    }
-                },
-                onDelete: { viewModel?.delete(task) },
-                onTap: { editingTask = task },
+                actions: rowActions,
                 showsDueDate: viewModel?.isOverdue(task) == true,
-                showsListName: true
+                enablesFallbackSwipe: true
             )
 
             if index < rows.count - 1 {
