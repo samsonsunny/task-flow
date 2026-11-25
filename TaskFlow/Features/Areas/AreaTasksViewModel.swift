@@ -18,10 +18,7 @@ final class AreaTasksViewModel {
 
     private(set) var area: ReminderListGroup?
     private(set) var tasks: [TaskItem] = []
-    private(set) var boardLists: [ReminderList] = []
     private(set) var pendingUndo: CompletionUndo?
-
-    private var showCompleted = false
 
     private var undoToken = UUID()
 
@@ -44,11 +41,9 @@ final class AreaTasksViewModel {
         guard let area = groups.first(where: { $0.name == areaName }) else {
             self.area = nil
             tasks = []
-            boardLists = []
             return
         }
         self.area = area
-        boardLists = orderedLists(in: area)
 
         let areaListIDs = Set(
             lists
@@ -59,7 +54,7 @@ final class AreaTasksViewModel {
         tasks = allTasks
             .filter { task in
                 let isPendingUndo = pendingUndo?.id == task.persistentModelID
-                guard task.isCompleted != true || isPendingUndo || showCompleted,
+                guard task.isCompleted != true || isPendingUndo,
                       let listID = task.reminderList?.persistentModelID
                 else { return false }
                 return areaListIDs.contains(listID)
@@ -75,41 +70,6 @@ final class AreaTasksViewModel {
                 if lhsDate != rhsDate { return lhsDate > rhsDate }
                 // Stable tiebreak: seeded fixtures and bulk sync can share a timestamp.
                 return (lhs.taskId ?? "") < (rhs.taskId ?? "")
-            }
-    }
-
-    // MARK: - Board
-
-    func setShowCompleted(_ value: Bool) {
-        guard showCompleted != value else { return }
-        showCompleted = value
-        recompute()
-    }
-
-    func tasks(in list: ReminderList) -> [TaskItem] {
-        tasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
-    }
-
-    /// Moves a task to another list in the same area. This is the board's drag action; the
-    /// task keeps every other property.
-    @discardableResult
-    func moveTask(_ task: TaskItem, to list: ReminderList) -> Bool {
-        guard boardLists.contains(where: { $0.persistentModelID == list.persistentModelID }),
-              task.reminderList?.persistentModelID != list.persistentModelID
-        else { return false }
-
-        task.reminderList = list
-        try? modelContext.save()
-        recompute()
-        return true
-    }
-
-    private func orderedLists(in area: ReminderListGroup) -> [ReminderList] {
-        allLists
-            .filter { $0.group?.persistentModelID == area.persistentModelID }
-            .sorted { lhs, rhs in
-                if lhs.isBucket != rhs.isBucket { return lhs.isBucket }
-                return (lhs.sortOrder ?? "", lhs.createdAt) < (rhs.sortOrder ?? "", rhs.createdAt)
             }
     }
 

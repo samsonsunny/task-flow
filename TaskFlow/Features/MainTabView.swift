@@ -30,8 +30,8 @@ struct MainTabView: View {
                 }
             },
             todayView: { TodayNavigationStackView() },
-            workView: { AreaTasksView(areaName: AreaNames.work, storageKey: AreaNames.work) },
-            personalView: { AreaTasksView(areaName: AreaNames.personal, storageKey: AreaNames.personal) },
+            workView: { AreaTasksView(areaName: AreaNames.work) },
+            personalView: { AreaTasksView(areaName: AreaNames.personal) },
             moreView: { MoreView() }
         )
         .ignoresSafeArea(.all, edges: .bottom)

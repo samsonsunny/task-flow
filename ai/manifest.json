@@ -87,6 +87,9 @@
     "TaskFlow/Features/Tasks/TomorrowView.swift",
     "TaskFlow/Features/Tasks/UpcomingView.swift"
   ],
+  "removedFeatures": [
+    "TaskFlow/Features/Areas/AreaBoardView.swift"
+  ],
   "staleSinceCommit": "0c991b4",
   "testSourcesPresent": false,
   "lintConfigPresent": false

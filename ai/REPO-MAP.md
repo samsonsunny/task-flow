@@ -1,6 +1,6 @@
 # Repository Map
 
-60 Swift files / ~10.2k lines. Line counts are approximate and change over time; use them to decide whether to open a file or grep within it.
+59 Swift files / ~9.9k lines. Line counts are approximate and change over time; use them to decide whether to open a file or grep within it.
 
 ## Root
 
@@ -35,7 +35,7 @@ Never load: `.derivedData/`, `DerivedData/`, `build/`, `.env`, `.email-agent/`, 
 | `App/` | 3 / 270 | `TaskFlowApp.swift`, `ContentView.swift`, `AppState.swift` |
 | `Features/` root | 1 / 157 | `MainTabView.swift` — four fixed tabs |
 | `Features/Today/` | 10 / 1,648 | `TodayTaskListView.swift`, `TodayViewModel.swift` |
-| `Features/Areas/` | 3 / 722 | `AreaTasksView.swift`, `AreaTasksViewModel.swift`, `AreaBoardView.swift` |
+| `Features/Areas/` | 2 / 383 | `AreaTasksView.swift`, `AreaTasksViewModel.swift` |
 | `Features/Lists/` | 5 / 1,368 | `ListView.swift`, `ListViewModel.swift`, `DetailView.swift`, `DetailViewModel.swift` |
 | `Features/Editor/` | 6 / 1,221 | `EditorView.swift`, `EditorViewModel.swift`, `Draft.swift` |
 | `Features/Settings/` | 1 / 154 | `MoreView.swift` |
@@ -89,7 +89,6 @@ Deleted as dead code: `Features/Home/`, `TimelineView.swift`, and the `Today`/`T
 
 | File | Lines | Declares / role |
 |---|---:|---|
-| `Areas/AreaBoardView.swift` | 273 | `AreaBoardView`, `BoardColumnView`, `BoardTaskCard` |
 | `Areas/AreaTasksView.swift` | 262 | `AreaTasksView`, `AreaDisplayMode` |
 | `Areas/AreaTasksViewModel.swift` | 187 | `AreaTasksViewModel` |
 | `Lists/DetailViewModel.swift` | 486 | `ListDetailViewModel` |
