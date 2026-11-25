@@ -41,6 +41,11 @@ struct AppFont {
         .subheadline.weight(.semibold)
     }
 
+    /// Secondary metadata (13 pt at the default text size).
+    static var footnote: Font {
+        .footnote
+    }
+
     static var body: Font {
         .body // Using system font as it's a semantic style
     }

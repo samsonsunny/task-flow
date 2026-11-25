@@ -294,8 +294,7 @@ struct UpcomingAgendaView: View {
                             onDelete: { onDelete(task) },
                             onTap: { onTapTask(task) },
                             showsDueDate: isOverdueTask,
-                            showsListName: true,
-                            showsRowBackground: false
+                            showsListName: true
                         )
 
                         if index < section.tasks.count - 1 {

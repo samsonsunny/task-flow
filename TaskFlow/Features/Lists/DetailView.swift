@@ -378,7 +378,6 @@ struct ListDetailView: View {
                 }
             }
         )
-        .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
         .padding(.leading, CGFloat(node.depth) * 20)
     }

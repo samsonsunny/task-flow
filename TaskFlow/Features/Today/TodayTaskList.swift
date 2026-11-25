@@ -33,7 +33,6 @@ struct TodayTaskList: View {
                     showsGroupName: false,
                     groupNameOverride: nil
                 )
-                .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
             }

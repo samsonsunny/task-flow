@@ -186,7 +186,7 @@ struct TodayTaskListView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(domain.title)
-                    .font(.headline)
+                    .font(AppFont.headlineSemibold)
                     .foregroundStyle(AppTheme.colors.textSecondary)
                 Spacer(minLength: 0)
                 addTaskButton(for: domain)
@@ -234,8 +234,7 @@ struct TodayTaskListView: View {
                 onDelete: { viewModel?.delete(task) },
                 onTap: { editingTask = task },
                 showsDueDate: viewModel?.isOverdue(task) == true,
-                showsListName: true,
-                showsRowBackground: false
+                showsListName: true
             )
 
             if index < rows.count - 1 {

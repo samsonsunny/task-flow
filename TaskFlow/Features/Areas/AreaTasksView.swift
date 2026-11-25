@@ -220,8 +220,7 @@ struct AreaTasksView: View {
                                     onDelete: { viewModel?.delete(task) },
                                     onTap: { editingTask = task },
                                     showsDueDate: true,
-                                    showsListName: true,
-                                    showsRowBackground: false
+                                    showsListName: true
                                 )
 
                                 if index < tasks.count - 1 {

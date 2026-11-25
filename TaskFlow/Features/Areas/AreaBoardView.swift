@@ -68,25 +68,34 @@ private struct BoardColumnView: View {
                 .padding(.bottom, 10)
 
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 0) {
                     if tasks.isEmpty {
                         Text("No tasks")
-                            .font(.subheadline)
+                            .font(AppFont.subheadline)
                             .foregroundStyle(AppTheme.colors.textTertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 12)
                     } else {
-                        ForEach(tasks) { task in
-                            BoardTaskCard(
+                        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                            TaskRowView(
                                 task: task,
+                                isCompletedVisualState: task.isCompleted ?? false,
                                 onToggleCompletion: { onToggleCompletion(task) },
-                                onTap: { onEditTask(task) }
+                                onTap: { onEditTask(task) },
+                                showsDueDate: true,
+                                showsListName: false,
+                                subtaskSummary: task.subtaskSummary
                             )
                             .onDrag {
                                 Haptics.impact(.medium)
                                 return NSItemProvider(
                                     object: task.persistentModelID.stableKey as NSString
                                 )
+                            }
+
+                            if index < tasks.count - 1 {
+                                Divider()
+                                    .padding(.leading, 44)
                             }
                         }
                     }
@@ -96,7 +105,7 @@ private struct BoardColumnView: View {
                         onNewTask()
                     } label: {
                         Label("Add task", systemImage: "plus")
-                            .font(.subheadline.weight(.medium))
+                            .font(AppFont.subheadline.weight(.medium))
                             .foregroundStyle(AppTheme.colors.tint)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 12)
@@ -144,18 +153,18 @@ private struct BoardColumnView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Image(systemName: list.isBucket ? "tray" : "list.bullet")
-                .font(.caption)
+                .font(AppFont.caption)
                 .foregroundStyle(AppTheme.colors.textSecondary)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(list.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(AppFont.headlineSemibold)
                     .foregroundStyle(AppTheme.colors.textPrimary)
                     .lineLimit(1)
 
                 Text(taskCountLabel)
-                    .font(.caption)
+                    .font(AppFont.caption)
                     .foregroundStyle(AppTheme.colors.textTertiary)
             }
 
@@ -166,7 +175,7 @@ private struct BoardColumnView: View {
                 onNewTask()
             } label: {
                 Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(AppFont.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.colors.tint)
                     .frame(width: 28, height: 28)
                     .background(AppTheme.colors.tint.opacity(0.12), in: Circle())
@@ -179,95 +188,4 @@ private struct BoardColumnView: View {
     private var taskCountLabel: String {
         tasks.count == 1 ? "1 task" : "\(tasks.count) tasks"
     }
-}
-
-private struct BoardTaskCard: View {
-    let task: TaskItem
-    let onToggleCompletion: () -> Void
-    let onTap: () -> Void
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Button(action: {
-                Haptics.impact(.light)
-                onToggleCompletion()
-            }) {
-                Image(systemName: task.isCompleted == true ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(
-                        task.isCompleted == true
-                            ? AppTheme.colors.primaryAction
-                            : AppTheme.colors.textTertiary
-                    )
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isCompleted == true ? "Mark active" : "Mark complete")
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(task.safeTitle)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(AppTheme.colors.textPrimary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                    .strikethrough(task.isCompleted == true, color: AppTheme.colors.textSecondary)
-
-                if hasMetadata {
-                    HStack(spacing: 8) {
-                        if let dueText {
-                            Label(dueText, systemImage: "calendar")
-                                .foregroundStyle(task.isOverdue
-                                    ? AppTheme.colors.error
-                                    : AppTheme.colors.textSecondary)
-                        }
-
-                        if task.safeIsFlagged {
-                            Image(systemName: "flag.fill")
-                                .foregroundStyle(AppTheme.colors.warning)
-                        }
-
-                        if task.priority != .none {
-                            Label(task.priority.title, systemImage: "exclamationmark.circle")
-                                .foregroundStyle(AppTheme.colors.textSecondary)
-                        }
-                    }
-                    .font(.caption2)
-                    .labelStyle(.titleAndIcon)
-                    .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.colors.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(AppTheme.colors.borderSubtle, lineWidth: 1)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 12))
-        .onTapGesture(perform: onTap)
-    }
-
-    private var hasMetadata: Bool {
-        dueText != nil || task.safeIsFlagged || task.priority != .none
-    }
-
-    private var dueText: String? {
-        guard let dueDate = task.dueDate else { return nil }
-        let calendar = Calendar.current
-        if calendar.isDateInToday(dueDate) { return "Today" }
-        if calendar.isDateInTomorrow(dueDate) { return "Tomorrow" }
-        if task.isOverdue { return "Overdue" }
-        return Self.dateFormatter.string(from: dueDate)
-    }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.setLocalizedDateFormatFromTemplate("MMM d")
-        return formatter
-    }()
 }

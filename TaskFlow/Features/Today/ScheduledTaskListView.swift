@@ -178,8 +178,7 @@ struct ScheduledTaskListView: View {
                         onDelete: { onDelete(task) },
                         onTap: { onTapTask(task) },
                         showsDueDate: false,
-                        showsListName: true,
-                        showsRowBackground: false
+                        showsListName: true
                     )
 
                     if index < section.tasks.count - 1 {

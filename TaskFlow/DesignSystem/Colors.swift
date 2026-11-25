@@ -37,11 +37,6 @@ struct AppColors {
     static let border: Color = Color(.separator)
     static let borderSubtle: Color = Color(.separator).opacity(0.5)
     static let divider: Color = Color(.separator)
-    /// Card border: #E5E5EA in light mode, #303034 in dark mode.
-    static let cardBorder: Color = adaptiveColor(
-        light: UIColor(red: 0xE5 / 255, green: 0xE5 / 255, blue: 0xEA / 255, alpha: 1),
-        dark: UIColor(red: 0x30 / 255, green: 0x30 / 255, blue: 0x34 / 255, alpha: 1)
-    )
 
     // Status
     static let success: Color = .green

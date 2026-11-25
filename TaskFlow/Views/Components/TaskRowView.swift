@@ -43,13 +43,13 @@ struct TaskRowView: View, Equatable {
     var onSelectToggle: (() -> Void)? = nil
     var isExpanded: Bool = false
     var onToggleExpand: (() -> Void)? = nil
-    var showsRowBackground: Bool = true
 
     private static let cachedDetector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
     }()
 
     @State private var chipScale: CGFloat = 1
+    @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 22
 
     static func == (lhs: TaskRowView, rhs: TaskRowView) -> Bool {
         lhs.task.persistentModelID == rhs.task.persistentModelID
@@ -57,10 +57,13 @@ struct TaskRowView: View, Equatable {
             && lhs.subtaskSummary == rhs.subtaskSummary
             && lhs.isSelecting == rhs.isSelecting
             && lhs.isSelected == rhs.isSelected
-            && lhs.showsRowBackground == rhs.showsRowBackground
     }
     
     var body: some View {
+        contentWithContextMenu
+    }
+
+    private var gestureContent: some View {
         rowContent
             .background(
                 isSelected ? AppTheme.colors.primaryAction.opacity(0.12) : Color.clear
@@ -85,78 +88,100 @@ struct TaskRowView: View, Equatable {
                     .tint(AppTheme.colors.tint)
                 }
             }
-            .contextMenu {
-                if !isSelecting {
-                    if let onDueDateAction {
-                        Menu {
-                            // Schedule actions are context-aware: a task never gets an action that
-                            // would re-apply the schedule it already has.
-                            if !isScheduledForToday {
-                                Button("Today") {
-                                    onDueDateAction(.today)
+    }
+
+    /// An empty context menu still claims the long-press gesture, which would compete with
+    /// Board View's drag-to-reorder, so only install it when there is something to show.
+    @ViewBuilder
+    private var contentWithContextMenu: some View {
+        if hasContextMenuActions {
+            gestureContent.contextMenu { menuContent }
+        } else {
+            gestureContent
+        }
+    }
+
+    private var hasContextMenuActions: Bool {
+        guard !isSelecting else { return false }
+        return onDueDateAction != nil
+            || onMoveToTop != nil
+            || onMoveToBottom != nil
+            || onMoveUp != nil
+            || onMoveDown != nil
+            || (onMoveToList != nil && !listSections.isEmpty)
+            || onDelete != nil
+    }
+
+    @ViewBuilder
+    private var menuContent: some View {
+        if let onDueDateAction {
+            Menu {
+                // Schedule actions are context-aware: a task never gets an action that
+                // would re-apply the schedule it already has.
+                if !isScheduledForToday {
+                    Button("Today") {
+                        onDueDateAction(.today)
+                    }
+                }
+                if !isScheduledForTomorrow {
+                    Button("Tomorrow") {
+                        onDueDateAction(.tomorrow)
+                    }
+                }
+                Button("Choose a Date…") {
+                    onDueDateAction(.custom)
+                }
+            } label: {
+                Label("Reschedule", systemImage: "calendar")
+            }
+        }
+        if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
+            Divider()
+        }
+        if let moveTop = onMoveToTop {
+            Button("Move to Top") {
+                moveTop()
+            }
+        }
+        if let moveBottom = onMoveToBottom {
+            Button("Move to Bottom") {
+                moveBottom()
+            }
+        }
+        if let moveUp = onMoveUp {
+            Button("Move Up") {
+                moveUp()
+            }
+        }
+        if let moveDown = onMoveDown {
+            Button("Move Down") {
+                moveDown()
+            }
+        }
+        if let moveToList = onMoveToList, !listSections.isEmpty {
+            Menu("Move to List") {
+                ForEach(listSections) { section in
+                    let lists = section.lists.filter { $0.persistentModelID != excludedListID }
+                    if !lists.isEmpty {
+                        Section(section.title ?? "") {
+                            ForEach(lists) { list in
+                                Button(list.name) {
+                                    moveToList(list)
                                 }
                             }
-                            if !isScheduledForTomorrow {
-                                Button("Tomorrow") {
-                                    onDueDateAction(.tomorrow)
-                                }
-                            }
-                            Button("Choose a Date…") {
-                                onDueDateAction(.custom)
-                            }
-                        } label: {
-                            Label("Reschedule", systemImage: "calendar")
-                        }
-                    }
-                    if onMoveToTop != nil || onMoveToBottom != nil || onMoveUp != nil || onMoveDown != nil {
-                        Divider()
-                    }
-                    if let moveTop = onMoveToTop {
-                        Button("Move to Top") {
-                            moveTop()
-                        }
-                    }
-                    if let moveBottom = onMoveToBottom {
-                        Button("Move to Bottom") {
-                            moveBottom()
-                        }
-                    }
-                    if let moveUp = onMoveUp {
-                        Button("Move Up") {
-                            moveUp()
-                        }
-                    }
-                    if let moveDown = onMoveDown {
-                        Button("Move Down") {
-                            moveDown()
-                        }
-                    }
-                    if let moveToList = onMoveToList, !listSections.isEmpty {
-                        Menu("Move to List") {
-                            ForEach(listSections) { section in
-                                let lists = section.lists.filter { $0.persistentModelID != excludedListID }
-                                if !lists.isEmpty {
-                                    Section(section.title ?? "") {
-                                        ForEach(lists) { list in
-                                            Button(list.name) {
-                                                moveToList(list)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if let delete = onDelete {
-                        Divider()
-                        Button(role: .destructive) {
-                            delete()
-                        } label: {
-                            Label("Delete", systemImage: "trash")
                         }
                     }
                 }
             }
+        }
+        if let delete = onDelete {
+            Divider()
+            Button(role: .destructive) {
+                delete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private var rowContent: some View {
@@ -199,7 +224,7 @@ struct TaskRowView: View, Equatable {
                     onToggleExpand()
                 } label: {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.footnote.weight(.semibold))
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .frame(width: 40, height: 40)
                         .contentShape(Rectangle())
@@ -208,57 +233,35 @@ struct TaskRowView: View, Equatable {
                 .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
             }
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(rowBackground)
-        .overlay(rowBorder)
-    }
-
-    @ViewBuilder
-    private var rowBackground: some View {
-        if showsRowBackground {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.secondarySystemGroupedBackground))
-        }
-    }
-
-    @ViewBuilder
-    private var rowBorder: some View {
-        if showsRowBackground {
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(AppTheme.colors.cardBorder, lineWidth: 1)
-        }
     }
 
     @ViewBuilder
     private var titleView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(attributedTitle)
-                    .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
-                    .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
-                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                    .lineSpacing(2)
-                    .multilineTextAlignment(.leading)
-                    .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
-            }
-
-            if !task.safeDescription.isEmpty {
-            Text(task.safeDescription)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textSecondary)
-                .opacity(isCompletedVisualState ? 0.82 : 1.0)
-                .lineLimit(4)
+            Text(attributedTitle)
+                .font(AppFont.body)
+                .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)
+                .tint(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.primaryAction)
+                .strikethrough(isCompletedVisualState, color: AppTheme.colors.textSecondary)
                 .lineSpacing(2)
                 .multilineTextAlignment(.leading)
+                .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
+
+            if !task.safeDescription.isEmpty {
+                Text(task.safeDescription)
+                    .font(AppFont.subheadline)
+                    .foregroundStyle(AppTheme.colors.textSecondary)
+                    .lineLimit(4)
+                    .lineSpacing(2)
+                    .multilineTextAlignment(.leading)
             }
 
             if let metadataText {
                 Text(metadataText)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(AppFont.footnote)
                     .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : (isOverdue ? AppTheme.colors.error : AppTheme.colors.textSecondary))
-                    .opacity(isCompletedVisualState ? 0.82 : 1.0)
                     .lineLimit(1)
             }
         }
@@ -339,8 +342,18 @@ struct TaskRowView: View, Equatable {
         }
     }
 
+    private var listDisplayName: String? {
+        guard showsListName else { return nil }
+        let trimmed = task.reminderList?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private var metadataText: String? {
         var components: [String] = []
+
+        if let listDisplayName {
+            components.append(listDisplayName)
+        }
 
         if let deferCount = task.deferCount, deferCount >= 2 {
             components.append("\(deferCount)x deferred")
@@ -358,10 +371,16 @@ struct TaskRowView: View, Equatable {
             components.append(groupDisplayName)
         }
 
-        // List name removed
-
         if !subtaskSummary.isEmpty {
-            components.append(subtaskSummary.displayText)
+            components.append("Subtasks \(subtaskSummary.displayText)")
+        }
+
+        if task.safeIsFlagged {
+            components.append("Flagged")
+        }
+
+        if task.priority != .none {
+            components.append(task.priority.title)
         }
 
         return components.isEmpty ? nil : components.joined(separator: "  ·  ")
@@ -376,26 +395,26 @@ struct TaskRowView: View, Equatable {
             ZStack {
                 Circle()
                     .fill(isCompletedVisualState ? AppTheme.colors.tint.opacity(0.15) : .clear)
-                    .frame(width: 22, height: 22)
+                    .frame(width: checkboxSize, height: checkboxSize)
                     .scaleEffect(isCompletedVisualState ? 1.09 : 1)
                     .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
 
                 if !isCompletedVisualState {
                     Circle()
                         .stroke(AppTheme.colors.tint, lineWidth: 1)
-                        .frame(width: 22, height: 22)
+                        .frame(width: checkboxSize, height: checkboxSize)
                         .animation(.easeInOut(duration: 0.18), value: isCompletedVisualState)
                 }
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(AppFont.caption2.weight(.semibold))
                     .foregroundStyle(AppTheme.colors.tint)
                     .opacity(isCompletedVisualState ? 1 : 0)
                     .scaleEffect(isCompletedVisualState ? 1.0 : 0.85)
                     .animation(.easeInOut(duration: 0.14), value: isCompletedVisualState)
             }
             .scaleEffect(chipScale)
-            .frame(width: 22, height: 22)
+            .frame(width: checkboxSize, height: checkboxSize)
             .background(Color.clear.frame(width: 44, height: 44))
             .contentShape(Rectangle())
         }
