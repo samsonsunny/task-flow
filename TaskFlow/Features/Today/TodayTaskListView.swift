@@ -98,17 +98,19 @@ struct TodayTaskListView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .overlay(alignment: .bottomTrailing) {
-                FloatingAddButton {
-                    newTaskConfig = NewTaskSheetConfig(
-                        initialDate: calendar.startOfDay(for: Date()),
-                        initialListID: defaultListID
-                    )
-                }
-            }
             .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
             .navigationTitle("Today")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    FloatingAddButton {
+                        newTaskConfig = NewTaskSheetConfig(
+                            initialDate: calendar.startOfDay(for: Date()),
+                            initialListID: defaultListID
+                        )
+                    }
+                }
+            }
             .navigationDestination(item: $editingTask) { task in
                 ReminderEditorView(task: task, embedInNavigationStack: false)
             }
@@ -168,8 +170,8 @@ struct TodayTaskListView: View {
                     domainSection(.personal, tasks: tasks(for: .personal, from: visible))
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.horizontal, AppSpacing.screenHorizontal)
+            .padding(.top, AppSpacing.xs)
             .padding(.bottom, 100)
         }
         .scrollIndicators(.hidden)
@@ -184,7 +186,7 @@ struct TodayTaskListView: View {
                 Text(accomplished ? "You're all caught up." : "What's on your mind?")
             } icon: {
                 Image(systemName: accomplished ? "checkmark.circle" : "note.text")
-                    .font(.system(size: 26, weight: .regular))
+                    .font(AppFont.title2)
                     .foregroundStyle(AppTheme.colors.textTertiary)
             }
         } description: {
@@ -198,32 +200,31 @@ struct TodayTaskListView: View {
 
     @ViewBuilder
     private func domainSection(_ domain: TodayDomain, tasks: [TaskItem]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
+            HStack(spacing: AppSpacing.xs) {
                 Text(domain.title)
-                    .font(AppFont.headlineSemibold)
+                    .font(AppFont.footnoteSemibold)
                     .foregroundStyle(AppTheme.colors.textSecondary)
                 Spacer(minLength: 0)
                 addTaskButton(for: domain)
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, AppSpacing.xxs)
 
             VStack(spacing: 0) {
                 if tasks.isEmpty {
                     Text("Nothing due today")
-                        .font(.subheadline)
+                        .font(AppFont.subheadline)
                         .foregroundStyle(AppTheme.colors.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 18)
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.vertical, AppSpacing.lg)
                 } else {
                     taskRows(tasks)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
             .background(
-                RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                    .fill(AppColors.groupedSurface)
             )
         }
         .accessibilityIdentifier("today-section-\(domain.rawValue)")
@@ -251,10 +252,9 @@ struct TodayTaskListView: View {
             addTask(for: domain)
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: 13, weight: .semibold))
+                .font(AppFont.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.colors.tint)
-                .frame(width: 28, height: 28)
-                .background(AppTheme.colors.tint.opacity(0.12), in: Circle())
+                .frame(width: AppSpacing.minimumTapTarget, height: AppSpacing.minimumTapTarget)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add \(domain.title) task")

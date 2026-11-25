@@ -7,7 +7,8 @@ struct NewTaskSheetConfig: Identifiable {
     let initialListID: ReminderList.ID?
 }
 
-/// The Android-style create affordance pinned to the bottom-right of a task screen.
+/// The shared native create affordance. It belongs in a navigation toolbar, matching
+/// the system "+" pattern used by Reminders and other iOS productivity apps.
 struct FloatingAddButton: View {
     let action: () -> Void
 
@@ -17,18 +18,10 @@ struct FloatingAddButton: View {
             action()
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textOnTint)
-                .frame(width: 56, height: 56)
-                .background(AppTheme.colors.tint, in: Circle())
-                .shadow(color: .black.opacity(0.22), radius: 3, x: 0, y: 2)
-                .shadow(color: AppTheme.colors.tint.opacity(0.35), radius: 16, x: 0, y: 8)
+                .font(AppFont.body.weight(.semibold))
         }
-        .buttonStyle(.plain)
-        .contentShape(Circle())
+        .frame(minWidth: AppSpacing.minimumTapTarget, minHeight: AppSpacing.minimumTapTarget)
         .accessibilityLabel("New Task")
         .accessibilityIdentifier("floating-add-button")
-        .padding(.trailing, 20)
-        .padding(.bottom, 36)
     }
 }

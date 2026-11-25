@@ -80,7 +80,7 @@ struct UpcomingAgendaView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: AppSpacing.lg) {
                     ForEach(sections) { section in
                         daySection(section)
                             .id(section.id)
@@ -225,7 +225,7 @@ struct UpcomingAgendaView: View {
                 let dateText = Self.headingFormatter.string(from: section.date)
                 let headingText = isToday ? "\(dateText) · Today" : isTomorrow ? "\(dateText) · Tomorrow" : isYesterday ? "\(dateText) · Yesterday" : dateText
                 Text(headingText)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.subheadlineSemibold)
                     .foregroundStyle(AppTheme.colors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -237,15 +237,15 @@ struct UpcomingAgendaView: View {
                     onAddTask(section.date)
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.subheadline.weight(.semibold))
                         .foregroundStyle(AppTheme.colors.tint)
-                        .frame(width: 44, height: 44)
+                        .frame(width: AppSpacing.minimumTapTarget, height: AppSpacing.minimumTapTarget)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : isYesterday ? "Yesterday" : Self.accessibilityFormatter.string(from: section.date))")
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, AppSpacing.screenHorizontal)
 
             if section.tasks.isEmpty {
                 let calendar = Calendar.current
@@ -257,12 +257,12 @@ struct UpcomingAgendaView: View {
                     onAddTask(section.date)
                 } label: {
                     Text("No tasks scheduled")
-                        .font(.system(size: 14))
+                        .font(AppFont.subheadline)
                         .foregroundStyle(AppTheme.colors.textTertiary)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 4)
+                .padding(.horizontal, AppSpacing.screenHorizontal)
+                .padding(.bottom, AppSpacing.xxs)
                 .accessibilityLabel("Add task on \(isToday ? "Today" : isTomorrow ? "Tomorrow" : isYesterday ? "Yesterday" : Self.accessibilityFormatter.string(from: section.date))")
             } else {
                 VStack(spacing: 0) {
@@ -291,12 +291,11 @@ struct UpcomingAgendaView: View {
                         }
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
                 .background(
-                    RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
+                    RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                        .fill(AppColors.groupedSurface)
                 )
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppSpacing.screenHorizontal)
             }
         }
         .background(

@@ -151,21 +151,10 @@ struct ListDetailView: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                if !isSelecting {
-                    VStack(alignment: .trailing, spacing: 12) {
-                        if showScrollToBottom {
-                            scrollToBottomButton(proxy: proxy)
-                                .padding(.trailing, 16)
-                        }
-
-                        FloatingAddButton {
-                            newReminderConfig = NewReminderConfig(
-                                initialDate: nil,
-                                initialListID: listID,
-                                initialTitle: ""
-                            )
-                        }
-                    }
+                if !isSelecting && showScrollToBottom {
+                    scrollToBottomButton(proxy: proxy)
+                        .padding(.trailing, AppSpacing.md)
+                        .padding(.bottom, AppSpacing.xs)
                 }
             }
     }
@@ -254,6 +243,18 @@ struct ListDetailView: View {
                 }
             }
         }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            if !isSelecting {
+                FloatingAddButton {
+                    newReminderConfig = NewReminderConfig(
+                        initialDate: nil,
+                        initialListID: listID,
+                        initialTitle: ""
+                    )
+                }
+            }
+        }
     }
 
     private var bulkActionsOverlay: some View {
@@ -283,11 +284,10 @@ struct ListDetailView: View {
         } label: {
             GlassEffectContainer {
                 Image(systemName: "arrow.down")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.subheadline.weight(.semibold))
                     .foregroundStyle(AppTheme.colors.primaryAction)
                     .frame(width: 34, height: 34)
                     .glassEffect(.regular.interactive(), in: Circle())
-                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 3)
             }
         }
         .buttonStyle(.plain)
@@ -309,19 +309,14 @@ struct ListDetailView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("No tasks")
-                .font(.headline)
-                .foregroundStyle(AppTheme.colors.textPrimary)
-            Text("Add a task below to get started.")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-        }
-        .padding(.vertical, 24)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        ContentUnavailableView(
+            "No tasks",
+            systemImage: "list.bullet",
+            description: Text("Add a task to get started.")
+        )
+        .padding(.vertical, AppSpacing.xl)
         .listRowSeparator(.hidden)
         .listRowBackground(Color.clear)
-        .accessibilityElement(children: .combine)
     }
 
     private func taskListRow(_ node: FlatTaskNode) -> some View {

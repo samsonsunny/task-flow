@@ -23,7 +23,7 @@ struct ListCreationSheet: View {
 
                 Section {
                     LabeledContent("Creates a list in", value: areaName)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColors.textSecondary)
                 } footer: {
                     Text("This list will appear in \(areaName).")
                 }

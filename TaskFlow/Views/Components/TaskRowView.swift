@@ -299,7 +299,7 @@ struct TaskRowView: View, Equatable {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: AppSpacing.md) {
             if isSelecting {
                 Button {
                     Haptics.selection()
@@ -347,13 +347,13 @@ struct TaskRowView: View, Equatable {
                 .accessibilityLabel(isExpanded ? "Collapse subtasks" : "Expand subtasks")
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.vertical, AppSpacing.rowVertical)
+        .padding(.horizontal, AppSpacing.md)
     }
 
     @ViewBuilder
     private var titleView: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
             Text(attributedTitle)
                 .font(AppFont.body)
                 .foregroundStyle(isCompletedVisualState ? AppTheme.colors.textSecondary : AppTheme.colors.textPrimary)

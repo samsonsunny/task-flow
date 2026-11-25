@@ -49,13 +49,13 @@ struct MonthCalendarView: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+            RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                .fill(AppColors.groupedSurface)
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, AppSpacing.md)
         .onChange(of: selectedDate) { _, newValue in
             let day = calendar.startOfDay(for: newValue)
             guard !calendar.isDate(day, equalTo: displayedMonth, toGranularity: .month) else { return }
@@ -76,18 +76,19 @@ struct MonthCalendarView: View {
     private var monthHeader: some View {
         HStack {
             Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            Haptics.impact(.light)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+
                     isExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 6) {
                     Text(monthTitleText)
-                        .font(.headline)
+                        .font(AppFont.headline)
                         .foregroundStyle(AppTheme.colors.textPrimary)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(AppFont.footnoteSemibold)
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -104,7 +105,7 @@ struct MonthCalendarView: View {
                         changeMonth(by: -1)
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.body.weight(.semibold))
+                            .font(AppFont.bodySemibold)
                             .foregroundStyle(AppTheme.colors.tint)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -116,7 +117,7 @@ struct MonthCalendarView: View {
                         changeMonth(by: 1)
                     } label: {
                         Image(systemName: "chevron.right")
-                            .font(.body.weight(.semibold))
+                            .font(AppFont.bodySemibold)
                             .foregroundStyle(AppTheme.colors.tint)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -133,7 +134,7 @@ struct MonthCalendarView: View {
         HStack(spacing: 0) {
             ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                 Text(symbol.uppercased())
-                    .font(.caption.weight(.semibold))
+                    .font(AppFont.captionSemibold)
                     .foregroundStyle(AppTheme.colors.textSecondary)
                     .frame(maxWidth: .infinity)
             }
@@ -186,13 +187,13 @@ struct MonthCalendarView: View {
         let hasTasks = taskDays.contains(day)
 
         return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.impact(.light)
             selectedDate = day
             onDayTap(day)
         } label: {
             VStack(spacing: 4) {
                 Text(dayNumber(for: day))
-                    .font(.body.weight(isSelected || isToday ? .semibold : .regular))
+                    .font(isSelected || isToday ? AppFont.bodySemibold : AppFont.body)
                     .foregroundStyle(numberColor(isSelected: isSelected, isToday: isToday))
                     .frame(width: 38, height: 38)
                     .background(
@@ -278,7 +279,7 @@ struct MonthCalendarView: View {
     private func changeMonth(by value: Int) {
         guard let shifted = calendar.date(byAdding: .month, value: value, to: displayedMonth),
               let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: shifted)) else { return }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.impact(.light)
         withAnimation(.easeInOut(duration: 0.18)) {
             displayedMonth = monthStart
             selectedDate = monthStart
@@ -288,7 +289,7 @@ struct MonthCalendarView: View {
     private func changeWeek(by value: Int) {
         guard let shifted = calendar.date(byAdding: .day, value: value * 7, to: selectedDate) else { return }
         let newDate = calendar.startOfDay(for: shifted)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.impact(.light)
         withAnimation(.easeInOut(duration: 0.18)) {
             selectedDate = newDate
             if let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: newDate)) {

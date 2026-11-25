@@ -19,20 +19,20 @@ struct TaskListContentHeader: View {
                 label
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 2)
-        .padding(.bottom, 4)
+        .padding(.horizontal, AppSpacing.screenHorizontal)
+        .padding(.top, AppSpacing.xxs / 2)
+        .padding(.bottom, AppSpacing.xxs)
     }
 
     private var label: some View {
         HStack(spacing: 6) {
             Text(title)
-                .font(.system(size: 22, weight: .bold))
+                .font(AppFont.title)
                 .foregroundStyle(AppTheme.colors.textPrimary)
 
             if showsDisclosure {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(AppFont.captionSemibold)
                     .foregroundStyle(AppTheme.colors.textSecondary)
             }
 

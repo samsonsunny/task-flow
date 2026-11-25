@@ -1,26 +1,29 @@
 import SwiftUI
 
 struct SelectionCircle: View {
+    @ScaledMetric(relativeTo: .body) private var diameter: CGFloat = 20
+
     let isSelected: Bool
+
     var body: some View {
         ZStack {
             Circle()
-                .stroke(isSelected ? AppTheme.colors.primaryAction : AppTheme.colors.border, lineWidth: 1.5)
+                .stroke(isSelected ? AppColors.primaryAction : AppColors.border, lineWidth: 1.5)
                 .background(
                     Circle()
-                        .fill(isSelected ? AppTheme.colors.primaryAction : Color.clear)
+                        .fill(isSelected ? AppColors.primaryAction : Color.clear)
                 )
-                .frame(width: 20, height: 20)
+                .frame(width: diameter, height: diameter)
                 .animation(.easeInOut(duration: 0.18), value: isSelected)
 
             Image(systemName: "checkmark")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textOnPrimaryAction)
+                .font(AppFont.caption2Semibold)
+                .foregroundStyle(AppColors.textOnPrimaryAction)
                 .opacity(isSelected ? 1 : 0)
                 .scaleEffect(isSelected ? 1.0 : 0.85)
                 .animation(.easeInOut(duration: 0.14), value: isSelected)
         }
-        .frame(width: 44, height: 44)
+        .frame(width: AppSpacing.minimumTapTarget, height: AppSpacing.minimumTapTarget)
         .contentShape(Rectangle())
     }
 }

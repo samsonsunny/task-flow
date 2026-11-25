@@ -1,53 +1,42 @@
 import SwiftUI
 
-/// Provides a centralized source for all colors used in the application.
-/// All colors MUST be sourced from here to ensure visual consistency.
+/// Semantic color tokens shared by every surface.
+///
+/// Views must source colors from here (and from nowhere else) so Light Mode, Dark Mode,
+/// and accessibility contrast stay consistent. Tokens map to system semantic colors, which
+/// is what native iOS apps use instead of hard-coded values.
 struct AppColors {
-    // Backgrounds / Surfaces
+    // Backgrounds / surfaces
     static let appBackground: Color = Color(.systemGroupedBackground)
-    /// Page background: #F2F3F5 in light mode, #000000 in dark mode.
-    static let pageBackground: Color = adaptiveColor(
-        light: UIColor(red: 0xF2 / 255, green: 0xF3 / 255, blue: 0xF5 / 255, alpha: 1),
-        dark: .black
-    )
+    static let pageBackground: Color = appBackground
     static let secondaryBackground: Color = Color(.secondarySystemGroupedBackground)
     static let background: Color = Color(.systemBackground)
-
-    static let tint: Color = .accentColor
-
-    static let primaryAction: Color = .primary
-    static let primaryActionPressed: Color = Color(.systemFill)
     static let surface: Color = Color(.systemBackground)
+    /// Background for grouped content: task cards, calendars, and inset rows.
+    static let groupedSurface: Color = Color(.secondarySystemGroupedBackground)
     static let surfaceElevated: Color = Color(.secondarySystemBackground)
-
-    // Translucent fills (e.g. pressed states)
     static let fillSubtle: Color = Color(.systemFill)
+
+    // Accent / actions
+    static let tint: Color = .accentColor
+    static let primaryAction: Color = .accentColor
+    static let primaryActionPressed: Color = Color(.systemFill)
 
     // Text
     static let textPrimary: Color = .primary
     static let textSecondary: Color = Color(.secondaryLabel)
     static let textTertiary: Color = Color(.tertiaryLabel)
-
     static let textDisabled: Color = Color(.placeholderText)
-
-    static let textOnPrimaryAction: Color = Color(.systemBackground)
+    static let textOnPrimaryAction: Color = .white
     static let textOnTint: Color = .white
 
-    // Borders / Dividers
+    // Borders / dividers
     static let border: Color = Color(.separator)
-    static let borderSubtle: Color = Color(.separator).opacity(0.5)
+    static let borderSubtle: Color = Color(.separator)
     static let divider: Color = Color(.separator)
 
     // Status
     static let success: Color = .green
     static let warning: Color = .orange
     static let error: Color = .red
-
-    private static func adaptiveColor(light: UIColor, dark: UIColor) -> Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? dark.resolvedColor(with: traits)
-                : light.resolvedColor(with: traits)
-        })
-    }
 }

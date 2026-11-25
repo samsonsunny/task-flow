@@ -89,6 +89,7 @@ struct ReminderEditorView: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
+                    .accessibilityLabel("Close")
                     .accessibilityIdentifier("reminder-editor-close")
                 }
             }
@@ -100,6 +101,7 @@ struct ReminderEditorView: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel("Save")
                     .accessibilityIdentifier("reminder-editor-save")
                 }
             }
@@ -174,9 +176,10 @@ struct ReminderEditorView: View {
 
     private var contentSection: some View {
         Section {
-            TextField("Title", text: draftBinding.title, axis: .vertical)
-                .lineLimit(1...4)
-                .font(.title3)
+                TextField("Title", text: draftBinding.title, axis: .vertical)
+                    .lineLimit(1...4)
+                    .font(AppFont.title3)
+
                 .focused($isTitleFocused)
                 .accessibilityIdentifier("reminder-editor-title")
 
@@ -188,8 +191,9 @@ struct ReminderEditorView: View {
                     .accessibilityIdentifier("reminder-editor-notes")
 
                 if draftBinding.notes.wrappedValue.isEmpty {
-                Text("Add notes")
-                        .foregroundStyle(.placeholder)
+                    Text("Add notes")
+                        .font(AppFont.body)
+                        .foregroundStyle(AppColors.textDisabled)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 8)
                 }
@@ -221,12 +225,12 @@ struct ReminderEditorView: View {
             HStack {
                 let draftList = resolvedDraftList
                 Image(systemName: draftList?.isBucket == true ? "tray" : "list.bullet")
-                    .font(.system(size: 16))
+                    .font(AppFont.body)
                     .foregroundStyle(AppTheme.colors.textSecondary)
                     .frame(width: 24)
 
                 Text(listSectionTitle)
-                    .font(.system(size: 17))
+                    .font(AppFont.body)
                     .foregroundStyle(AppTheme.colors.textPrimary)
 
                 Spacer()
@@ -309,7 +313,7 @@ struct ReminderEditorView: View {
                 Text("Date")
                 if let date = viewModel?.draft.dueDate {
                     Text(date, style: .date)
-                        .font(.caption)
+                        .font(AppFont.footnote)
                         .foregroundStyle(AppTheme.colors.textSecondary)
                 }
             }
@@ -333,7 +337,7 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-date")
         }
         .contentShape(Rectangle())
-        .listRowBackground(Color(.secondarySystemGroupedBackground))
+        .listRowBackground(AppColors.groupedSurface)
         .onTapGesture {
             guard viewModel?.draft.dueDate != nil else { return }
             expandedPicker = expandedPicker == .date ? nil : .date
@@ -346,7 +350,7 @@ struct ReminderEditorView: View {
                 Text("Time")
                 if viewModel?.draft.hasTime == true, let date = viewModel?.draft.dueDate {
                     Text(date, style: .time)
-                        .font(.caption)
+                        .font(AppFont.footnote)
                         .foregroundStyle(AppTheme.colors.textSecondary)
                 }
             }
@@ -382,7 +386,7 @@ struct ReminderEditorView: View {
             .accessibilityIdentifier("reminder-editor-has-time")
         }
         .contentShape(Rectangle())
-        .listRowBackground(Color(.secondarySystemGroupedBackground))
+        .listRowBackground(AppColors.groupedSurface)
         .onTapGesture {
             guard viewModel?.draft.hasTime == true else { return }
             expandedPicker = expandedPicker == .time ? nil : .time

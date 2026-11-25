@@ -42,19 +42,19 @@ struct ScheduledTaskListView: View {
             ScrollView {
                 if sections.isEmpty {
                     emptyState
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        .padding(.horizontal, AppSpacing.screenHorizontal)
+                        .padding(.top, AppSpacing.sm)
                         .padding(.bottom, 100)
                 } else {
-                    LazyVStack(alignment: .leading, spacing: 18) {
+                    LazyVStack(alignment: .leading, spacing: AppSpacing.lg) {
                         ForEach(sections) { section in
                             daySection(section)
                                 .id(section.date)
                         }
                     }
                     .scrollTargetLayout()
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, AppSpacing.screenHorizontal)
+                    .padding(.top, AppSpacing.xs)
                     .padding(.bottom, 100)
                     .coordinateSpace(.named("scheduledContent"))
                     .onPreferenceChange(ScheduledSectionTopKey.self) { sectionTops = $0 }
@@ -133,31 +133,19 @@ struct ScheduledTaskListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(AppTheme.colors.textTertiary)
-
-            Text("No scheduled tasks")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(AppTheme.colors.textSecondary)
-
-            Text("Tasks with a date this month will appear here")
-                .font(.system(size: 13))
-                .foregroundStyle(AppTheme.colors.textTertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+        ContentUnavailableView(
+            "No scheduled tasks",
+            systemImage: "calendar.badge.plus",
+            description: Text("Tasks with a date this month will appear here.")
         )
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, AppSpacing.xl)
     }
 
     private func daySection(_ section: ScheduledDaySection) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppSpacing.xs) {
             Text(headingText(for: section.date))
-                .font(.system(size: 15, weight: .semibold))
+                .font(AppFont.subheadlineSemibold)
                 .foregroundStyle(AppTheme.colors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -177,10 +165,9 @@ struct ScheduledTaskListView: View {
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
             .background(
-                RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                RoundedRectangle(cornerRadius: AppRadius.card, style: .continuous)
+                    .fill(AppColors.groupedSurface)
             )
         }
         .background(

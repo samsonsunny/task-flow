@@ -102,7 +102,7 @@ struct BulkActionsToolbar: View {
     private func toolbarButtonLabel(icon: String, label: String, isDestructive: Bool = false) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(AppFont.body)
                 .foregroundStyle(isDestructive ? AppTheme.colors.error : AppTheme.colors.primaryAction)
 
             Text(label)

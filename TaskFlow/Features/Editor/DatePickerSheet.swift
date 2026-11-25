@@ -62,12 +62,12 @@ public struct TaskScheduleDatePickerSheet: View {
             .background(.ultraThinMaterial)
             .navigationTitle("Schedule")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         isPresented = false
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         onCommit(viewModel.dueDate, viewModel.hasTime)
                         isPresented = false
@@ -87,8 +87,8 @@ public struct TaskScheduleDatePickerSheet: View {
                 Text("Date")
                 if let date = viewModel.dueDate {
                     Text(date, style: .date)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppFont.footnote)
+                        .foregroundStyle(AppColors.textSecondary)
                 }
             }
             Spacer()
@@ -113,8 +113,8 @@ public struct TaskScheduleDatePickerSheet: View {
                 Text("Time")
                 if viewModel.hasTime, let date = viewModel.dueDate {
                     Text(date, style: .time)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppFont.footnote)
+                        .foregroundStyle(AppColors.textSecondary)
                 }
             }
             Spacer()

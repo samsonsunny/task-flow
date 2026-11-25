@@ -12,18 +12,19 @@ struct UndoToast: View {
                     .frame(width: 32, height: 32)
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(AppFont.caption2Semibold)
                     .foregroundStyle(AppTheme.colors.tint)
             }
 
             VStack(alignment: .leading, spacing: 1) {
-                Text("Completed")
-                    .font(.footnote.weight(.semibold))
+                    Text("Completed")
+                        .font(AppFont.footnoteSemibold)
+
                     .foregroundStyle(AppTheme.colors.textPrimary)
 
                 if !title.isEmpty {
                     Text(title)
-                        .font(.caption)
+                        .font(AppFont.caption)
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .lineLimit(1)
                 }
@@ -36,7 +37,7 @@ struct UndoToast: View {
                 onUndo()
             } label: {
                 Text("Undo")
-                    .font(.footnote.weight(.semibold))
+                    .font(AppFont.footnoteSemibold)
                     .foregroundStyle(AppTheme.colors.tint)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 7)

@@ -32,8 +32,8 @@ struct ScheduledTasksView: View {
                     taskDays: taskDays,
                     onDayTap: { _ in dayTapToken += 1 }
                 )
-                .padding(.top, 8)
-                .padding(.bottom, 12)
+                .padding(.top, AppSpacing.xs)
+                .padding(.bottom, AppSpacing.sm)
                 .background(AppTheme.colors.pageBackground)
             }
             .background(AppTheme.colors.pageBackground.ignoresSafeArea())
@@ -65,6 +65,8 @@ struct ScheduledTasksView: View {
                         )
                     } label: {
                         Image(systemName: "plus")
+                            .font(AppFont.bodySemibold)
+                            .frame(minWidth: AppSpacing.minimumTapTarget, minHeight: AppSpacing.minimumTapTarget)
                     }
                     .accessibilityLabel("New Task")
                 }

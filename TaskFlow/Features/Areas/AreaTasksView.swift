@@ -31,14 +31,6 @@ struct AreaTasksView: View {
     var body: some View {
         NavigationStack {
             listContent
-                .overlay(alignment: .bottomTrailing) {
-                    FloatingAddButton {
-                        newTaskConfig = NewTaskSheetConfig(
-                            initialDate: nil,
-                            initialListID: defaultListID
-                        )
-                    }
-                }
                 .overlay(alignment: .top) {
                     if let pending = viewModel?.pendingUndo {
                         UndoToast(title: pending.task.safeTitle) {
@@ -51,6 +43,16 @@ struct AreaTasksView: View {
                 .animation(.easeInOut(duration: 0.22), value: viewModel?.pendingUndo?.id)
                 .navigationTitle(displayName)
                 .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        FloatingAddButton {
+                            newTaskConfig = NewTaskSheetConfig(
+                                initialDate: nil,
+                                initialListID: defaultListID
+                            )
+                        }
+                    }
+                }
                 // Pushed rather than presented: the editor's toolbar buttons need a real stack.
                 .navigationDestination(item: $editingTask) { task in
                     ReminderEditorView(task: task, embedInNavigationStack: false)
@@ -112,8 +114,8 @@ struct AreaTasksView: View {
             if viewModel?.tasks.isEmpty ?? true {
                 ContentUnavailableView(
                     "No \(displayName.lowercased()) tasks",
-                    systemImage: areaName == AreaNames.work ? "briefcase" : "house",
-                    description: Text("Tasks in your \(areaName) lists will appear here.")
+                    systemImage: areaName == AreaNames.work ? "briefcase" : "person.crop.circle",
+                    description: Text("Tasks in your \(displayName) lists will appear here.")
                 )
             } else {
                 ScrollViewReader { proxy in
@@ -132,7 +134,7 @@ struct AreaTasksView: View {
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.hidden)
                     .refreshable { refresh() }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, AppSpacing.sm)
                     .onChange(of: appState.scrollToTopRequestIDs[areaName] ?? 0) { _, _ in
                         withAnimation(.easeInOut(duration: 0.25)) {
                             proxy.scrollTo("areaListTop", anchor: .top)
@@ -153,8 +155,8 @@ struct AreaTasksView: View {
             addTaskRow(for: section.list)
         } header: {
             Text(section.list.name)
-                .font(AppFont.subheadlineSemibold)
-                .foregroundStyle(AppTheme.colors.textPrimary)
+                .font(AppFont.footnoteSemibold)
+                .foregroundStyle(AppTheme.colors.textSecondary)
                 .textCase(nil)
                 .accessibilityAddTraits(.isHeader)
         }
@@ -183,15 +185,15 @@ struct AreaTasksView: View {
                 initialListID: list.persistentModelID
             )
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: AppSpacing.xs) {
                 Image(systemName: "plus")
                     .font(AppFont.subheadline.weight(.semibold))
                 Text("Add Task")
                     .font(AppFont.subheadline)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.rowVertical)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -204,18 +206,18 @@ struct AreaTasksView: View {
 
     @ViewBuilder
     private func sectionBackground(top: Bool, bottom: Bool) -> some View {
-        let color = Color(.secondarySystemGroupedBackground)
+        let color = AppColors.groupedSurface
         if top {
             UnevenRoundedRectangle(
-                topLeadingRadius: AppRadius.extraLarge,
-                topTrailingRadius: AppRadius.extraLarge,
+                topLeadingRadius: AppRadius.card,
+                topTrailingRadius: AppRadius.card,
                 style: .continuous
             )
             .fill(color)
         } else if bottom {
             UnevenRoundedRectangle(
-                bottomLeadingRadius: AppRadius.extraLarge,
-                bottomTrailingRadius: AppRadius.extraLarge,
+                bottomLeadingRadius: AppRadius.card,
+                bottomTrailingRadius: AppRadius.card,
                 style: .continuous
             )
             .fill(color)

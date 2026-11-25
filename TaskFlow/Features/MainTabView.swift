@@ -61,7 +61,7 @@ struct MainTabBarController: UIViewControllerRepresentable {
         personalVC.tabBarItem = UITabBarItem(title: "Personal", image: UIImage(systemName: "person.crop.circle.fill"), tag: 2)
 
         let moreVC = UIHostingController(rootView: moreView())
-        moreVC.tabBarItem = UITabBarItem(title: "More", image: UIImage(systemName: "square.grid.2x2.fill"), tag: 3)
+        moreVC.tabBarItem = UITabBarItem(title: "More", image: UIImage(systemName: "gearshape.fill"), tag: 3)
 
         tabBarController.viewControllers = [todayVC, workVC, personalVC, moreVC]
         return tabBarController

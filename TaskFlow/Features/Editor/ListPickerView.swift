@@ -59,19 +59,19 @@ struct ListPickerView: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: list.isBucket ? "tray" : "list.bullet")
-                        .font(.system(size: 16))
+                        .font(AppFont.body)
                         .foregroundStyle(AppTheme.colors.textSecondary)
                         .frame(width: 24)
 
                     Text(rowTitle(for: list))
-                        .font(.system(size: 17))
+                        .font(AppFont.body)
                         .foregroundStyle(AppTheme.colors.textPrimary)
 
                     Spacer()
 
                     if list.persistentModelID == selectedListID {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(AppFont.bodySemibold)
                             .foregroundStyle(AppTheme.colors.primaryAction)
                     }
                 }
@@ -91,20 +91,10 @@ struct ListPickerView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("No lists found")
-                .font(.headline)
-                .foregroundStyle(AppTheme.colors.textPrimary)
-            Text("Try a different search term.")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.colors.textSecondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
-        .accessibilityElement(children: .combine)
+        ContentUnavailableView.search(text: searchText)
+            .padding(.vertical, AppSpacing.xl)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
     }
 }

@@ -9,6 +9,7 @@ struct AppRadius {
     static let medium: CGFloat = 12
     static let large: CGFloat = 16
     static let extraLarge: CGFloat = 24
-    static let full: CGFloat = 999 // Example for a pill-shaped button, adjust as needed
-    // Add more as needed
+    /// Native inset-grouped card corner radius, used by every task card and calendar.
+    static let card: CGFloat = 12
+    static let full: CGFloat = 999
 }

@@ -180,7 +180,7 @@ struct ListsView: View {
                 Text(list.name)
 
                 Text(taskCountLabel(for: list))
-                    .font(.caption)
+                    .font(AppFont.footnote)
                     .foregroundStyle(AppTheme.colors.textSecondary)
             }
         }
