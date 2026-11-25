@@ -1,11 +1,20 @@
 import SwiftUI
 import SwiftData
 
-/// The flat task list behind the Work and Personal tabs.
+/// A single list's tasks on the Work or Personal tab.
+struct AreaTaskSection: Identifiable {
+    let list: ReminderList
+    let tasks: [TaskItem]
+
+    var id: PersistentIdentifier { list.persistentModelID }
+}
+
+/// The list-grouped tasks behind the Work and Personal tabs.
 ///
 /// This is not a schedule: every incomplete task filed in the area is shown, dated or not,
-/// newest created first. The area is resolved by its canonical name
-/// (`AreaNames`) because the locked areas are guaranteed by `AreaReconciler` on every launch.
+/// newest created first, grouped under the list it belongs to. The area is resolved by its
+/// canonical name (`AreaNames`) because the locked areas are guaranteed by
+/// `AreaReconciler` on every launch.
 @MainActor
 @Observable
 final class AreaTasksViewModel {
@@ -18,6 +27,7 @@ final class AreaTasksViewModel {
 
     private(set) var area: ReminderListGroup?
     private(set) var tasks: [TaskItem] = []
+    private(set) var sections: [AreaTaskSection] = []
     private(set) var pendingUndo: CompletionUndo?
 
     private var undoToken = UUID()
@@ -41,15 +51,18 @@ final class AreaTasksViewModel {
         guard let area = groups.first(where: { $0.name == areaName }) else {
             self.area = nil
             tasks = []
+            sections = []
             return
         }
         self.area = area
 
-        let areaListIDs = Set(
-            lists
-                .filter { $0.group?.persistentModelID == area.persistentModelID }
-                .map(\.persistentModelID)
-        )
+        let areaLists = lists
+            .filter { $0.group?.persistentModelID == area.persistentModelID }
+            .sorted { lhs, rhs in
+                if lhs.isBucket != rhs.isBucket { return lhs.isBucket }
+                return (lhs.sortOrder ?? "") < (rhs.sortOrder ?? "")
+            }
+        let areaListIDs = Set(areaLists.map(\.persistentModelID))
 
         tasks = allTasks
             .filter { task in
@@ -71,6 +84,12 @@ final class AreaTasksViewModel {
                 // Stable tiebreak: seeded fixtures and bulk sync can share a timestamp.
                 return (lhs.taskId ?? "") < (rhs.taskId ?? "")
             }
+
+        sections = areaLists.compactMap { list in
+            let listTasks = tasks.filter { $0.reminderList?.persistentModelID == list.persistentModelID }
+            guard !listTasks.isEmpty else { return nil }
+            return AreaTaskSection(list: list, tasks: listTasks)
+        }
     }
 
     // MARK: - Mutations

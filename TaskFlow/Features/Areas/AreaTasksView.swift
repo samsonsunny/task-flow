@@ -3,8 +3,8 @@ import SwiftData
 
 /// One domain's tasks: the Work and Personal tabs.
 ///
-/// The list is flat and creation-ordered, so it answers "everything I filed here" rather than
-/// "what is due".
+/// Tasks are grouped under their list, so the page answers "everything I filed here" rather
+/// than "what is due".
 struct AreaTasksView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
@@ -101,49 +101,23 @@ struct AreaTasksView: View {
                     description: Text("Tasks in your \(areaName) lists will appear here.")
                 )
             } else {
-                let tasks = viewModel?.tasks ?? []
                 ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
-                                TaskRowView(
-                                    task: task,
-                                    isCompletedVisualState: task.isCompleted ?? false,
-                                    onToggleCompletion: {
-                                        Haptics.impact(.light)
-                                        viewModel?.toggleCompletion(for: task)
-                                    },
-                                    onDueDateAction: { action in
-                                        if action == .custom {
-                                            scheduleConfigTask = task
-                                        } else {
-                                            viewModel?.rescheduleTask(task, to: action)
-                                        }
-                                    },
-                                    onDelete: { viewModel?.delete(task) },
-                                    onTap: { editingTask = task },
-                                    showsDueDate: true,
-                                    showsListName: true
-                                )
+                    List {
+                        Color.clear
+                            .frame(height: 1)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .id("areaListTop")
 
-                                if index < tasks.count - 1 {
-                                    Divider()
-                                        .padding(.leading, 54)
-                                }
-                            }
+                        ForEach(viewModel?.sections ?? []) { section in
+                            listSection(section)
                         }
-                        .id("areaListTop")
-                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous))
-                        .background(
-                            RoundedRectangle(cornerRadius: AppRadius.extraLarge, style: .continuous)
-                                .fill(Color(.secondarySystemGroupedBackground))
-                        )
-                        .padding(.horizontal, 20)
-                        .padding(.top, 2)
-                        .padding(.bottom, 100)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .scrollIndicators(.hidden)
                     .refreshable { refresh() }
+                    .padding(.horizontal, 12)
                     .onChange(of: appState.scrollToTopRequestIDs[areaName] ?? 0) { _, _ in
                         withAnimation(.easeInOut(duration: 0.25)) {
                             proxy.scrollTo("areaListTop", anchor: .top)
@@ -153,6 +127,101 @@ struct AreaTasksView: View {
             }
         }
         .background(AppTheme.colors.pageBackground.ignoresSafeArea())
+    }
+
+    @ViewBuilder
+    private func listSection(_ section: AreaTaskSection) -> some View {
+        Section {
+            ForEach(Array(section.tasks.enumerated()), id: \.element.id) { index, task in
+                taskRow(task, isFirst: index == 0)
+            }
+            addTaskRow(for: section.list)
+        } header: {
+            Text(section.list.name)
+                .font(AppFont.subheadlineSemibold)
+                .foregroundStyle(AppTheme.colors.textPrimary)
+                .textCase(nil)
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private func taskRow(_ task: TaskItem, isFirst: Bool) -> some View {
+        TaskRowView(
+            task: task,
+            isCompletedVisualState: task.isCompleted ?? false,
+            onToggleCompletion: {
+                Haptics.impact(.light)
+                viewModel?.toggleCompletion(for: task)
+            },
+            onDueDateAction: { action in
+                if action == .custom {
+                    scheduleConfigTask = task
+                } else {
+                    viewModel?.rescheduleTask(task, to: action)
+                }
+            },
+            onDelete: { viewModel?.delete(task) },
+            onTap: { editingTask = task },
+            showsDueDate: true,
+            showsListName: true
+        )
+        .overlay(alignment: .bottom) {
+            Divider()
+                .padding(.leading, 54)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        .listRowSeparator(.hidden)
+        .listRowBackground(sectionBackground(top: isFirst, bottom: false))
+    }
+
+    private func addTaskRow(for list: ReminderList) -> some View {
+        Button {
+            Haptics.impact(.light)
+            newTaskConfig = NewTaskSheetConfig(
+                initialDate: nil,
+                initialListID: list.persistentModelID
+            )
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(AppFont.subheadline.weight(.semibold))
+                Text("Add Task")
+                    .font(AppFont.subheadline)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(AppTheme.colors.tint)
+        .accessibilityLabel("Add task to \(list.name)")
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+        .listRowSeparator(.hidden)
+        .listRowBackground(sectionBackground(top: false, bottom: true))
+    }
+
+    @ViewBuilder
+    private func sectionBackground(top: Bool, bottom: Bool) -> some View {
+        let color = Color(.secondarySystemGroupedBackground)
+        if top {
+            UnevenRoundedRectangle(
+                topLeadingRadius: AppRadius.extraLarge,
+                topTrailingRadius: AppRadius.extraLarge,
+                style: .continuous
+            )
+            .fill(color)
+        } else if bottom {
+            UnevenRoundedRectangle(
+                bottomLeadingRadius: AppRadius.extraLarge,
+                bottomTrailingRadius: AppRadius.extraLarge,
+                style: .continuous
+            )
+            .fill(color)
+        } else {
+            Rectangle()
+                .fill(color)
+        }
     }
 
     private func bootstrap() {
