@@ -26,7 +26,9 @@
     "emailAgentAuth": "./scripts/email-agent --auth",
     "emailAgentCheck": "./scripts/email-agent --check",
     "emailAgentOnce": "./scripts/email-agent --once",
-    "emailAgentDaemon": "./scripts/email-agent"
+    "emailAgentDaemon": "./scripts/email-agent",
+    "appStoreSubmitDryRun": "python3 ci_scripts/appstore_submit.py --version <YY.M.DD> --build-number <n> --dry-run",
+    "appStoreSubmitWithNotes": "python3 ci_scripts/appstore_submit.py --version <YY.M.DD> --build-number <n> --release-notes ci_scripts/release_notes_<YY.M.DD>.txt"
   },
   "sourceAreas": {
     "live": [

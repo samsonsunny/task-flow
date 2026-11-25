@@ -20,8 +20,13 @@ xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow \
 - Rebase onto latest `origin/main` before making changes so pushes stay fast-forward; never force-push `main`.
 - `MARKETING_VERSION` in `TaskFlow.xcodeproj/project.pbxproj` is the source of truth. Email-agent commits set it to today's `YY.M.DD` before committing; manual daily commits should do the same. CI never changes it.
 - `ci_scripts/ci_post_clone.sh` is a no-op: no version bump, commit, tag, or push.
-- Xcode Cloud: CI builds/tests on `main` pushes; Daily Release builds and distributes the committed version without tagging or pushing.
-- Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
+- Xcode Cloud has a single workflow named `CI`, scheduled Tuesday 19:00. Only that scheduled run submits to App Store review; manual, rebuild, push, and PR runs build/distribute without submitting. No tag or push.
+- The `CI` workflow ID is not stored in the repo; the submission hook matches `CI_WORKFLOW=ci` case-insensitively.
+- The `CI` workflow submits its archive via `ci_scripts/ci_post_xcodebuild.sh` and `ci_scripts/appstore_submit.py`. The hook exits unless `CI_START_CONDITION=schedule`, the action is `archive`, and `CI_XCODEBUILD_EXIT_CODE=0`; this excludes `manual`, `manual_rebuild`, `push`, `pr_open`, and `pr_update`. The Tuesday 19:00 schedule itself is configured in App Store Connect, not in this repository.
+- One-time App Store Connect setup: the `CI` workflow's archive deployment preparation must be `TestFlight and App Store`, and its post-action distribution destination must be `App Store Connect`, so the build is uploaded before submission. Create a team API key with App Manager role and add three secret environment variables to the workflow: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_BASE64` (base64 of the `.p8` file, single line). Never commit the `.p8` or these values.
+- `appstore_submit.py` uses only Python 3 stdlib + `openssl`, finds the version/build by bundle ID and committed `MARKETING_VERSION`, PATCHes `whatsNew` on the `en-US` `appStoreVersionLocalization`, attaches the build, creates a `reviewSubmissions` container, adds the version as an item, and sets `submitted: true`. An existing `WAITING_FOR_REVIEW`/`IN_REVIEW` submission is a no-op.
+- What's New is a generic `- Bug fixes and performance improvements.` by default. Dynamic commit-derived notes are intentionally deferred; `--release-notes <path>` overrides with a manual text file. No `ci_post_xcodebuild.sh` change is needed for the weekly `CI` schedule.
+- Local preview without credentials: `python3 ci_scripts/appstore_submit.py --version <YY.M.DD> --build-number <n> --dry-run` (prints the What's New that would be sent; no App Store Connect calls).
 - Never commit `.derivedData/`, `DerivedData/`, `build/`, `.ralph/runs/`, `.env`, or `.xcuserdata`. Derived data is gitignored and untracked as of `5c32541`.
 
 ## Content scripts

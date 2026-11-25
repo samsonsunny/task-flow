@@ -78,10 +78,21 @@ The version is whatever is committed in `MARKETING_VERSION` inside `TaskFlow.xco
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| **CI** | Branch changes on `main` | Builds + tests on every push |
-| **Daily Release** | Schedule — daily | Builds and distributes the committed version; no tag or push |
+| **CI** | Schedule — Tuesday 19:00 | Builds, distributes, and submits the committed version to App Store review; no tag or push |
 
-Daily Release workflow ID: `30be9eca-6c99-4d5e-b3d9-2f6c129b9587`.
+The `CI` workflow is matched by name in the submission hook; its schedule is configured in App Store Connect, not in this repository.
+
+## App Store submission
+
+`ci_scripts/ci_post_xcodebuild.sh` submits the archive after a successful `CI` build. It reads the version and build number from the archive, then calls `ci_scripts/appstore_submit.py`, which uses the App Store Connect API to attach the uploaded build and submit the version for review. An existing review submission is left untouched.
+
+One-time setup in App Store Connect:
+
+1. Set the `CI` workflow's archive deployment preparation to `TestFlight and App Store` and its post-action distribution destination to `App Store Connect`.
+2. Create a team API key with App Manager role; note the key ID, issuer ID, and downloaded `.p8`.
+3. Add secret environment variables to that workflow: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_BASE64` (single-line base64 of the `.p8`).
+
+The API key can submit to the store; keep it out of the repository and rotate it if exposed.
 
 ## Release Scripts (`ci_scripts`)
 

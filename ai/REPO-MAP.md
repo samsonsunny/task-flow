@@ -17,7 +17,9 @@
 | `scripts/requirements-email-agent.txt` | Python dependency for the email daemon |
 | `scripts/com.taskflow.email-agent.plist` | launchd agent for 60-second polling |
 | `.opencode/agents/email-dev.md` | Restricted opencode agent used by the email daemon |
-| `ci_scripts/` | Xcode Cloud version/tag script + release notes |
+| `ci_scripts/ci_post_xcodebuild.sh` | Xcode Cloud hook that submits the `CI` workflow archive to App Store review |
+| `ci_scripts/appstore_submit.py` | App Store Connect API client for version/build lookup, What's New update, build attachment, and review submission |
+| `ci_scripts/ci_post_clone.sh` | Intentionally a no-op; optional manual release notes live alongside it |
 | `.github/workflows/devto-publish.yml` | PR → Dev.to draft; merge → live publish |
 | `articles/` | Published article sources and Dev.to distribution log |
 | `package.json` | Dev dependencies only (`app-store-scraper`, `playwright`); no scripts |
