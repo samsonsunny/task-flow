@@ -3,46 +3,195 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.system.rawValue
-
-    /// Reconciliation must finish before any `@Query` in the tree reads area state —
-    /// otherwise a domain surface can render a third synced area, or an `AppState` reference to a group
-    /// the merge is about to delete. Gating the root on the pass makes the ordering a
-    /// property of the structure rather than a hope about `onAppear` timing.
-    @State private var isReconciled = false
+    @State private var isReady = false
 
     var body: some View {
         Group {
-            if isReconciled {
-                MainTabView()
+            if isReady {
+                MainView()
             } else {
-                Color.clear
+                ProgressView()
             }
         }
-        .preferredColorScheme(AppAppearance(rawValue: appearance)?.colorScheme)
         .task {
-            migrateGlobalInboxToFirstGroup(in: modelContext)
-            _ = reconcileLockedAreas(in: modelContext)
-            try? modelContext.save()
-            backfillSortOrdersIfNeeded(in: modelContext)
-            try? modelContext.save()
-            isReconciled = true
+            isReady = true
         }
     }
 }
 
-#Preview("Empty State") {
-    let container = TaskPreviewData.container()
-    TaskPreviewData.seedDefaultAreas(in: container.mainContext)
-    return ContentView()
-        .modelContainer(container)
-        .environment(AppState())
+struct MainView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
+    @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
+    @Query(filter: #Predicate<TaskItem> { $0.isCompleted != true }, sort: \TaskItem.createdAt, order: .reverse)
+    private var tasks: [TaskItem]
+
+    @State private var showingNewTask = false
+
+    private var overdueTasks: [TaskItem] {
+        tasks.filter(\.isOverdue)
+    }
+
+    private var todayTasks: [TaskItem] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return tasks.filter { task in
+            guard let dueDate = task.dueDate else { return false }
+            return calendar.isDate(calendar.startOfDay(for: dueDate), inSameDayAs: today)
+        }
+    }
+
+    private var remainingTasks: [TaskItem] {
+        let todayIDs = Set(todayTasks.map(\.persistentModelID))
+        return tasks.filter { !$0.isOverdue && !todayIDs.contains($0.persistentModelID) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Domains") {
+                    ForEach(groups.filter(\.isLocked)) { group in
+                        Text(group.name)
+                    }
+                }
+
+                Section("Lists") {
+                    ForEach(lists) { list in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(list.name)
+                            Text(list.group?.name ?? "No Domain")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if !overdueTasks.isEmpty {
+                    Section("Overdue") {
+                        ForEach(overdueTasks) { task in
+                            taskRow(task)
+                        }
+                        .onDelete { offsets in
+                            deleteTasks(offsets, from: overdueTasks)
+                        }
+                    }
+                }
+
+                if !todayTasks.isEmpty {
+                    Section("Today") {
+                        ForEach(todayTasks) { task in
+                            taskRow(task)
+                        }
+                        .onDelete { offsets in
+                            deleteTasks(offsets, from: todayTasks)
+                        }
+                    }
+                }
+
+                Section("Tasks") {
+                    ForEach(remainingTasks) { task in
+                        taskRow(task)
+                    }
+                    .onDelete { offsets in
+                        deleteTasks(offsets, from: remainingTasks)
+                    }
+                }
+            }
+            .navigationTitle("TaskFlow")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingNewTask = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("New Task")
+                }
+            }
+            .sheet(isPresented: $showingNewTask) {
+                NewTaskSheet()
+            }
+        }
+    }
+
+    private func taskRow(_ task: TaskItem) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(task.safeTitle)
+            if let dueDate = task.dueDate {
+                Text(dueDate.formatted(date: .abbreviated, time: task.safeHasTime ? .shortened : .omitted))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func deleteTasks(_ offsets: IndexSet, from tasks: [TaskItem]) {
+        for index in offsets {
+            modelContext.delete(tasks[index])
+        }
+        try? modelContext.save()
+    }
 }
 
-#Preview("With Tasks") {
-    let container = TaskPreviewData.container()
-    TaskPreviewData.seedReminderHomeFixture(into: container)
-    return ContentView()
-        .modelContainer(container)
-        .environment(AppState())
+private struct NewTaskSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
+
+    @State private var title = ""
+    @State private var hasDueDate = false
+    @State private var dueDate = Date()
+    @State private var selectedListID: PersistentIdentifier?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Task") {
+                    TextField("Title", text: $title)
+                }
+
+                Section("Due Date") {
+                    Toggle("Set due date", isOn: $hasDueDate)
+                    if hasDueDate {
+                        DatePicker("Date", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
+                    }
+                }
+
+                Section("List") {
+                    Picker("List", selection: $selectedListID) {
+                        Text("None").tag(Optional<PersistentIdentifier>.none)
+                        ForEach(lists) { list in
+                            Text(list.name).tag(Optional(list.persistentModelID))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("New Task")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") { addTask() }
+                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func addTask() {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let list = lists.first { $0.persistentModelID == selectedListID }
+        let task = TaskItem(taskTitle: trimmed, dueDate: hasDueDate ? dueDate : nil, reminderList: list)
+        task.hasTime = hasDueDate
+        modelContext.insert(task)
+        try? modelContext.save()
+        dismiss()
+    }
+}
+
+#Preview {
+    ContentView()
+        .modelContainer(for: [TaskItem.self, ReminderList.self, ReminderListGroup.self, ReminderTag.self])
 }
