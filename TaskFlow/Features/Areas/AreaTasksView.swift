@@ -168,10 +168,6 @@ struct AreaTasksView: View {
             actions: rowActions,
             showsDueDate: true
         )
-        .overlay(alignment: .bottom) {
-            Divider()
-                .padding(.leading, 54)
-        }
         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         .listRowSeparator(.hidden)
         .listRowBackground(sectionBackground(top: isFirst, bottom: false))
