@@ -60,7 +60,7 @@
     "areaViewModel": "TaskFlow/Features/Areas/AreaTasksViewModel.swift",
     "colors": "TaskFlow/DesignSystem/Colors.swift"
   },
-  "fixedTabs": ["Today", "Work", "Personal", "More"],
+  "fixedTabs": ["Work", "Personal"],
   "fixedDomains": ["Work", "Personal"],
   "doNotCommit": [
     ".derivedData/",
