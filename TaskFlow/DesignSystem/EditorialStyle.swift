@@ -39,15 +39,17 @@ struct EditorialSectionHeader: View {
 
 struct DomainIntroView: View {
     let eyebrow: String
-    let title: String
+    var title: String? = nil
     let message: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             EditorialStyle.eyebrow(eyebrow)
-            Text(title)
-                .font(.system(size: 38, weight: .semibold, design: .default))
-                .foregroundStyle(.primary)
+            if let title {
+                Text(title)
+                    .font(.system(size: 38, weight: .semibold, design: .default))
+                    .foregroundStyle(.primary)
+            }
             Text(message)
                 .font(.body)
                 .foregroundStyle(.secondary)

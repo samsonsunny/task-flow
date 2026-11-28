@@ -107,7 +107,7 @@ struct DomainTasksView: View {
     }
 
     private var introRow: some View {
-        DomainIntroView(eyebrow: eyebrow, title: displayName, message: contextMessage)
+        DomainIntroView(eyebrow: eyebrow, message: contextMessage)
             .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 20, trailing: 20))
             .listRowBackground(Color(uiColor: .systemBackground))
             .listRowSeparator(.hidden)
