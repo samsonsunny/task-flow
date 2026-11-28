@@ -12,7 +12,7 @@ Load `ai/INDEX.md` before navigating, then open **one** doc from the router belo
   4. Today is cross-domain (overdue + due-today); future/undated tasks stay in their domain.
   5. One protected Inbox per domain, identified by domain + name `Inbox`; never add a persisted pointer.
   6. Extra groups fold into Work on launch, preserving lists and tasks.
-  7. Copy says "Personal", never "Home" (stored values stay `Work`/`Personal`).
+  7. The Personal domain is labeled "Home" in the tab and page title; stored values stay `Work`/`Personal`.
   8. No sidebar or `NavigationSplitView` root.
 - Docs beat code when they disagree; fix the code, not the invariants.
 - **CloudKit:** any new field, relationship, or rename on an existing `@Model` requires a strictly higher `CURRENT_PROJECT_VERSION`. Details: `ai/CONVENTIONS.md`.

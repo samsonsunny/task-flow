@@ -2,13 +2,12 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
     @State private var isReady = false
 
     var body: some View {
         Group {
             if isReady {
-                MainView()
+                MainTabView()
             } else {
                 ProgressView()
             }
@@ -19,121 +18,9 @@ struct ContentView: View {
     }
 }
 
-struct MainView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ReminderListGroup.sortOrder, order: .forward) private var groups: [ReminderListGroup]
-    @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
-    @Query(filter: #Predicate<TaskItem> { $0.isCompleted != true }, sort: \TaskItem.createdAt, order: .reverse)
-    private var tasks: [TaskItem]
+struct NewTaskSheet: View {
+    let defaultDomain: String?
 
-    @State private var showingNewTask = false
-
-    private var overdueTasks: [TaskItem] {
-        tasks.filter(\.isOverdue)
-    }
-
-    private var todayTasks: [TaskItem] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        return tasks.filter { task in
-            guard let dueDate = task.dueDate else { return false }
-            return calendar.isDate(calendar.startOfDay(for: dueDate), inSameDayAs: today)
-        }
-    }
-
-    private var remainingTasks: [TaskItem] {
-        let todayIDs = Set(todayTasks.map(\.persistentModelID))
-        return tasks.filter { !$0.isOverdue && !todayIDs.contains($0.persistentModelID) }
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Domains") {
-                    ForEach(groups.filter(\.isLocked)) { group in
-                        Text(group.name)
-                    }
-                }
-
-                Section("Lists") {
-                    ForEach(lists) { list in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(list.name)
-                            Text(list.group?.name ?? "No Domain")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                if !overdueTasks.isEmpty {
-                    Section("Overdue") {
-                        ForEach(overdueTasks) { task in
-                            taskRow(task)
-                        }
-                        .onDelete { offsets in
-                            deleteTasks(offsets, from: overdueTasks)
-                        }
-                    }
-                }
-
-                if !todayTasks.isEmpty {
-                    Section("Today") {
-                        ForEach(todayTasks) { task in
-                            taskRow(task)
-                        }
-                        .onDelete { offsets in
-                            deleteTasks(offsets, from: todayTasks)
-                        }
-                    }
-                }
-
-                Section("Tasks") {
-                    ForEach(remainingTasks) { task in
-                        taskRow(task)
-                    }
-                    .onDelete { offsets in
-                        deleteTasks(offsets, from: remainingTasks)
-                    }
-                }
-            }
-            .navigationTitle("TaskFlow")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingNewTask = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("New Task")
-                }
-            }
-            .sheet(isPresented: $showingNewTask) {
-                NewTaskSheet()
-            }
-        }
-    }
-
-    private func taskRow(_ task: TaskItem) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(task.safeTitle)
-            if let dueDate = task.dueDate {
-                Text(dueDate.formatted(date: .abbreviated, time: task.safeHasTime ? .shortened : .omitted))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func deleteTasks(_ offsets: IndexSet, from tasks: [TaskItem]) {
-        for index in offsets {
-            modelContext.delete(tasks[index])
-        }
-        try? modelContext.save()
-    }
-}
-
-private struct NewTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ReminderList.sortOrder, order: .forward) private var lists: [ReminderList]
@@ -164,6 +51,11 @@ private struct NewTaskSheet: View {
                             Text(list.name).tag(Optional(list.persistentModelID))
                         }
                     }
+                }
+            }
+            .onAppear {
+                if selectedListID == nil {
+                    selectedListID = lists.first { $0.group?.name == defaultDomain }?.persistentModelID
                 }
             }
             .navigationTitle("New Task")
