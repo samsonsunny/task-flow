@@ -35,7 +35,7 @@ final class TaskActionsViewModel {
     }
 }
 
-/// One row for Today, Work, Home, Search, and list details.
+/// One row for Work, Home, Search, and list details.
 struct TaskRowView: View {
     let task: TaskItem
     var showsDomain = false

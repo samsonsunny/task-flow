@@ -9,14 +9,12 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 ## Key Features
 
-- Fixed four-tab navigation: `Today`, `Work`, `Personal`, `More`
+- Fixed grouped navigation: Tasks holds `Personal` (shown as Home) then `Work`; `Search` is a separate search tab
 - Exactly two permanent domains: Work and Personal
 - Projects/lists as optional organization inside a domain
-- Cross-domain Today view with collapsible Overdue and due-today tasks
-- Domain task surfaces with list and board display modes
+- Domain task surfaces with needs-attention, upcoming, list, and completed sections
 - Per-domain Inbox bucket for tasks created without a project
-- Fast task capture and editing with scheduling, subtasks, and priorities
-- Recently Completed archive under More
+- Fast task capture with title, due date, and list selection
 - Local storage via SwiftData with iCloud sync
 
 ## Platforms
@@ -25,29 +23,24 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 
 ## Data & Sync
 
-TaskFlow uses SwiftData with a private CloudKit database for sync across devices signed in to the same Apple ID. See `ai/CONVENTIONS.md` for CloudKit schema constraints.
+TaskFlow uses SwiftData with a private CloudKit database for sync across devices signed in to the same Apple ID. The versioned schema is `TaskFlowSchemaV10` in `TaskFlow/Models/TaskItem.swift`.
 
 ## Project Structure
 
 - `TaskFlow/App`: App entry point and root views
 - `TaskFlow/Features`: Feature folders (View + ViewModel co-located)
-- `TaskFlow/Models`: SwiftData models and area reconciliation
+- `TaskFlow/Models`: SwiftData schema, models, and derived helpers
 - `TaskFlow/Views/Components`: Shared UI components
-- `TaskFlow/DesignSystem`: App styling, typography, and tokens
-- `TaskFlow/Utilities`: Notifications, ordering, date, and badge helpers
+- `TaskFlow/DesignSystem`: Shared editorial styling
+- `TaskFlow/Assets.xcassets`: Color sets and custom tab symbols
 
 ## AI Agent Navigation
 
-`AGENTS.md` is the agent entry point. `ai/INDEX.md` routes to focused docs (`ai/ARCHITECTURE.md`, `ai/REPO-MAP.md`, `ai/CONVENTIONS.md`, `ai/OPERATIONS.md`, `ai/CONTENT.md`) so agents load only the context they need. `ai/manifest.json` is the machine-readable index.
+`AGENTS.md` is the agent entry point. `ai/manifest.json` is the machine-readable index of live source areas, key files, and commands.
 
 ## Color System
 
-TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors.swift` and backed by color assets in `TaskFlow/Assets.xcassets`.
-
-- Never use raw hex values in views.
-- Use only semantic tokens (`primaryAction`, `appBackground`, `surface`, `textPrimary`, `border`, etc.).
-- Avoid opacity-based text coloring; use `textPrimary`, `textSecondary`, and `textDisabled`.
-- See `ai/CONVENTIONS.md` and `TaskFlow/DesignSystem/Colors.swift` for palette and roles.
+Color sets live in `TaskFlow/Assets.xcassets` (for example `primaryAction`, `appBackground`, `surface`, `textPrimary`, `border`). Views use SwiftUI semantic colors and `Color.accentColor`; shared editorial styling lives in `TaskFlow/DesignSystem/EditorialStyle.swift`.
 
 ## Getting Started
 
@@ -55,7 +48,7 @@ TaskFlow uses semantic color tokens centralized in `TaskFlow/DesignSystem/Colors
 2. Select an iOS target.
 3. Build and run, or use `xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'generic/platform=iOS Simulator' build`.
 
-See `ai/OPERATIONS.md` for test, CI, release, and content publishing commands.
+Build, test, release, and publishing commands are listed in `ai/manifest.json`.
 
 
 ## Branching Strategy
@@ -67,7 +60,7 @@ Trunk-based development with a single permanent branch:
 
 ## Versioning
 
-The version is whatever is committed in `MARKETING_VERSION` inside `TaskFlow.xcodeproj/project.pbxproj` (currently `26.11.21`).
+The version is whatever is committed in `MARKETING_VERSION` inside `TaskFlow.xcodeproj/project.pbxproj`.
 
 - Email-agent commits set `MARKETING_VERSION` to today's `YY.M.DD` before committing
 - Manual daily commits should do the same

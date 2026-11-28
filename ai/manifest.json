@@ -3,20 +3,7 @@
   "project": "TaskFlow",
   "customerName": "Wednesday Calendar",
   "entryPoint": "AGENTS.md",
-  "contextDocs": {
-    "index": "ai/INDEX.md",
-    "architecture": "ai/ARCHITECTURE.md",
-    "repoMap": "ai/REPO-MAP.md",
-    "conventions": "ai/CONVENTIONS.md",
-    "operations": "ai/OPERATIONS.md",
-    "content": "ai/CONTENT.md"
-  },
-  "readPolicy": {
-    "always": ["AGENTS.md"],
-    "beforeNavigation": ["ai/INDEX.md"],
-    "onDemand": "exactly one context doc",
-    "avoidRecursiveScan": true
-  },
+  "index": "ai/manifest.json",
   "commands": {
     "build": "xcodebuild -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'generic/platform=iOS Simulator' build",
     "test": "xcodebuild test -project TaskFlow.xcodeproj -scheme TaskFlow -destination 'platform=iOS Simulator,name=iPhone 16'",
@@ -35,62 +22,35 @@
       "TaskFlow/App",
       "TaskFlow/Models",
       "TaskFlow/DesignSystem",
-      "TaskFlow/Utilities",
       "TaskFlow/Views/Components",
-      "TaskFlow/Previews",
-      "TaskFlow/Features/Today",
+      "TaskFlow/Assets.xcassets",
       "TaskFlow/Features/Areas",
-      "TaskFlow/Features/Lists",
-      "TaskFlow/Features/Editor",
-      "TaskFlow/Features/Settings",
+      "TaskFlow/Features/Search",
       "TaskFlow/Features/MainTabView.swift"
-    ],
-    "liveHelpersInLegacyFolder": [
-      "TaskFlow/Features/Tasks/Timeline/TimeSegments.swift",
-      "TaskFlow/Features/Tasks/Timeline/TimelineViewModel.swift",
-      "TaskFlow/Features/Tasks/Timeline/TimelineSections.swift"
     ]
   },
   "keyFiles": {
     "appEntry": "TaskFlow/App/TaskFlowApp.swift",
+    "rootView": "TaskFlow/App/ContentView.swift",
     "rootTabs": "TaskFlow/Features/MainTabView.swift",
+    "domainTasks": "TaskFlow/Features/Areas/DomainTasksView.swift",
+    "search": "TaskFlow/Features/Search/SearchView.swift",
+    "taskActions": "TaskFlow/Views/Components/TaskRowView.swift",
     "models": "TaskFlow/Models/TaskItem.swift",
-    "domainLocking": "TaskFlow/Models/AreaReconciler.swift",
-    "todayViewModel": "TaskFlow/Features/Today/TodayViewModel.swift",
-    "areaViewModel": "TaskFlow/Features/Areas/AreaTasksViewModel.swift",
-    "colors": "TaskFlow/DesignSystem/Colors.swift"
+    "designSystem": "TaskFlow/DesignSystem/EditorialStyle.swift"
   },
-  "fixedTabs": ["Work", "Personal"],
+  "schemaVersion": "TaskFlowSchemaV10",
+  "fixedTabs": ["Personal", "Work", "Search"],
+  "fixedTabGroups": ["Tasks"],
   "fixedDomains": ["Work", "Personal"],
   "doNotCommit": [
-    ".derivedData/",
-    "DerivedData/",
     "build/",
-    ".ralph/runs/",
+    "DerivedData/",
+    ".derivedData/",
+    ".ralph/",
     ".email-agent/",
     ".env",
-    "*.xcuserdata",
-    ".DS_Store"
-  ],
-  "removedAsStale": [
-    "openspec/",
-    "content/",
-    "Docs/",
-    "CHANGELOG.md",
-    ".codex/",
-    ".amazonq/",
-    ".agents/tasks/archive/",
-    ".ralph/",
-    "TaskFlow/Features/Home/",
-    "TaskFlow/Features/Tasks/Timeline/TimelineView.swift",
-    "TaskFlow/Features/Tasks/TodayView.swift",
-    "TaskFlow/Features/Tasks/TomorrowView.swift",
-    "TaskFlow/Features/Tasks/UpcomingView.swift"
-  ],
-  "removedFeatures": [
-    "TaskFlow/Features/Areas/AreaBoardView.swift"
-  ],
-  "staleSinceCommit": "0c991b4",
-  "testSourcesPresent": false,
-  "lintConfigPresent": false
+    ".DS_Store",
+    "*.xcuserdata"
+  ]
 }

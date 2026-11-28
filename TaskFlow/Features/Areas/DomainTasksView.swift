@@ -79,7 +79,6 @@ struct DomainTasksView: View {
     var body: some View {
         NavigationStack {
             List {
-                introRow
                 attentionSection
                 upcomingSection
                 listsSection

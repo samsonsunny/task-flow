@@ -7,17 +7,16 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
-            Tab("Today", systemImage: "sun.max") {
-                TodayView()
+            TabSection("Tasks") {
+                Tab("Home", image: "home") {
+                    DomainTasksView(domainName: "Personal")
+                }
+                Tab("Work", systemImage: "briefcase") {
+                    DomainTasksView(domainName: "Work")
+                }
             }
-            Tab("Work", systemImage: "briefcase") {
-                DomainTasksView(domainName: "Work")
-            }
-            Tab("Home", image: "home") {
-                DomainTasksView(domainName: "Personal")
-            }
-            Tab("More", systemImage: "ellipsis") {
-                MoreView()
+            Tab(role: .search) {
+                SearchView()
             }
         }
         .task {
