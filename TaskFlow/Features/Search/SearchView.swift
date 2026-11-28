@@ -2,8 +2,15 @@ import SwiftData
 import SwiftUI
 
 struct SearchView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var query = ""
-    @Query(filter: #Predicate<TaskItem> { $0.isCompleted != true }, sort: \TaskItem.createdAt, order: .reverse)
+    @State private var actions = TaskActionsViewModel()
+
+    @Query(
+        filter: #Predicate<TaskItem> { $0.isCompleted != true },
+        sort: \TaskItem.createdAt,
+        order: .reverse
+    )
     private var tasks: [TaskItem]
 
     private var results: [TaskItem] {
@@ -24,17 +31,22 @@ struct SearchView: View {
                     ContentUnavailableView.search(text: query)
                 } else {
                     List(results) { task in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(task.safeTitle)
-                            Text(task.reminderList?.group?.name ?? "No Domain")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        TaskRowView(task: task, showsDomain: true)
+                            .taskActions(
+                                task: task,
+                                onToggle: { actions.toggleCompletion(for: task, in: modelContext) },
+                                onDelete: { actions.delete(task, in: modelContext) }
+                            )
+                            .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20))
+                            .listRowBackground(Color(uiColor: .systemBackground))
+                            .listRowSeparator(.hidden)
                     }
+                    .listStyle(.plain)
                 }
             }
             .navigationTitle("Search")
             .searchable(text: $query, prompt: "Search Tasks")
+            .animation(.easeOut(duration: 0.2), value: actions.revision)
         }
     }
 }
