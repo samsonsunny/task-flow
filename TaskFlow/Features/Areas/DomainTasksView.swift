@@ -9,16 +9,11 @@ struct DomainTasksView: View {
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var tasks: [TaskItem]
 
     @State private var showingNewTask = false
+    @State private var quickTitle = ""
     @State private var actions = TaskActionsViewModel()
 
     private var isWork: Bool { domainName == "Work" }
     private var displayName: String { isWork ? "Work" : "Home" }
-    private var eyebrow: String { isWork ? "WORKSPACE" : "PERSONAL" }
-    private var contextMessage: String {
-        isWork
-            ? "Your professional responsibilities, arranged for focus."
-            : "The people, plans, and routines that shape your days at home."
-    }
 
     private var domainLists: [ReminderList] {
         lists
@@ -79,6 +74,7 @@ struct DomainTasksView: View {
     var body: some View {
         NavigationStack {
             List {
+                quickCaptureSection
                 attentionSection
                 upcomingSection
                 listsSection
@@ -105,11 +101,30 @@ struct DomainTasksView: View {
         }
     }
 
-    private var introRow: some View {
-        DomainIntroView(eyebrow: eyebrow, message: contextMessage)
-            .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 20, trailing: 20))
-            .listRowBackground(Color(uiColor: .systemBackground))
+    private var quickCaptureSection: some View {
+        Section {
+            QuickCaptureCard(title: $quickTitle) { day in
+                createQuickTask(for: day)
+            }
+            .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 16, trailing: 20))
+            .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+        }
+    }
+
+    private func createQuickTask(for day: QuickCaptureDay) {
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: Date())
+        let dueDate: Date
+        switch day {
+        case .today:
+            dueDate = startOfToday
+        case .tomorrow:
+            dueDate = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? startOfToday
+        }
+        let inbox = domainLists.first { $0.name == "Inbox" } ?? domainLists.first
+        actions.createTask(title: quickTitle, dueDate: dueDate, list: inbox, in: modelContext)
+        quickTitle = ""
     }
 
     @ViewBuilder
@@ -144,10 +159,7 @@ struct DomainTasksView: View {
                 }
             }
         } header: {
-            EditorialSectionHeader(
-                title: "Needs attention",
-                subtitle: isWork ? "Overdue and due today" : "What needs care today"
-            )
+            EditorialSectionHeader(title: "Needs attention")
         }
     }
 
@@ -176,7 +188,7 @@ struct DomainTasksView: View {
                     }
                 }
             } header: {
-                EditorialSectionHeader(title: "Coming up", subtitle: "The days just ahead")
+                EditorialSectionHeader(title: "Coming up")
             }
         }
     }
@@ -219,10 +231,7 @@ struct DomainTasksView: View {
                 }
             }
         } header: {
-            EditorialSectionHeader(
-                title: "Organized by list",
-                subtitle: isWork ? "Projects and responsibilities" : "Areas of life"
-            )
+            EditorialSectionHeader(title: "Organized by list")
         }
     }
 
@@ -258,10 +267,7 @@ struct DomainTasksView: View {
                 }
             }
         } header: {
-            EditorialSectionHeader(
-                title: "Recently completed",
-                subtitle: isWork ? "Progress, without the noise" : "What you have already handled"
-            )
+            EditorialSectionHeader(title: "Recently completed")
         }
     }
 
@@ -278,6 +284,69 @@ struct DomainTasksView: View {
     }
 
     private static let rowInsets = EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20)
+}
+
+private enum QuickCaptureDay {
+    case today
+    case tomorrow
+}
+
+private struct QuickCaptureCard: View {
+    @Binding var title: String
+    let onCreate: (QuickCaptureDay) -> Void
+
+    @FocusState private var isFieldFocused: Bool
+
+    private var canCreate: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                Text("Quick capture")
+                    .font(.headline)
+                Spacer(minLength: 0)
+            }
+            TextField("What needs doing?", text: $title)
+                .textFieldStyle(.plain)
+                .focused($isFieldFocused)
+                .padding(12)
+                .background(Color(uiColor: .systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            HStack(spacing: 10) {
+                quickButton(.today, label: "Today", systemImage: "sun.max.fill")
+                quickButton(.tomorrow, label: "Tomorrow", systemImage: "sunrise.fill")
+            }
+        }
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func quickButton(_ day: QuickCaptureDay, label: String, systemImage: String) -> some View {
+        Button {
+            onCreate(day)
+            isFieldFocused = false
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                Text(label)
+            }
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .foregroundStyle(Color.accentColor)
+            .background(Color.accentColor.opacity(canCreate ? 0.14 : 0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canCreate)
+        .accessibilityLabel("Add task for \(label.lowercased())")
+    }
 }
 
 private struct UpcomingGroup: Identifiable {

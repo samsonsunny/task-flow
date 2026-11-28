@@ -29,6 +29,7 @@ struct NewTaskSheet: View {
     @State private var hasDueDate = false
     @State private var dueDate = Date()
     @State private var selectedListID: PersistentIdentifier?
+    @State private var actions = TaskActionsViewModel()
 
     var body: some View {
         NavigationStack {
@@ -72,13 +73,14 @@ struct NewTaskSheet: View {
     }
 
     private func addTask() {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
         let list = lists.first { $0.persistentModelID == selectedListID }
-        let task = TaskItem(taskTitle: trimmed, dueDate: hasDueDate ? dueDate : nil, reminderList: list)
-        task.hasTime = hasDueDate
-        modelContext.insert(task)
-        try? modelContext.save()
+        actions.createTask(
+            title: title,
+            dueDate: hasDueDate ? dueDate : nil,
+            hasTime: hasDueDate,
+            list: list,
+            in: modelContext
+        )
         dismiss()
     }
 }

@@ -25,6 +25,21 @@ final class TaskActionsViewModel {
         save(in: modelContext)
     }
 
+    func createTask(
+        title: String,
+        dueDate: Date? = nil,
+        hasTime: Bool = false,
+        list: ReminderList?,
+        in modelContext: ModelContext
+    ) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let task = TaskItem(taskTitle: trimmed, dueDate: dueDate, reminderList: list)
+        task.hasTime = hasTime
+        modelContext.insert(task)
+        save(in: modelContext)
+    }
+
     private func save(in modelContext: ModelContext) {
         try? modelContext.save()
         update()

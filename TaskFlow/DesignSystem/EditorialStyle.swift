@@ -36,30 +36,3 @@ struct EditorialSectionHeader: View {
         .accessibilityAddTraits(.isHeader)
     }
 }
-
-struct DomainIntroView: View {
-    let eyebrow: String
-    var title: String? = nil
-    let message: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EditorialStyle.eyebrow(eyebrow)
-            if let title {
-                Text(title)
-                    .font(.system(size: 38, weight: .semibold, design: .default))
-                    .foregroundStyle(.primary)
-            }
-            Text(message)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Rectangle()
-                .fill(Color.accentColor.opacity(0.22))
-                .frame(height: 1)
-                .padding(.top, 6)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
-    }
-}

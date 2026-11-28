@@ -12,9 +12,10 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 - Fixed grouped navigation: Tasks holds `Personal` (shown as Home) then `Work`; `Search` is a separate search tab
 - Exactly two permanent domains: Work and Personal
 - Projects/lists as optional organization inside a domain
-- Domain task surfaces with needs-attention, upcoming, list, and completed sections
+- Domain task surfaces with title-only needs-attention, upcoming, list, and completed sections
+- Quick capture on Home and Work creates a task due today or tomorrow in that domain's Inbox
 - Per-domain Inbox bucket for tasks created without a project
-- Fast task capture with title, due date, and list selection
+- Full task capture sheet with title, due date, and list selection
 - Local storage via SwiftData with iCloud sync
 
 ## Platforms
