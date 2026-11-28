@@ -87,6 +87,20 @@ struct TaskRowView: View {
         .accessibilityLabel(task.isCompleted == true ? "Mark incomplete" : "Mark complete")
     }
 
+    private var isDueToday: Bool {
+        guard let dueDate = task.dueDate else { return false }
+        return Calendar.current.isDateInToday(dueDate)
+    }
+
+    private var dueDateLabel: String? {
+        guard let dueDate = task.dueDate else { return nil }
+        if isDueToday {
+            let time = task.safeHasTime ? ", \(dueDate.formatted(date: .omitted, time: .shortened))" : ""
+            return "Today\(time)"
+        }
+        return dueDate.formatted(date: dateStyle, time: task.safeHasTime ? .shortened : .omitted)
+    }
+
     private var metadata: some View {
         HStack(spacing: 8) {
             if task.isOverdue && task.isCompleted != true {
@@ -94,8 +108,9 @@ struct TaskRowView: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.red)
             }
-            if let dueDate = task.dueDate {
-                Text(dueDate.formatted(date: dateStyle, time: task.safeHasTime ? .shortened : .omitted))
+            if let dueDateLabel {
+                Text(dueDateLabel)
+                    .foregroundStyle(isDueToday && task.isCompleted != true ? Color.accentColor : Color.secondary)
             }
             if showsDomain, let domain = task.reminderList?.group?.name {
                 Text(domain == "Personal" ? "Home" : domain)

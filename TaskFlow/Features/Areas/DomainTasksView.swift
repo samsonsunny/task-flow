@@ -63,6 +63,11 @@ struct DomainTasksView: View {
         }
     }
 
+    private var tomorrowTaskCount: Int {
+        let calendar = Calendar.current
+        return openTasks.filter { calendar.isDateInTomorrow($0.safeDueDate) }.count
+    }
+
     private var completedTasks: [TaskItem] {
         domainTasks
             .filter { $0.isCompleted == true }
@@ -103,8 +108,8 @@ struct DomainTasksView: View {
 
     private var quickCaptureSection: some View {
         Section {
-            QuickCaptureCard(title: $quickTitle) { day in
-                createQuickTask(for: day)
+            QuickCaptureCard(title: $quickTitle, tomorrowCount: tomorrowTaskCount) { destination in
+                createQuickTask(for: destination)
             }
             .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 16, trailing: 20))
             .listRowBackground(Color.clear)
@@ -112,15 +117,17 @@ struct DomainTasksView: View {
         }
     }
 
-    private func createQuickTask(for day: QuickCaptureDay) {
+    private func createQuickTask(for destination: QuickCaptureDestination) {
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
-        let dueDate: Date
-        switch day {
+        let dueDate: Date?
+        switch destination {
         case .today:
             dueDate = startOfToday
         case .tomorrow:
             dueDate = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? startOfToday
+        case .thought:
+            dueDate = nil
         }
         let inbox = domainLists.first { $0.name == "Inbox" } ?? domainLists.first
         actions.createTask(title: quickTitle, dueDate: dueDate, list: inbox, in: modelContext)
@@ -159,7 +166,7 @@ struct DomainTasksView: View {
                 }
             }
         } header: {
-            EditorialSectionHeader(title: "Needs attention")
+            EditorialSectionHeader(title: "Needs attention", subtitle: "Overdue and due today")
         }
     }
 
@@ -168,6 +175,13 @@ struct DomainTasksView: View {
         if !upcomingGroups.isEmpty {
             Section {
                 ForEach(upcomingGroups.prefix(2)) { group in
+                    Text(group.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 2, trailing: 20))
+                        .listRowBackground(Color(uiColor: .systemBackground))
+                        .listRowSeparator(.hidden)
                     ForEach(group.tasks.prefix(2)) { task in
                         taskRow(task)
                     }
@@ -188,7 +202,7 @@ struct DomainTasksView: View {
                     }
                 }
             } header: {
-                EditorialSectionHeader(title: "Coming up")
+                EditorialSectionHeader(title: "Coming up", subtitle: "Tomorrow and the days ahead")
             }
         }
     }
@@ -286,14 +300,16 @@ struct DomainTasksView: View {
     private static let rowInsets = EdgeInsets(top: 10, leading: 20, bottom: 10, trailing: 20)
 }
 
-private enum QuickCaptureDay {
+private enum QuickCaptureDestination {
     case today
     case tomorrow
+    case thought
 }
 
 private struct QuickCaptureCard: View {
     @Binding var title: String
-    let onCreate: (QuickCaptureDay) -> Void
+    let tomorrowCount: Int
+    let onCreate: (QuickCaptureDestination) -> Void
 
     @FocusState private var isFieldFocused: Bool
 
@@ -311,32 +327,44 @@ private struct QuickCaptureCard: View {
                     .font(.headline)
                 Spacer(minLength: 0)
             }
-            TextField("What needs doing?", text: $title)
+            TextField("Capture a task or thought...", text: $title)
                 .textFieldStyle(.plain)
                 .focused($isFieldFocused)
+                .onSubmit { commit(.today) }
                 .padding(12)
                 .background(Color(uiColor: .systemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 quickButton(.today, label: "Today", systemImage: "sun.max.fill")
                 quickButton(.tomorrow, label: "Tomorrow", systemImage: "sunrise.fill")
+                quickButton(.thought, label: "Thought", systemImage: "note.text")
             }
+            Text(tomorrowCount == 0 ? "Nothing planned for tomorrow yet" : "\(tomorrowCount) planned for tomorrow")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(14)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func quickButton(_ day: QuickCaptureDay, label: String, systemImage: String) -> some View {
+    private func commit(_ destination: QuickCaptureDestination) {
+        guard canCreate else { return }
+        onCreate(destination)
+        isFieldFocused = false
+    }
+
+    private func quickButton(_ destination: QuickCaptureDestination, label: String, systemImage: String) -> some View {
         Button {
-            onCreate(day)
-            isFieldFocused = false
+            commit(destination)
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
                 Text(label)
+                    .lineLimit(1)
             }
-            .font(.subheadline.weight(.semibold))
+            .font(.caption.weight(.semibold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
             .foregroundStyle(Color.accentColor)
@@ -345,7 +373,18 @@ private struct QuickCaptureCard: View {
         }
         .buttonStyle(.plain)
         .disabled(!canCreate)
-        .accessibilityLabel("Add task for \(label.lowercased())")
+        .accessibilityLabel(accessibilityLabel(for: destination))
+    }
+
+    private func accessibilityLabel(for destination: QuickCaptureDestination) -> String {
+        switch destination {
+        case .today:
+            return "Add task for today"
+        case .tomorrow:
+            return "Add task for tomorrow"
+        case .thought:
+            return "Save thought to Inbox"
+        }
     }
 }
 

@@ -1,11 +1,11 @@
 # TaskFlow
 
 
-TaskFlow is a SwiftUI task manager for iOS focused on fast task capture and a clean, minimal list experience. Data is stored with SwiftData and synced through a private CloudKit database.
+TaskFlow is a SwiftUI task manager for iOS focused on three goals: capture tasks or thoughts quickly, finish what is due today, and plan tomorrow. Data is stored with SwiftData and synced through a private CloudKit database.
 
 ## Product Overview
 
-TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scrollable list. The UI emphasizes clarity and low friction.
+TaskFlow keeps capture effortless: add a task for today, tomorrow, or save an undated thought to the Inbox. The Home and Work pages surface overdue and due-today tasks first, then show tomorrow and later days without adding extra tabs. The UI emphasizes clarity and low friction.
 
 ## Key Features
 
@@ -13,7 +13,8 @@ TaskFlow keeps task capture simple: add a task quickly and see it in a calm, scr
 - Exactly two permanent domains: Work and Personal
 - Projects/lists as optional organization inside a domain
 - Domain task surfaces with title-only needs-attention, upcoming, list, and completed sections
-- Quick capture on Home and Work creates a task due today or tomorrow in that domain's Inbox
+- Quick capture on Home and Work saves to that domain's Inbox: due today, tomorrow, or as an undated thought (Return adds for today)
+- Needs-attention and coming-up sections show what to finish today and what is planned for tomorrow
 - Per-domain Inbox bucket for tasks created without a project
 - Full task capture sheet with title, due date, and list selection
 - Local storage via SwiftData with iCloud sync
